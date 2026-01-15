@@ -1,0 +1,131 @@
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║              SISTEMA DE VENTAS - INICIO RÁPIDO                ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+📋 REQUISITOS
+-------------
+✓ Windows 7/10/11
+✓ Python 3.8+ (solo para desarrollo)
+
+
+🚀 INICIO RÁPIDO - 3 PASOS
+---------------------------
+
+1️⃣  INSTALAR DEPENDENCIAS
+   > run.bat
+   
+   (O manualmente: pip install -r requirements.txt)
+
+2️⃣  INICIAR EL SISTEMA
+   > python main.py
+   
+   (O usar run.bat que hace todo automáticamente)
+
+3️⃣  LOGIN
+   Usuario: admin
+   Contraseña: admin123
+
+
+📦 GENERAR EJECUTABLE
+----------------------
+> build_exe.bat
+
+El .exe estará en: dist\SistemaVentas.exe
+
+
+🔧 ESTRUCTURA RÁPIDA
+--------------------
+database/     → Base de datos SQLite
+models/       → Lógica de negocio
+views/        → Interfaz gráfica
+reports/      → Facturas PDF generadas
+main.py       → Archivo principal
+
+
+📚 DOCUMENTACIÓN
+----------------
+README.md              → Información general
+MANUAL_USO.md          → Manual completo de usuario
+GUIA_GENERAR_EXE.md    → Cómo crear el instalador
+RESUMEN.txt            → Resumen técnico completo
+
+
+✨ CARACTERÍSTICAS PRINCIPALES
+------------------------------
+✓ Sistema de facturación completo
+✓ Gestión de productos y stock
+✓ Gestión de proveedores
+✓ Descuentos por producto
+✓ Reportes y estadísticas
+✓ Generación de PDF
+✓ Control de usuarios (Admin/Empleado)
+✓ Base de datos integrada
+
+
+⚡ ATAJOS ÚTILES
+----------------
+Ejecutar en desarrollo:     python main.py
+Crear datos de ejemplo:     python inicializar_datos.py
+Generar ejecutable:         build_exe.bat
+Ejecutar todo junto:        run.bat
+
+
+🔑 CREDENCIALES POR DEFECTO
+----------------------------
+Admin:
+  👤 Usuario: admin
+  🔒 Contraseña: admin123
+
+Empleado:
+  👤 Usuario: empleado1
+  🔒 Contraseña: empleado123
+
+
+📊 DATOS DE EJEMPLO
+-------------------
+Al ejecutar inicializar_datos.py se crean:
+• 5 Categorías
+• 3 Proveedores
+• 13 Productos
+• 2 Usuarios (admin + empleado)
+
+
+💡 CONSEJO
+----------
+Para empezar a vender inmediatamente:
+1. Ejecutar: run.bat
+2. Login con: admin / admin123
+3. Click en "Nueva Venta"
+4. Buscar producto (ej: "coca")
+5. Agregar a la venta
+6. Procesar venta
+
+
+🆘 PROBLEMAS COMUNES
+--------------------
+"Python no encontrado"
+  → Instalar Python desde python.org
+
+"ModuleNotFoundError"
+  → Ejecutar: pip install -r requirements.txt
+
+"Base de datos no existe"
+  → Se crea automáticamente al iniciar
+  → O ejecutar: python inicializar_datos.py
+
+
+📞 SOPORTE
+----------
+Revisar los archivos de documentación:
+• README.md
+• MANUAL_USO.md
+• GUIA_GENERAR_EXE.md
+
+
+═══════════════════════════════════════════════════════════════
+                    ¡LISTO PARA USAR!
+═══════════════════════════════════════════════════════════════
+
+Versión: 1.0 | Enero 2026
