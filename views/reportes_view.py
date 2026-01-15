@@ -329,7 +329,3 @@ class DetalleVentaDialog:
                  font=("Arial", 13, "bold")).grid(row=2, column=0, sticky=tk.E, padx=5, pady=5)
         ttk.Label(totals_frame, text=f"${venta[6]:.2f}", 
                  font=("Arial", 13, "bold"), foreground="green").grid(row=2, column=1, sticky=tk.W, padx=5, pady=5)
-        
-        # Botón cerrar
-        ttk.Button(main_frame, text="Cerrar", 
-                  command=self.dialog.destroy).pack(pady=10)

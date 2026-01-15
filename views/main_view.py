@@ -8,10 +8,11 @@ from views.usuarios_view import UsuariosView
 from views.configuracion_view import ConfiguracionView
 
 class MainView:
-    def __init__(self, root, db_manager, user_data):
+    def __init__(self, root, db_manager, user_data, logout_callback=None):
         self.root = root
         self.db_manager = db_manager
         self.user_data = user_data
+        self.logout_callback = logout_callback
         
         self.root.title(f"Sistema de Ventas - {user_data['nombre_completo']} ({user_data['rol'].upper()})")
         self.root.geometry("1200x700")
@@ -193,4 +194,7 @@ class MainView:
     def logout(self):
         """Cerrar sesión"""
         if messagebox.askyesno("Cerrar Sesión", "¿Está seguro que desea cerrar sesión?"):
-            self.root.destroy()
+            if self.logout_callback:
+                self.logout_callback()
+            else:
+                self.root.destroy()

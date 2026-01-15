@@ -47,7 +47,19 @@ class SistemaVentas:
         
         # Mostrar ventana principal
         self.root.deiconify()
-        MainView(self.root, self.db_manager, user_data)
+        MainView(self.root, self.db_manager, user_data, self.on_logout)
+
+    def on_logout(self):
+        """Volver al login al cerrar sesión"""
+        # Limpiar todos los widgets de la ventana principal
+        for widget in self.root.winfo_children():
+            widget.destroy()
+        
+        # Ocultar la ventana principal
+        self.root.withdraw()
+        
+        # Volver a mostrar el login
+        self.mostrar_login()
     
     def run(self):
         """Ejecutar aplicación"""

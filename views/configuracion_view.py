@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from models.configuracion import Configuracion
 from models.backup import Backup
+from utils.updater import UpdateManager
 import os
 from PIL import Image, ImageTk
 import shutil
@@ -13,6 +14,13 @@ class ConfiguracionView:
         self.user_data = user_data
         self.config_model = Configuracion(db_manager)
         self.backup_model = Backup(db_manager)
+        
+        # Inicializar UpdateManager para búsqueda manual
+        if getattr(__import__('sys'), 'frozen', False):
+            base_path = os.path.dirname(__import__('sys').executable)
+        else:
+            base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        self.update_manager = UpdateManager(base_path)
         
         # Variables
         self.nombre_var = tk.StringVar()
@@ -74,7 +82,192 @@ class ConfiguracionView:
         notebook = ttk.Notebook(main_container)
         notebook.pack(fill=tk.X)
         
-        # Tab 1: Personalización
+        # Tab 0: Acerca de
+        about_tab = tk.Frame(notebook, bg='#F0F4F8')
+        notebook.add(about_tab, text="Acerca de")
+        
+        # Frame principal de acerca de
+        about_container = tk.Frame(about_tab, bg='#F0F4F8')
+        about_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        
+        # Nombre del sistema
+        about_header = tk.Frame(about_container, bg='white', relief=tk.RIDGE, bd=1, padx=20, pady=30)
+        about_header.pack(fill=tk.X, pady=(0, 15))
+        
+        tk.Label(about_header,
+                text="💼 SISTEMA DE VENTAS",
+                font=("Arial", 20, "bold"),
+                bg='white',
+                fg='#2563EB').pack(pady=10)
+        
+        tk.Label(about_header,
+                text="Gestión completa de ventas, inventario y reportes",
+                font=("Arial", 11),
+                bg='white',
+                fg='#6B7280').pack(pady=5)
+        
+        # Información del sistema
+        info_frame = tk.Frame(about_container, bg='white', relief=tk.RIDGE, bd=1, padx=20, pady=20)
+        info_frame.pack(fill=tk.X, pady=10)
+        
+        # Versión
+        tk.Label(info_frame,
+                text="Versión:",
+                font=("Arial", 11, "bold"),
+                bg='white',
+                fg='#374151').grid(row=0, column=0, sticky=tk.W, pady=8, padx=10)
+        tk.Label(info_frame,
+                text=f"v{self.update_manager.current_version}",
+                font=("Arial", 11),
+                bg='white',
+                fg='#2563EB').grid(row=0, column=1, sticky=tk.W, pady=8, padx=10)
+        
+        # Desarrollador
+        tk.Label(info_frame,
+                text="Desarrollador:",
+                font=("Arial", 11, "bold"),
+                bg='white',
+                fg='#374151').grid(row=1, column=0, sticky=tk.W, pady=8, padx=10)
+        tk.Label(info_frame,
+                text="Digital&Servicios",
+                font=("Arial", 11),
+                bg='white',
+                fg='#1F2937').grid(row=1, column=1, sticky=tk.W, pady=8, padx=10)
+        
+        # Descripción
+        tk.Label(info_frame,
+                text="Descripción:",
+                font=("Arial", 11, "bold"),
+                bg='white',
+                fg='#374151').grid(row=2, column=0, sticky=tk.NW, pady=8, padx=10)
+        
+        desc_text = tk.Text(info_frame,
+                           height=4,
+                           width=60,
+                           font=("Arial", 10),
+                           bg='#F9FAFB',
+                           relief=tk.RIDGE,
+                           bd=1,
+                           wrap=tk.WORD)
+        desc_text.grid(row=2, column=1, sticky=tk.NSEW, pady=8, padx=10)
+        
+        desc_content = """Sistema integral de gestión de ventas con control de inventario, 
+registro de productos y proveedores, generación de reportes y 
+actualizaciones automáticas. Diseñado para pequeños y medianos negocios."""
+        
+        desc_text.insert(1.0, desc_content)
+        desc_text.config(state=tk.DISABLED)
+        
+
+        
+        # Características
+        features_frame = tk.Frame(about_container, bg='white', relief=tk.RIDGE, bd=1, padx=20, pady=20)
+        features_frame.pack(fill=tk.X, pady=10)
+        
+        tk.Label(features_frame,
+                text="✨ Características Principales:",
+                font=("Arial", 12, "bold"),
+                bg='white',
+                fg='#2563EB').pack(anchor=tk.W, pady=10)
+        
+        features = [
+            "✓ Gestión completa de ventas y facturas",
+            "✓ Control de inventario y stock",
+            "✓ Registro de productos y proveedores",
+            "✓ Sistema de usuarios con roles (Admin/Empleado)",
+            "✓ Reportes y estadísticas de ventas",
+            "✓ Copias de seguridad automáticas y manuales",
+            "✓ Actualizaciones automáticas desde GitHub"
+        ]
+        
+        for feature in features:
+            tk.Label(features_frame,
+                    text=feature,
+                    font=("Arial", 10),
+                    bg='white',
+                    fg='#374151').pack(anchor=tk.W, pady=3, padx=10)
+        
+        # Licencia y tecnologías
+        tech_frame = tk.Frame(about_container, bg='white', relief=tk.RIDGE, bd=1, padx=20, pady=20)
+        tech_frame.pack(fill=tk.X, pady=10)
+        
+        tk.Label(tech_frame,
+                text="🛠️ Tecnologías Utilizadas:",
+                font=("Arial", 12, "bold"),
+                bg='white',
+                fg='#6366F1').pack(anchor=tk.W, pady=10)
+        
+        tk.Label(tech_frame,
+                text="Python 3.13 • Tkinter • SQLite • PIL • ReportLab",
+                font=("Arial", 10),
+                bg='white',
+                fg='#374151').pack(anchor=tk.W, pady=5, padx=10)
+        
+        tk.Label(tech_frame,
+                text="Licencia: MIT (Libre para uso comercial)",
+                font=("Arial", 10),
+                bg='white',
+                fg='#374151').pack(anchor=tk.W, pady=5, padx=10)
+        
+        # Footer
+        footer_frame = tk.Frame(about_container, bg='#F0F4F8')
+        footer_frame.pack(fill=tk.X, pady=15)
+        
+        tk.Label(footer_frame,
+                text="© 2025-2026 Digital&Servicios. Todos los derechos reservados.",
+                font=("Arial", 9),
+                bg='#F0F4F8',
+                fg='#9CA3AF').pack(pady=5)
+        
+        # Tab 1: Actualizaciones
+        updates_tab = tk.Frame(notebook, bg='#F0F4F8')
+        notebook.add(updates_tab, text="Actualizaciones")
+        
+        # Frame de actualizaciones
+        updates_frame = tk.Frame(updates_tab, bg='white', relief=tk.RIDGE, bd=1, padx=20, pady=20)
+        updates_frame.pack(fill=tk.X, padx=15, pady=15)
+        
+        tk.Label(updates_frame,
+                text="🔄 Buscar Actualizaciones",
+                font=("Arial", 13, "bold"),
+                bg='white',
+                fg='black').pack(anchor=tk.W, pady=10)
+        
+        tk.Label(updates_frame,
+                text="Verifica si hay una nueva versión disponible en GitHub.\n"
+                     "Tus datos NO se perderán durante la actualización.",
+                font=("Arial", 10),
+                bg='white',
+                fg='#6B7280').pack(anchor=tk.W, pady=5)
+        
+        info_frame = tk.Frame(updates_frame, bg='#F0F4F8', relief=tk.RIDGE, bd=1, padx=10, pady=10)
+        info_frame.pack(fill=tk.X, pady=15)
+        
+        tk.Label(info_frame,
+                text=f"Versión actual: {self.update_manager.current_version}",
+                font=("Arial", 10),
+                bg='#F0F4F8',
+                fg='#374151').pack(anchor=tk.W, pady=5)
+        
+        self.update_status_label = tk.Label(info_frame,
+                                           text="",
+                                           font=("Arial", 9),
+                                           bg='#F0F4F8',
+                                           fg='#3B82F6')
+        self.update_status_label.pack(anchor=tk.W, pady=5)
+        
+        tk.Button(updates_frame,
+                 text="🔍 Buscar Actualizaciones",
+                 font=('Arial', 12, 'bold'),
+                 bg='#3B82F6',
+                 fg='white',
+                 activebackground='#2563EB',
+                 bd=0,
+                 pady=12,
+                 cursor='hand2',
+                 command=self.buscar_actualizaciones).pack(pady=15, ipadx=30)
+        
+        # Tab 2: Personalización
         config_tab = tk.Frame(notebook, bg='#F0F4F8')
         notebook.add(config_tab, text="Personalización")
         
@@ -170,7 +363,7 @@ class ConfiguracionView:
                  cursor='hand2',
                  command=self.cargar_configuracion).pack(side=tk.LEFT, padx=5, ipadx=20)
         
-        # Tab 2: Copias de Seguridad
+        # Tab 3: Copias de Seguridad
         backup_tab = tk.Frame(notebook, bg='#F0F4F8')
         notebook.add(backup_tab, text="Copias de Seguridad")
         
@@ -412,3 +605,64 @@ DATOS INCLUIDOS:
                 messagebox.showinfo("Éxito", message + "\n\nReinicie la aplicación para completar el proceso.")
             else:
                 messagebox.showerror("Error", message)
+    
+    def buscar_actualizaciones(self):
+        """Buscar actualizaciones manualmente"""
+        # Deshabilitar botón mientras busca
+        for widget in self.parent.winfo_children():
+            if isinstance(widget, tk.Button):
+                widget.config(state=tk.DISABLED)
+        
+        self.update_status_label.config(text="Buscando actualizaciones...", fg='#3B82F6')
+        self.parent.update()
+        
+        try:
+            # Buscar actualizaciones
+            actualizar_disponible = self.update_manager.check_for_updates()
+            
+            if actualizar_disponible:
+                config = self.update_manager.get_update_config()
+                latest_version = config.get("latest_version", "?")
+                
+                self.update_status_label.config(
+                    text=f"✓ Actualización disponible: v{latest_version}",
+                    fg='#10B981'
+                )
+                
+                # Preguntar si desea instalar
+                resultado = messagebox.askyesno(
+                    "Actualización Disponible",
+                    f"Se encontró una nueva versión: v{latest_version}\n\n"
+                    f"Versión actual: v{self.update_manager.current_version}\n\n"
+                    f"✓ Tus datos y base de datos NO serán eliminados\n\n"
+                    f"¿Deseas instalar la actualización ahora?"
+                )
+                
+                if resultado:
+                    self.update_status_label.config(text="Instalando actualización...", fg='#F59E0B')
+                    self.parent.update()
+                    
+                    if self.update_manager.perform_update():
+                        messagebox.showinfo("Éxito", "Actualización completada exitosamente.\nLa aplicación se reiniciará ahora.")
+                    else:
+                        self.update_status_label.config(text="Error en la actualización", fg='#EF4444')
+            else:
+                self.update_status_label.config(
+                    text="✓ Tu versión está actualizada",
+                    fg='#10B981'
+                )
+                messagebox.showinfo(
+                    "Sin Actualizaciones",
+                    f"Ya tienes la versión más reciente (v{self.update_manager.current_version})"
+                )
+        except Exception as e:
+            self.update_status_label.config(
+                text=f"Error: {str(e)}",
+                fg='#EF4444'
+            )
+            messagebox.showerror("Error", f"No se pudo verificar las actualizaciones:\n{str(e)}")
+        finally:
+            # Habilitar botón nuevamente
+            for widget in self.parent.winfo_children():
+                if isinstance(widget, tk.Button):
+                    widget.config(state=tk.NORMAL)

@@ -14,6 +14,7 @@ class VentasView:
         self.venta_model = Venta(db_manager)
         
         self.items_venta = []  # Lista de items en la venta actual
+        self.productos_cache = {}  # Diccionario para guardar datos de productos buscados
         
         self.create_widgets()
     
@@ -75,13 +76,13 @@ class VentasView:
         
         # Buscar producto
         search_frame = tk.Frame(left_frame, bg='white', relief=tk.RIDGE, bd=1)
-        search_frame.pack(fill=tk.X, pady=10, padx=10)
+        search_frame.pack(fill=tk.BOTH, expand=True, pady=10, padx=10)
         
         tk.Label(search_frame,
                 text="Buscar Producto",
                 font=("Arial", 11, "bold"),
                 bg='white',
-                fg='black').grid(row=0, column=0, columnspan=2, pady=5)
+                fg='black').grid(row=0, column=0, columnspan=2, pady=5, sticky=tk.W, padx=5)
         
         tk.Label(search_frame,
                 text="Código o Nombre:",
@@ -89,17 +90,21 @@ class VentasView:
                 bg='white',
                 fg='black').grid(row=1, column=0, sticky=tk.W, pady=5, padx=5)
         self.search_entry = tk.Entry(search_frame, width=30, font=("Arial", 10))
-        self.search_entry.grid(row=1, column=1, pady=5, padx=5)
+        self.search_entry.grid(row=1, column=1, pady=5, padx=5, sticky=tk.EW)
         self.search_entry.bind('<KeyRelease>', self.on_search_change)
         
         # Lista de productos
-        self.productos_listbox = tk.Listbox(search_frame, height=5)
-        self.productos_listbox.grid(row=1, column=0, columnspan=2, pady=5, padx=5, sticky=tk.EW)
+        self.productos_listbox = tk.Listbox(search_frame, height=8, font=("Arial", 9))
+        self.productos_listbox.grid(row=2, column=0, columnspan=2, pady=5, padx=5, sticky=tk.NSEW)
         self.productos_listbox.bind('<<ListboxSelect>>', self.on_producto_selected)
         
         scrollbar = ttk.Scrollbar(search_frame, orient=tk.VERTICAL, command=self.productos_listbox.yview)
-        scrollbar.grid(row=1, column=2, sticky='ns', pady=5)
+        scrollbar.grid(row=2, column=2, sticky='ns', pady=5)
         self.productos_listbox.config(yscrollcommand=scrollbar.set)
+        
+        # Configurar peso de filas y columnas
+        search_frame.grid_rowconfigure(2, weight=1)
+        search_frame.grid_columnconfigure(1, weight=1)
         
         # Detalles del producto seleccionado
         detail_frame = tk.Frame(left_frame, bg='white', relief=tk.RIDGE, bd=1)
@@ -273,26 +278,24 @@ class VentasView:
         termino = self.search_entry.get().strip()
         
         self.productos_listbox.delete(0, tk.END)
+        self.productos_cache = {}
         
         if len(termino) >= 2:
             productos = self.producto_model.buscar_producto(termino)
-            for prod in productos:
+            for idx, prod in enumerate(productos):
                 display_text = f"{prod[1]} - {prod[2]} (Stock: {prod[6]}) - ${prod[5]:.2f}"
                 self.productos_listbox.insert(tk.END, display_text)
-                # Guardar datos del producto
-                self.productos_listbox.itemconfig(tk.END, {'data': prod})
+                # Guardar datos del producto en el diccionario
+                self.productos_cache[idx] = prod
     
     def on_producto_selected(self, event):
         """Cuando se selecciona un producto de la lista"""
         selection = self.productos_listbox.curselection()
         if selection:
             index = selection[0]
-            # Obtener datos del producto desde la búsqueda
-            termino = self.search_entry.get().strip()
-            productos = self.producto_model.buscar_producto(termino)
-            
-            if index < len(productos):
-                prod = productos[index]
+            # Obtener datos del producto desde el caché
+            if index in self.productos_cache:
+                prod = self.productos_cache[index]
                 self.producto_seleccionado = prod
                 
                 self.producto_label.config(text=prod[2])

@@ -8,6 +8,7 @@ import threading
 from datetime import datetime, timedelta
 from tkinter import messagebox
 import subprocess
+from typing import List, Dict
 
 class UpdateManager:
     def __init__(self, base_path):
@@ -110,6 +111,55 @@ class UpdateManager:
         
         hour = current_argentina.hour
         return 14 <= hour < 16
+
+    def _compare_versions(self, latest_version: str) -> List[Dict]:
+        """Obtener lista de archivos cambiados entre la versión actual y la nueva.
+
+        Usa la API de GitHub /compare para traer solo los archivos modificados.
+        """
+        current_tag = f"v{self.current_version}"
+        latest_tag = f"v{latest_version}"
+        url = f"{self.github_api}/{self.repo}/compare/{current_tag}...{latest_tag}"
+        response = requests.get(url, timeout=10)
+        if response.status_code != 200:
+            raise RuntimeError(f"No se pudo comparar versiones: {response.status_code}")
+        data = response.json()
+        return data.get("files", [])
+
+    def _is_excluded(self, path: str) -> bool:
+        """Definir rutas que no deben tocarse (datos y build)."""
+        excluded = ("database/", "build/", "dist/", "installer/", ".git/", "__pycache__/")
+        return any(path.startswith(e) for e in excluded)
+
+    def _download_raw_file(self, file_path: str, tag: str):
+        """Descargar un archivo individual desde GitHub raw a la ruta local."""
+        raw_url = f"https://raw.githubusercontent.com/{self.repo}/{tag}/{file_path}"
+        response = requests.get(raw_url, timeout=15)
+        if response.status_code != 200:
+            raise RuntimeError(f"No se pudo descargar {file_path}: {response.status_code}")
+        local_path = os.path.join(self.base_path, file_path.replace('/', os.sep))
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+        with open(local_path, 'wb') as f:
+            f.write(response.content)
+
+    def _apply_incremental_update(self, latest_version: str):
+        """Aplicar actualización descargando solo archivos cambiados.
+
+        Si falla, se propagará la excepción para que el flujo haga fallback al ZIP completo.
+        """
+        changed_files = self._compare_versions(latest_version)
+        latest_tag = f"v{latest_version}"
+        for file_info in changed_files:
+            path = file_info.get("filename", "")
+            status = file_info.get("status", "")
+            if not path or self._is_excluded(path + "/"):
+                continue  # no tocar datos ni builds
+            if status in ("modified", "added"):
+                self._download_raw_file(path, latest_tag)
+            elif status == "removed":
+                local_path = os.path.join(self.base_path, path.replace('/', os.sep))
+                if os.path.exists(local_path):
+                    os.remove(local_path)
     
     def show_update_alert(self, root):
         """Mostrar alerta de actualización disponible"""
@@ -151,56 +201,54 @@ class UpdateManager:
             download_url = config.get("download_url")
             latest_version = config.get("latest_version")
             
-            if not download_url:
+            if not latest_version:
                 return False
             
-            # Descargar ZIP
-            zip_path = os.path.join(self.base_path, "update.zip")
-            response = requests.get(download_url, timeout=30)
-            
-            with open(zip_path, 'wb') as f:
-                f.write(response.content)
-            
-            # Extraer archivos
-            extract_path = os.path.join(self.base_path, "update_temp")
-            if os.path.exists(extract_path):
+            # 1) Intento incremental: solo archivos modificados
+            try:
+                self._apply_incremental_update(latest_version)
+            except Exception:
+                # 2) Fallback: descarga completa del ZIP
+                if not download_url:
+                    raise
+                zip_path = os.path.join(self.base_path, "update.zip")
+                response = requests.get(download_url, timeout=30)
+                
+                with open(zip_path, 'wb') as f:
+                    f.write(response.content)
+                
+                extract_path = os.path.join(self.base_path, "update_temp")
+                if os.path.exists(extract_path):
+                    shutil.rmtree(extract_path)
+                
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    zip_ref.extractall(extract_path)
+                
+                temp_dirs = os.listdir(extract_path)
+                if temp_dirs:
+                    source_dir = os.path.join(extract_path, temp_dirs[0])
+                    exclude_dirs = {'database', 'build', 'installer', 'dist', '.git', '.gitignore'}
+                    
+                    for item in os.listdir(source_dir):
+                        if item not in exclude_dirs:
+                            src = os.path.join(source_dir, item)
+                            dst = os.path.join(self.base_path, item)
+                            
+                            if os.path.isdir(src):
+                                if os.path.exists(dst):
+                                    shutil.rmtree(dst)
+                                shutil.copytree(src, dst)
+                            else:
+                                shutil.copy2(src, dst)
+                
                 shutil.rmtree(extract_path)
+                os.remove(zip_path)
             
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall(extract_path)
-            
-            # Buscar la carpeta principal extraída
-            temp_dirs = os.listdir(extract_path)
-            if temp_dirs:
-                source_dir = os.path.join(extract_path, temp_dirs[0])
-                
-                # Copiar archivos (excepto database y assets)
-                exclude_dirs = {'database', 'build', 'installer', '.git', '.gitignore'}
-                
-                for item in os.listdir(source_dir):
-                    if item not in exclude_dirs:
-                        src = os.path.join(source_dir, item)
-                        dst = os.path.join(self.base_path, item)
-                        
-                        if os.path.isdir(src):
-                            if os.path.exists(dst):
-                                shutil.rmtree(dst)
-                            shutil.copytree(src, dst)
-                        else:
-                            shutil.copy2(src, dst)
-            
-            # Guardar nueva versión
+            # Guardar nueva versión y config
             self.save_version(latest_version)
-            
-            # Limpiar
-            shutil.rmtree(extract_path)
-            os.remove(zip_path)
-            
-            # Actualizar config
             config["update_available"] = False
             self.save_update_config(config)
             
-            # Reiniciar aplicación
             messagebox.showinfo("Actualización Exitosa", "El sistema se reiniciará ahora.")
             self.restart_app()
             
