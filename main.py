@@ -16,11 +16,16 @@ sys.path.insert(0, BASE_DIR)
 from database.db_manager import DatabaseManager
 from views.login_view import LoginView
 from views.main_view import MainView
+from utils.updater import UpdateManager
 
 class SistemaVentas:
     def __init__(self):
         self.root = tk.Tk()
         self.root.withdraw()  # Ocultar ventana principal temporalmente
+        
+        # Inicializar gestor de actualizaciones
+        self.update_manager = UpdateManager(BASE_DIR)
+        self.update_manager.check_updates_async(self.root)
         
         # Inicializar base de datos
         self.db_manager = DatabaseManager()
