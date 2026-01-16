@@ -58,3 +58,7 @@ installer/*.exe
 *.tmp
 *.temp
 *.bak
+
+# Archivos de distribución (se suben a GitHub Releases)
+*.zip
+Sistema_de_Venta_*.zip
