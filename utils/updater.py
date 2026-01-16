@@ -12,7 +12,14 @@ from typing import List, Dict
 
 class UpdateManager:
     def __init__(self, base_path):
-        self.base_path = base_path
+        # Forzar a usar siempre la carpeta real del sistema (donde está este archivo)
+        code_base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if os.path.exists(os.path.join(code_base, "version.txt")):
+            # Si encontramos version.txt junto al código, usamos esa ruta para evitar
+            # que se creen archivos en el Escritorio u otra ubicación accidental.
+            self.base_path = code_base
+        else:
+            self.base_path = base_path
         self.repo = "LautaroAraya/Sistema-de-venta"
         self.github_api = "https://api.github.com/repos"
         self.config_file = os.path.join(base_path, ".update_config.json")
