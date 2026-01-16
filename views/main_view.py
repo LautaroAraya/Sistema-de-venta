@@ -6,6 +6,7 @@ from views.proveedores_view import ProveedoresView
 from views.reportes_view import ReportesView
 from views.usuarios_view import UsuariosView
 from views.configuracion_view import ConfiguracionView
+from views.errores_view import ErroresView
 
 class MainView:
     def __init__(self, root, db_manager, user_data, logout_callback=None):
@@ -146,6 +147,19 @@ class MainView:
                                   cursor='hand2',
                                   command=self.mostrar_configuracion)
             config_btn.pack(fill=tk.X, padx=12, pady=6)
+            
+            errores_btn = tk.Button(side_frame,
+                                   text="🐛 Errores del Sistema",
+                                   font=('Arial', 11, 'bold'),
+                                   bg='#EF4444',
+                                   fg='white',
+                                   activebackground='#DC2626',
+                                   activeforeground='white',
+                                   bd=0,
+                                   pady=12,
+                                   cursor='hand2',
+                                   command=self.mostrar_errores)
+            errores_btn.pack(fill=tk.X, padx=12, pady=6)
         
         # Frame de contenido
         self.content_frame = tk.Frame(self.root, bg='#F0F4F8')
@@ -190,6 +204,12 @@ class MainView:
         if self.user_data['rol'] == 'admin':
             self.limpiar_contenido()
             ConfiguracionView(self.content_frame, self.db_manager, self.user_data)
+    
+    def mostrar_errores(self):
+        """Mostrar vista de errores del sistema (solo admin)"""
+        if self.user_data['rol'] == 'admin':
+            self.limpiar_contenido()
+            ErroresView(self.content_frame, self.db_manager, self.user_data)
     
     def logout(self):
         """Cerrar sesión"""

@@ -111,17 +111,39 @@ class SistemaVentas:
             self.db_manager.close()
 
 if __name__ == "__main__":
+    # Importar logger de errores
+    from utils.error_logger import get_error_logger, log_exception
+    
+    # Inicializar logger
+    error_logger = get_error_logger(BASE_DIR)
+    
     # Configurar excepciones no capturadas
     def handle_exception(exc_type, exc_value, exc_traceback):
         if issubclass(exc_type, KeyboardInterrupt):
             sys.__excepthook__(exc_type, exc_value, exc_traceback)
             return
         
-        error_msg = f"Error no controlado: {exc_value}"
+        # Registrar el error en el archivo de log
+        import traceback
+        tb_str = ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+        error_logger.log_error(
+            error_type=exc_type.__name__,
+            error_message=str(exc_value),
+            error_traceback=tb_str,
+            context={'origen': 'Excepción no capturada'},
+            severity='CRITICAL'
+        )
+        
+        error_msg = f"Error no controlado: {exc_value}\n\nEl error ha sido registrado en el sistema."
         messagebox.showerror("Error", error_msg)
     
     sys.excepthook = handle_exception
     
     # Iniciar aplicación
-    app = SistemaVentas()
-    app.run()
+    try:
+        app = SistemaVentas()
+        app.run()
+    except Exception as e:
+        log_exception(e, context={'origen': 'Inicialización de aplicación'})
+        messagebox.showerror("Error Fatal", 
+                           f"No se pudo iniciar la aplicación: {e}\n\nEl error ha sido registrado.")

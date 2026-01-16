@@ -1,0 +1,5 @@
+=== REGISTRO DE ERRORES - SISTEMA DE VENTAS ===
+Limpiado: 2026-01-16 14:31:55
+Backup guardado en: error_log_backup_20260116_143154.txt
+============================================================
+

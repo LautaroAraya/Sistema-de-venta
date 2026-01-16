@@ -4,6 +4,16 @@ import sys
 from datetime import datetime
 import hashlib
 
+# Importar logger de errores
+try:
+    from utils.error_logger import log_exception, log_error
+except ImportError:
+    # Si no está disponible, crear funciones dummy
+    def log_exception(e, context=None):
+        pass
+    def log_error(error_type, error_message, error_traceback=None, context=None, severity="ERROR"):
+        pass
+
 class DatabaseManager:
     def __init__(self, db_name='sistema_ventas.db'):
         # Obtener el directorio del script o del ejecutable
@@ -20,11 +30,19 @@ class DatabaseManager:
     
     def get_connection(self):
         """Obtener conexión a la base de datos"""
-        if self.connection is None:
-            os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-            self.connection = sqlite3.connect(self.db_path)
-            self.connection.row_factory = sqlite3.Row
-        return self.connection
+        try:
+            if self.connection is None:
+                os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+                self.connection = sqlite3.connect(self.db_path)
+                self.connection.row_factory = sqlite3.Row
+            return self.connection
+        except Exception as e:
+            log_exception(e, context={
+                'modulo': 'DatabaseManager',
+                'accion': 'get_connection',
+                'db_path': self.db_path
+            })
+            raise
     
     def init_database(self):
         """Inicializar todas las tablas de la base de datos"""

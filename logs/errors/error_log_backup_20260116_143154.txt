@@ -1,0 +1,72 @@
+=== REGISTRO DE ERRORES - SISTEMA DE VENTAS ===
+Creado: 2026-01-16 14:30:08
+============================================================
+
+
+================================================================================
+[ERROR] 2026-01-16 14:30:08
+Tipo: TestError
+Mensaje: Este es un error de prueba
+
+Contexto:
+  - usuario: test_user
+  - modulo: test_module
+  - accion: test_action
+================================================================================
+
+================================================================================
+[WARNING] 2026-01-16 14:30:08
+Tipo: TestWarning
+Mensaje: Esta es una advertencia de prueba
+
+Contexto:
+  - usuario: admin
+  - modulo: productos
+  - accion: actualizar_stock
+================================================================================
+
+================================================================================
+[ERROR] 2026-01-16 14:30:08
+Tipo: ZeroDivisionError
+Mensaje: division by zero
+
+Contexto:
+  - usuario: vendedor1
+  - modulo: ventas
+  - accion: calcular_total
+
+Traceback:
+Traceback (most recent call last):
+  File "c:\Users\lauty\OneDrive\Escritorio\Sistema de venta\test_errores.py", line 58, in test_error_logging
+    resultado = 10 / 0
+                ~~~^~~
+ZeroDivisionError: division by zero
+
+================================================================================
+
+================================================================================
+[ERROR] 2026-01-16 14:30:08
+Tipo: ValidationError
+Mensaje: El precio no puede ser negativo: -50.00
+
+Contexto:
+  - usuario: admin
+  - modulo: productos
+  - accion: crear_producto
+  - producto: Producto X
+  - precio: -50.0
+================================================================================
+
+================================================================================
+[CRITICAL] 2026-01-16 14:30:08
+Tipo: DatabaseError
+Mensaje: No se pudo conectar a la base de datos
+
+Contexto:
+  - usuario: system
+  - modulo: database
+  - accion: connect
+
+Traceback:
+sqlite3.OperationalError: unable to open database file
+================================================================================
