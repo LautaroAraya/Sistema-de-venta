@@ -38,9 +38,28 @@ class VentasView:
         main_container = tk.Frame(self.parent, bg='white')
         main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        # Columna izquierda - Agregar productos
-        left_frame = tk.Frame(main_container, bg='white', relief=tk.RIDGE, bd=1)
-        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
+        # Columna izquierda - Agregar productos con scroll
+        left_frame_wrapper = tk.Frame(main_container, bg='white', relief=tk.RIDGE, bd=1)
+        left_frame_wrapper.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
+        
+        # Canvas con scroll para frame izquierdo
+        left_canvas = tk.Canvas(left_frame_wrapper, bg='white', highlightthickness=0)
+        left_scrollbar = ttk.Scrollbar(left_frame_wrapper, orient=tk.VERTICAL, command=left_canvas.yview)
+        left_frame = tk.Frame(left_canvas, bg='white')
+        
+        def on_left_frame_configure(event):
+            left_canvas.configure(scrollregion=left_canvas.bbox("all"))
+        
+        left_frame.bind("<Configure>", on_left_frame_configure)
+        left_canvas.create_window((0, 0), window=left_frame, anchor="nw")
+        left_canvas.configure(yscrollcommand=left_scrollbar.set)
+        
+        # Bind mousewheel para scroll izquierdo
+        left_frame.bind("<MouseWheel>", lambda e: left_canvas.yview_scroll(int(-1*(e.delta/120)), "units"))
+        left_canvas.bind("<MouseWheel>", lambda e: left_canvas.yview_scroll(int(-1*(e.delta/120)), "units"))
+        
+        left_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        left_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         tk.Label(left_frame, 
                 text="Agregar Productos",
@@ -170,9 +189,28 @@ class VentasView:
                            command=self.agregar_item)
         add_btn.grid(row=6, column=0, columnspan=2, pady=10, padx=5, sticky=tk.EW)
         
-        # Columna derecha - Detalle de venta
-        right_frame = tk.Frame(main_container, bg='white')
-        right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
+        # Columna derecha - Detalle de venta con scroll
+        right_frame_wrapper = tk.Frame(main_container, bg='white')
+        right_frame_wrapper.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
+        
+        # Canvas con scroll para el frame derecho
+        right_canvas = tk.Canvas(right_frame_wrapper, bg='white', highlightthickness=0)
+        right_scrollbar = ttk.Scrollbar(right_frame_wrapper, orient=tk.VERTICAL, command=right_canvas.yview)
+        right_frame = tk.Frame(right_canvas, bg='white')
+        
+        def on_right_frame_configure(event):
+            right_canvas.configure(scrollregion=right_canvas.bbox("all"))
+        
+        right_frame.bind("<Configure>", on_right_frame_configure)
+        right_canvas.create_window((0, 0), window=right_frame, anchor="nw")
+        right_canvas.configure(yscrollcommand=right_scrollbar.set)
+        
+        # Bind mousewheel para scroll derecho
+        right_frame.bind("<MouseWheel>", lambda e: right_canvas.yview_scroll(int(-1*(e.delta/120)), "units"))
+        right_canvas.bind("<MouseWheel>", lambda e: right_canvas.yview_scroll(int(-1*(e.delta/120)), "units"))
+        
+        right_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        right_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         # Etiqueta de detalle
         tk.Label(right_frame, text="Detalle de la Venta", font=("Arial", 11, "bold"), bg='white', fg='black').pack(fill=tk.X, pady=5, padx=10)
