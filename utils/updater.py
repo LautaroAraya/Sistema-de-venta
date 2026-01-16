@@ -313,14 +313,17 @@ class UpdateManager:
         try:
             if getattr(sys, 'frozen', False):
                 # Si es ejecutable
-                os.execl(sys.executable, sys.executable)
+                subprocess.Popen([sys.executable])
             else:
                 # Si es script Python
                 python = sys.executable
                 script = os.path.join(self.base_path, "main.py")
-                os.execl(python, python, script)
-        except:
+                subprocess.Popen([python, script])
+            # Cerrar la aplicación actual
+            sys.exit(0)
+        except Exception as e:
             # Fallback: cerrar y que el usuario reinicie
+            messagebox.showerror("Error", f"No se pudo reiniciar: {str(e)}")
             sys.exit(0)
     
     def check_updates_async(self, root):
