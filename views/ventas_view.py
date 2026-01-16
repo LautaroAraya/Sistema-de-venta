@@ -4,6 +4,7 @@ from models.producto import Producto
 from models.venta import Venta
 from datetime import datetime
 import os
+import sys
 
 class VentasView:
     def __init__(self, parent, db_manager, user_data):
