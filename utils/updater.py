@@ -291,18 +291,82 @@ class UpdateManager:
         
         return False
     
+    def _download_exe_update(self, latest_version):
+        """Descargar el ejecutable compilado directamente desde GitHub releases
+        
+        Esto es más rápido y eficiente que descargar el código fuente completo
+        """
+        try:
+            # Buscar release específica con tag v{version}
+            url = f"{self.github_api}/{self.repo}/releases/tags/v{latest_version}"
+            response = requests.get(url, timeout=10)
+            
+            if response.status_code != 200:
+                return None
+            
+            release = response.json()
+            assets = release.get("assets", [])
+            
+            # Buscar el ejecutable (SistemaVentas.exe o similar)
+            exe_asset = None
+            for asset in assets:
+                if asset["name"].endswith(".exe"):
+                    exe_asset = asset
+                    break
+            
+            if not exe_asset:
+                return None
+            
+            return exe_asset["browser_download_url"]
+        except:
+            return None
+    
+    def _apply_exe_update(self, exe_download_url):
+        """Descargar y reemplazar el ejecutable
+        
+        Esta es la forma más eficiente de actualizar para usuarios con EXE compilado
+        """
+        try:
+            abs_base = os.path.abspath(self.base_path)
+            exe_path = os.path.join(abs_base, "SistemaVentas.exe")
+            exe_backup = exe_path + ".backup"
+            
+            # Descargar el nuevo ejecutable
+            response = requests.get(exe_download_url, timeout=60, stream=True)
+            response.raise_for_status()
+            
+            # Crear backup del ejecutable actual
+            if os.path.exists(exe_path):
+                if os.path.exists(exe_backup):
+                    os.remove(exe_backup)
+                shutil.copy2(exe_path, exe_backup)
+            
+            # Guardar el nuevo ejecutable
+            with open(exe_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+            
+            return True
+        except Exception as e:
+            # Restaurar backup si falló
+            if os.path.exists(exe_backup):
+                try:
+                    shutil.copy2(exe_backup, exe_path)
+                except:
+                    pass
+            raise e
+
     def perform_update(self):
         """Descargar e instalar actualización"""
         try:
             config = self.get_update_config()
-            download_url = config.get("download_url")
             latest_version = config.get("latest_version")
             
             if not latest_version:
                 return False
             
             # Usar rutas ABSOLUTAS siempre para evitar que se cree en otros directorios
-            # Y cambiar el working directory ANTES de cualquier operación de archivo
             abs_base = os.path.abspath(self.base_path)
             
             # VALIDACIÓN CRÍTICA: Verificar que abs_base tiene version.txt
@@ -320,11 +384,28 @@ class UpdateManager:
                 # Cambiar a la carpeta correcta ANTES de hacer nada
                 os.chdir(abs_base)
                 
-                # 1) Intento incremental: solo archivos modificados
+                # Estrategia 1: Si hay ejecutable compilado disponible, usarlo (RECOMENDADO)
+                exe_url = self._download_exe_update(latest_version)
+                if exe_url:
+                    try:
+                        self._apply_exe_update(exe_url)
+                        # Éxito: solo actualizar versión y reinicar
+                        self.save_version(latest_version)
+                        config["update_available"] = False
+                        self.save_update_config(config)
+                        messagebox.showinfo("Actualización Exitosa", "El sistema se reiniciará ahora.")
+                        self.restart_app()
+                        return True
+                    except Exception as e:
+                        # Si falla el EXE, intentar actualización de código fuente
+                        pass
+                
+                # Estrategia 2: Intento incremental: solo archivos modificados
                 try:
                     self._apply_incremental_update(latest_version)
                 except Exception as e:
-                    # 2) Fallback: descarga completa del ZIP
+                    # Estrategia 3: Fallback: descarga completa del ZIP
+                    download_url = config.get("download_url")
                     if not download_url:
                         raise
                     
