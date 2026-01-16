@@ -48,7 +48,7 @@ pip install -r requirements.txt
 pyinstaller --clean --onefile --windowed --name "SistemaVentas" main.py
 ```
 
-El ejecutable se generará en la carpeta `dist/`
+El ejecutable se generará en la carpeta `dist/`.
 
 ## Crear Instalador
 
