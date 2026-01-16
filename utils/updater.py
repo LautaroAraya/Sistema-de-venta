@@ -70,9 +70,13 @@ class UpdateManager:
         except:
             return True
     
-    def check_for_updates(self):
-        """Verificar si hay actualizaciones en GitHub"""
-        if not self.should_check_for_updates():
+    def check_for_updates(self, force=False):
+        """Verificar si hay actualizaciones en GitHub
+        
+        Args:
+            force: Si True, no espera 5 días, busca siempre
+        """
+        if not force and not self.should_check_for_updates():
             return False
         
         try:
@@ -91,6 +95,7 @@ class UpdateManager:
                     config["update_available"] = True
                     config["latest_version"] = latest_version
                     config["download_url"] = release.get("zipball_url")
+                    config["release_notes"] = release.get("body", "Sin descripción")
                     self.save_update_config(config)
                     return True
                 else:
@@ -101,6 +106,17 @@ class UpdateManager:
             pass
         
         return False
+    
+    def get_latest_version_info(self):
+        """Obtener información de la última versión disponible"""
+        config = self.get_update_config()
+        return {
+            "current_version": self.current_version,
+            "latest_version": config.get("latest_version", self.current_version),
+            "available": config.get("update_available", False),
+            "release_notes": config.get("release_notes", ""),
+            "download_url": config.get("download_url", "")
+        }
     
     def is_update_time(self):
         """Verificar si es hora de actualizar (14:00-16:00 Argentina UTC-3)"""
@@ -283,3 +299,22 @@ class UpdateManager:
         
         thread = threading.Thread(target=check, daemon=True)
         thread.start()
+    
+    def check_updates_sync(self, callback=None):
+        """Verificar actualizaciones de forma síncrona (bloqueante)
+        
+        Args:
+            callback: Función a ejecutar con el resultado: callback(has_updates, info_dict)
+        """
+        try:
+            has_updates = self.check_for_updates(force=True)
+            info = self.get_latest_version_info()
+            
+            if callback:
+                callback(has_updates, info)
+            
+            return has_updates, info
+        except Exception as e:
+            if callback:
+                callback(False, {"error": str(e)})
+            return False, {"error": str(e)}

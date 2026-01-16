@@ -617,25 +617,32 @@ DATOS INCLUIDOS:
         self.parent.update()
         
         try:
-            # Buscar actualizaciones
-            actualizar_disponible = self.update_manager.check_for_updates()
+            # Buscar actualizaciones (forzar búsqueda manual)
+            actualizar_disponible = self.update_manager.check_for_updates(force=True)
             
             if actualizar_disponible:
                 config = self.update_manager.get_update_config()
                 latest_version = config.get("latest_version", "?")
+                release_notes = config.get("release_notes", "Sin descripción disponible")
                 
                 self.update_status_label.config(
                     text=f"✓ Actualización disponible: v{latest_version}",
                     fg='#10B981'
                 )
                 
-                # Preguntar si desea instalar
-                resultado = messagebox.askyesno(
-                    "Actualización Disponible",
-                    f"Se encontró una nueva versión: v{latest_version}\n\n"
+                # Crear ventana de detalles
+                detalle_msg = (
+                    f"Se encontró una nueva versión: v{latest_version}\n"
                     f"Versión actual: v{self.update_manager.current_version}\n\n"
+                    f"📝 Notas de la actualización:\n"
+                    f"{release_notes[:300]}{'...' if len(release_notes) > 300 else ''}\n\n"
                     f"✓ Tus datos y base de datos NO serán eliminados\n\n"
                     f"¿Deseas instalar la actualización ahora?"
+                )
+                
+                resultado = messagebox.askyesno(
+                    "Actualización Disponible",
+                    detalle_msg
                 )
                 
                 if resultado:
@@ -643,7 +650,8 @@ DATOS INCLUIDOS:
                     self.parent.update()
                     
                     if self.update_manager.perform_update():
-                        messagebox.showinfo("Éxito", "Actualización completada exitosamente.\nLa aplicación se reiniciará ahora.")
+                        # El reinicio es automático en perform_update
+                        pass
                     else:
                         self.update_status_label.config(text="Error en la actualización", fg='#EF4444')
             else:
@@ -653,7 +661,8 @@ DATOS INCLUIDOS:
                 )
                 messagebox.showinfo(
                     "Sin Actualizaciones",
-                    f"Ya tienes la versión más reciente (v{self.update_manager.current_version})"
+                    f"Ya tienes la versión más reciente (v{self.update_manager.current_version})\n\n"
+                    f"Última verificación: {self.update_manager.get_update_config().get('last_check', 'Nunca')}"
                 )
         except Exception as e:
             self.update_status_label.config(
