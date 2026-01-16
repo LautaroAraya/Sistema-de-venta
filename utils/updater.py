@@ -37,6 +37,15 @@ class UpdateManager:
         except:
             pass
     
+    def _is_newer_version(self, latest, current):
+        """Comparar versiones (ej: 1.0.1 > 1.0.0)"""
+        try:
+            latest_parts = [int(x) for x in latest.split('.')]
+            current_parts = [int(x) for x in current.split('.')]
+            return latest_parts > current_parts
+        except:
+            return latest != current
+    
     def get_update_config(self):
         """Obtener configuración de actualizaciones"""
         if os.path.exists(self.config_file):
@@ -92,6 +101,7 @@ class UpdateManager:
                 config = self.get_update_config()
                 config["last_check"] = datetime.now().isoformat()
                 config["update_available"] = False
+                config["latest_version"] = self.current_version
                 self.save_update_config(config)
                 return False, "No hay releases publicados en GitHub todavía"
             
@@ -102,15 +112,17 @@ class UpdateManager:
                 config = self.get_update_config()
                 config["last_check"] = datetime.now().isoformat()
                 
-                if latest_version and latest_version != self.current_version:
+                if latest_version and self._is_newer_version(latest_version, self.current_version):
                     config["update_available"] = True
                     config["latest_version"] = latest_version
                     config["download_url"] = release.get("zipball_url")
                     config["release_notes"] = release.get("body", "Sin descripción")
+                    config["release_url"] = release.get("html_url", "")
                     self.save_update_config(config)
                     return True, None
                 else:
                     config["update_available"] = False
+                    config["latest_version"] = latest_version or self.current_version
                     self.save_update_config(config)
                     return False, None
             else:
@@ -172,7 +184,9 @@ class UpdateManager:
         if response.status_code != 200:
             raise RuntimeError(f"No se pudo descargar {file_path}: {response.status_code}")
         local_path = os.path.join(self.base_path, file_path.replace('/', os.sep))
-        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+        local_dir = os.path.dirname(local_path)
+        if local_dir:
+            os.makedirs(local_dir, exist_ok=True)
         with open(local_path, 'wb') as f:
             f.write(response.content)
 
