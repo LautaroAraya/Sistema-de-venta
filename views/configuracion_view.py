@@ -682,11 +682,17 @@ DATOS INCLUIDOS:
                     f"Última verificación: ahora"
                 )
         except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
             self.update_status_label.config(
-                text=f"Error: {str(e)}",
+                text=f"Error en la actualización",
                 fg='#EF4444'
             )
-            messagebox.showerror("Error", f"No se pudo verificar las actualizaciones:\n{str(e)}")
+            messagebox.showerror(
+                "Error", 
+                f"No se pudo verificar las actualizaciones:\n\n{str(e)}\n\n"
+                f"Detalles técnicos:\n{error_details[:500]}"
+            )
         finally:
             # Habilitar botón nuevamente
             for widget in self.parent.winfo_children():
