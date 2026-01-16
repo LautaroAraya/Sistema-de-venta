@@ -15,11 +15,11 @@ class UpdateManager:
         # Auto-detectar la ruta correcta buscando version.txt
         # Esto evita que si se ejecuta desde otro directorio, use la ruta incorrecta
         detected_path = self._find_project_root(base_path)
-        self.base_path = detected_path if detected_path else base_path
+        self.base_path = os.path.abspath(detected_path if detected_path else base_path)
         self.repo = "LautaroAraya/Sistema-de-venta"
         self.github_api = "https://api.github.com/repos"
-        self.config_file = os.path.join(self.base_path, ".update_config.json")
-        self.version_file = os.path.join(self.base_path, "version.txt")
+        self.config_file = os.path.abspath(os.path.join(self.base_path, ".update_config.json"))
+        self.version_file = os.path.abspath(os.path.join(self.base_path, "version.txt"))
         self.current_version = self.get_current_version()
     
     def _find_project_root(self, start_path):
@@ -210,7 +210,7 @@ class UpdateManager:
         response = requests.get(raw_url, timeout=15)
         if response.status_code != 200:
             raise RuntimeError(f"No se pudo descargar {file_path}: {response.status_code}")
-        local_path = os.path.join(self.base_path, file_path.replace('/', os.sep))
+        local_path = os.path.abspath(os.path.join(self.base_path, file_path.replace('/', os.sep)))
         local_dir = os.path.dirname(local_path)
         if local_dir:
             os.makedirs(local_dir, exist_ok=True)
@@ -232,7 +232,7 @@ class UpdateManager:
             if status in ("modified", "added"):
                 self._download_raw_file(path, latest_tag)
             elif status == "removed":
-                local_path = os.path.join(self.base_path, path.replace('/', os.sep))
+                local_path = os.path.abspath(os.path.join(self.base_path, path.replace('/', os.sep)))
                 if os.path.exists(local_path):
                     os.remove(local_path)
     
@@ -280,53 +280,75 @@ class UpdateManager:
                 return False
             
             # Usar rutas ABSOLUTAS siempre para evitar que se cree en otros directorios
+            # Y cambiar el working directory ANTES de cualquier operación de archivo
             abs_base = os.path.abspath(self.base_path)
+            original_cwd = os.getcwd()
             
-            # 1) Intento incremental: solo archivos modificados
             try:
-                self._apply_incremental_update(latest_version)
-            except Exception as e:
-                # 2) Fallback: descarga completa del ZIP
-                if not download_url:
-                    raise
+                # Cambiar a la carpeta correcta ANTES de hacer nada
+                os.chdir(abs_base)
                 
-                # Rutas absolutas explícitas
-                zip_path = os.path.abspath(os.path.join(abs_base, "update.zip"))
-                extract_path = os.path.abspath(os.path.join(abs_base, "update_temp"))
-                
-                response = requests.get(download_url, timeout=30)
-                
-                with open(zip_path, 'wb') as f:
-                    f.write(response.content)
-                
-                if os.path.exists(extract_path):
-                    shutil.rmtree(extract_path)
-                
-                os.makedirs(extract_path, exist_ok=True)
-                
-                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                    zip_ref.extractall(extract_path)
-                
-                temp_dirs = os.listdir(extract_path)
-                if temp_dirs:
-                    source_dir = os.path.abspath(os.path.join(extract_path, temp_dirs[0]))
-                    exclude_dirs = {'database', 'build', 'installer', 'dist', '.git', '.gitignore'}
+                # 1) Intento incremental: solo archivos modificados
+                try:
+                    self._apply_incremental_update(latest_version)
+                except Exception as e:
+                    # 2) Fallback: descarga completa del ZIP
+                    if not download_url:
+                        raise
                     
-                    for item in os.listdir(source_dir):
-                        if item not in exclude_dirs:
-                            src = os.path.abspath(os.path.join(source_dir, item))
-                            dst = os.path.abspath(os.path.join(abs_base, item))
-                            
-                            if os.path.isdir(src):
-                                if os.path.exists(dst):
-                                    shutil.rmtree(dst)
-                                shutil.copytree(src, dst)
-                            else:
-                                shutil.copy2(src, dst)
-                
-                shutil.rmtree(extract_path)
-                if os.path.exists(zip_path):
-                    os.remove(zip_path)
+                    # Rutas absolutas explícitas - garantizar que están en la carpeta correcta
+                    zip_path = os.path.abspath(os.path.join(abs_base, "update.zip"))
+                    extract_path = os.path.abspath(os.path.join(abs_base, "update_temp"))
+                    
+                    response = requests.get(download_url, timeout=30)
+                    
+                    with open(zip_path, 'wb') as f:
+                        f.write(response.content)
+                    
+                    if os.path.exists(extract_path):
+                        shutil.rmtree(extract_path)
+                    
+                    os.makedirs(extract_path, exist_ok=True)
+                    
+                    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                        zip_ref.extractall(extract_path)
+                    
+                    temp_dirs = os.listdir(extract_path)
+                    if temp_dirs:
+                        source_dir = os.path.abspath(os.path.join(extract_path, temp_dirs[0]))
+                        
+                        # Verificar si la carpeta extraída contiene los archivos directamente
+                        # o si están dentro de una subcarpeta
+                        items_to_copy = os.listdir(source_dir) if os.path.isdir(source_dir) else []
+                        
+                        if not items_to_copy or (len(items_to_copy) == 1 and 
+                                                  os.path.isdir(os.path.join(source_dir, items_to_copy[0]))):
+                            # Si hay una única carpeta dentro, usar esa como source_dir
+                            if items_to_copy:
+                                source_dir = os.path.abspath(os.path.join(source_dir, items_to_copy[0]))
+                                items_to_copy = os.listdir(source_dir)
+                        
+                        exclude_dirs = {'database', 'build', 'installer', 'dist', '.git', '.gitignore', '__pycache__'}
+                        
+                        for item in items_to_copy:
+                            if item not in exclude_dirs:
+                                src = os.path.abspath(os.path.join(source_dir, item))
+                                dst = os.path.abspath(os.path.join(abs_base, item))
+                                
+                                if os.path.isdir(src):
+                                    if os.path.exists(dst):
+                                        shutil.rmtree(dst)
+                                    shutil.copytree(src, dst)
+                                else:
+                                    shutil.copy2(src, dst)
+                    
+                    # Limpiar archivos temporales
+                    shutil.rmtree(extract_path)
+                    if os.path.exists(zip_path):
+                        os.remove(zip_path)
+            finally:
+                # Restaurar el working directory original
+                os.chdir(original_cwd)
             
             # Guardar nueva versión y config
             self.save_version(latest_version)
@@ -342,17 +364,24 @@ class UpdateManager:
             return False
     
     def restart_app(self):
-        """Reiniciar la aplicación"""
+        """Reiniciar la aplicación de forma segura"""
         try:
-            if getattr(sys, 'frozen', False):
-                # Si es ejecutable
-                subprocess.Popen([sys.executable])
-            else:
-                # Si es script Python
+            # Usar script restart.py que garantiza ejecución desde la carpeta correcta
+            restart_script = os.path.abspath(os.path.join(self.base_path, "restart.py"))
+            
+            if os.path.exists(restart_script):
+                # Si existe restart.py, usarlo
                 python = sys.executable
-                script = os.path.abspath(os.path.join(self.base_path, "main.py"))
-                # Usar cwd para asegurar que se ejecuta desde la carpeta correcta
-                subprocess.Popen([python, script], cwd=os.path.abspath(self.base_path))
+                subprocess.Popen([python, restart_script], cwd=os.path.abspath(self.base_path))
+            else:
+                # Fallback: intentar reiniciar directamente
+                if getattr(sys, 'frozen', False):
+                    subprocess.Popen([sys.executable])
+                else:
+                    python = sys.executable
+                    script = os.path.abspath(os.path.join(self.base_path, "main.py"))
+                    subprocess.Popen([python, script], cwd=os.path.abspath(self.base_path))
+            
             # Cerrar la aplicación actual
             sys.exit(0)
         except Exception as e:
