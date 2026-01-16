@@ -245,6 +245,9 @@ class UpdateManager:
     def perform_update(self):
         """Descargar e instalar actualización"""
         try:
+            # Garantizar que todas las operaciones se hagan dentro del directorio base
+            os.chdir(self.base_path)
+
             config = self.get_update_config()
             download_url = config.get("download_url")
             latest_version = config.get("latest_version")
