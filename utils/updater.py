@@ -12,12 +12,39 @@ from typing import List, Dict
 
 class UpdateManager:
     def __init__(self, base_path):
-        self.base_path = base_path
+        # Auto-detectar la ruta correcta buscando version.txt
+        # Esto evita que si se ejecuta desde otro directorio, use la ruta incorrecta
+        detected_path = self._find_project_root(base_path)
+        self.base_path = detected_path if detected_path else base_path
         self.repo = "LautaroAraya/Sistema-de-venta"
         self.github_api = "https://api.github.com/repos"
-        self.config_file = os.path.join(base_path, ".update_config.json")
-        self.version_file = os.path.join(base_path, "version.txt")
+        self.config_file = os.path.join(self.base_path, ".update_config.json")
+        self.version_file = os.path.join(self.base_path, "version.txt")
         self.current_version = self.get_current_version()
+    
+    def _find_project_root(self, start_path):
+        """Buscar la carpeta raíz del proyecto buscando version.txt
+        
+        Esto asegura que incluso si se ejecuta desde otro directorio,
+        se usa la carpeta correcta para las actualizaciones.
+        """
+        # Primero verificar si existe version.txt en start_path
+        if os.path.exists(os.path.join(start_path, "version.txt")):
+            return start_path
+        
+        # Si no, buscar en directorios padre
+        current = start_path
+        for _ in range(10):  # Limitar a 10 niveles de profundidad
+            parent = os.path.dirname(current)
+            if parent == current:  # Llegamos a la raíz del filesystem
+                break
+            version_file = os.path.join(parent, "version.txt")
+            if os.path.exists(version_file):
+                return parent
+            current = parent
+        
+        # Si no se encuentra, retornar None (usar start_path)
+        return None
         
     def get_current_version(self):
         """Obtener versión actual del archivo version.txt"""
@@ -245,9 +272,6 @@ class UpdateManager:
     def perform_update(self):
         """Descargar e instalar actualización"""
         try:
-            # Garantizar que todas las operaciones se hagan dentro del directorio base
-            os.chdir(self.base_path)
-
             config = self.get_update_config()
             download_url = config.get("download_url")
             latest_version = config.get("latest_version")
@@ -255,35 +279,43 @@ class UpdateManager:
             if not latest_version:
                 return False
             
+            # Usar rutas ABSOLUTAS siempre para evitar que se cree en otros directorios
+            abs_base = os.path.abspath(self.base_path)
+            
             # 1) Intento incremental: solo archivos modificados
             try:
                 self._apply_incremental_update(latest_version)
-            except Exception:
+            except Exception as e:
                 # 2) Fallback: descarga completa del ZIP
                 if not download_url:
                     raise
-                zip_path = os.path.join(self.base_path, "update.zip")
+                
+                # Rutas absolutas explícitas
+                zip_path = os.path.abspath(os.path.join(abs_base, "update.zip"))
+                extract_path = os.path.abspath(os.path.join(abs_base, "update_temp"))
+                
                 response = requests.get(download_url, timeout=30)
                 
                 with open(zip_path, 'wb') as f:
                     f.write(response.content)
                 
-                extract_path = os.path.join(self.base_path, "update_temp")
                 if os.path.exists(extract_path):
                     shutil.rmtree(extract_path)
+                
+                os.makedirs(extract_path, exist_ok=True)
                 
                 with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                     zip_ref.extractall(extract_path)
                 
                 temp_dirs = os.listdir(extract_path)
                 if temp_dirs:
-                    source_dir = os.path.join(extract_path, temp_dirs[0])
+                    source_dir = os.path.abspath(os.path.join(extract_path, temp_dirs[0]))
                     exclude_dirs = {'database', 'build', 'installer', 'dist', '.git', '.gitignore'}
                     
                     for item in os.listdir(source_dir):
                         if item not in exclude_dirs:
-                            src = os.path.join(source_dir, item)
-                            dst = os.path.join(self.base_path, item)
+                            src = os.path.abspath(os.path.join(source_dir, item))
+                            dst = os.path.abspath(os.path.join(abs_base, item))
                             
                             if os.path.isdir(src):
                                 if os.path.exists(dst):
@@ -293,7 +325,8 @@ class UpdateManager:
                                 shutil.copy2(src, dst)
                 
                 shutil.rmtree(extract_path)
-                os.remove(zip_path)
+                if os.path.exists(zip_path):
+                    os.remove(zip_path)
             
             # Guardar nueva versión y config
             self.save_version(latest_version)
@@ -317,8 +350,9 @@ class UpdateManager:
             else:
                 # Si es script Python
                 python = sys.executable
-                script = os.path.join(self.base_path, "main.py")
-                subprocess.Popen([python, script])
+                script = os.path.abspath(os.path.join(self.base_path, "main.py"))
+                # Usar cwd para asegurar que se ejecuta desde la carpeta correcta
+                subprocess.Popen([python, script], cwd=os.path.abspath(self.base_path))
             # Cerrar la aplicación actual
             sys.exit(0)
         except Exception as e:

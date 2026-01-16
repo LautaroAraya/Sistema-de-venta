@@ -6,11 +6,11 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=['jaraco.functools', 'jaraco.context', 'jaraco.text'],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['pkg_resources'],
     noarchive=False,
 )
 pyz = PYZ(a.pure)
