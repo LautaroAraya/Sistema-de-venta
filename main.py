@@ -3,13 +3,54 @@ from tkinter import ttk, messagebox
 import sys
 import os
 
+def find_project_root():
+    """Encontrar la carpeta raíz del proyecto buscando version.txt
+    
+    Esto es crítico para que después de actualizaciones, siempre se use
+    la carpeta correcta (Sistema de venta) sin importar dónde se ejecute.
+    """
+    if getattr(sys, 'frozen', False):
+        # Si es EXE, buscar version.txt en el directorio del ejecutable y padres
+        start_path = os.path.dirname(sys.executable)
+    else:
+        # Si es script, buscar a partir del directorio de main.py
+        start_path = os.path.dirname(os.path.abspath(__file__))
+    
+    # Si estamos en una carpeta "dist", buscar en la carpeta padre
+    if os.path.basename(os.path.abspath(start_path)).lower() == 'dist':
+        parent = os.path.dirname(start_path)
+        if os.path.exists(os.path.join(parent, "version.txt")):
+            return parent
+    
+    # Primero verificar si existe version.txt en start_path
+    if os.path.exists(os.path.join(start_path, "version.txt")):
+        return start_path
+    
+    # Si no, buscar en directorios padre
+    current = start_path
+    for _ in range(15):  # Limitar a 15 niveles de profundidad
+        parent = os.path.dirname(current)
+        if parent == current:  # Llegamos a la raíz del filesystem
+            break
+        version_file = os.path.join(parent, "version.txt")
+        if os.path.exists(version_file):
+            return parent
+        current = parent
+    
+    # Si no se encuentra, usar start_path
+    return start_path
+
 # Agregar el directorio raíz al path
-if getattr(sys, 'frozen', False):
-    # Si está empaquetado como exe
-    BASE_DIR = os.path.dirname(sys.executable)
-else:
-    # Si está en desarrollo
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = find_project_root()
+
+# VALIDACIÓN CRÍTICA: Si no hay version.txt, buscar "Sistema de venta" en la ruta
+if not os.path.exists(os.path.join(BASE_DIR, "version.txt")):
+    parts = BASE_DIR.split(os.sep)
+    if "Sistema de venta" in parts:
+        idx = parts.index("Sistema de venta")
+        sistema_venta_path = os.sep.join(parts[:idx+1])
+        if os.path.exists(os.path.join(sistema_venta_path, "version.txt")):
+            BASE_DIR = sistema_venta_path
 
 sys.path.insert(0, BASE_DIR)
 

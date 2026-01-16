@@ -16,6 +16,17 @@ class UpdateManager:
         # Esto evita que si se ejecuta desde otro directorio, use la ruta incorrecta
         detected_path = self._find_project_root(base_path)
         self.base_path = os.path.abspath(detected_path if detected_path else base_path)
+        
+        # VALIDACIÓN CRÍTICA: Si no hay version.txt en base_path, forzar búsqueda en carpeta padre
+        if not os.path.exists(os.path.join(self.base_path, "version.txt")):
+            # Última búsqueda: intentar encontrar "Sistema de venta" en la ruta
+            parts = self.base_path.split(os.sep)
+            if "Sistema de venta" in parts:
+                idx = parts.index("Sistema de venta")
+                sistema_venta_path = os.sep.join(parts[:idx+1])
+                if os.path.exists(os.path.join(sistema_venta_path, "version.txt")):
+                    self.base_path = sistema_venta_path
+        
         self.repo = "LautaroAraya/Sistema-de-venta"
         self.github_api = "https://api.github.com/repos"
         self.config_file = os.path.abspath(os.path.join(self.base_path, ".update_config.json"))
@@ -27,7 +38,18 @@ class UpdateManager:
         
         Esto asegura que incluso si se ejecuta desde otro directorio,
         se usa la carpeta correcta para las actualizaciones.
+        
+        Estrategia:
+        1. Si estamos en dist/, buscar en carpeta padre (donde está version.txt)
+        2. Si no, buscar en start_path
+        3. Si no, buscar hacia arriba hasta 10 niveles
         """
+        # Si estamos en una carpeta "dist", buscar en la carpeta padre
+        if os.path.basename(os.path.abspath(start_path)).lower() == 'dist':
+            parent = os.path.dirname(start_path)
+            if os.path.exists(os.path.join(parent, "version.txt")):
+                return parent
+        
         # Primero verificar si existe version.txt en start_path
         if os.path.exists(os.path.join(start_path, "version.txt")):
             return start_path
@@ -282,6 +304,16 @@ class UpdateManager:
             # Usar rutas ABSOLUTAS siempre para evitar que se cree en otros directorios
             # Y cambiar el working directory ANTES de cualquier operación de archivo
             abs_base = os.path.abspath(self.base_path)
+            
+            # VALIDACIÓN CRÍTICA: Verificar que abs_base tiene version.txt
+            # Si no existe, es una ruta incorrecta y NO extraemos nada
+            version_file = os.path.join(abs_base, "version.txt")
+            if not os.path.exists(version_file):
+                raise RuntimeError(
+                    f"Ruta de actualización inválida. No se encontró version.txt en {abs_base}\n"
+                    f"Se canceló la actualización para evitar corrupción de archivos."
+                )
+            
             original_cwd = os.getcwd()
             
             try:
