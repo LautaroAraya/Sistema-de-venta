@@ -75,14 +75,25 @@ class UpdateManager:
         
         Args:
             force: Si True, no espera 5 días, busca siempre
+        
+        Returns:
+            tuple: (has_updates: bool, error_message: str or None)
         """
         if not force and not self.should_check_for_updates():
-            return False
+            return False, None
         
         try:
             # Obtener releases de GitHub
             url = f"{self.github_api}/{self.repo}/releases/latest"
-            response = requests.get(url, timeout=5)
+            response = requests.get(url, timeout=10)
+            
+            if response.status_code == 404:
+                # No hay releases creados
+                config = self.get_update_config()
+                config["last_check"] = datetime.now().isoformat()
+                config["update_available"] = False
+                self.save_update_config(config)
+                return False, "No hay releases publicados en GitHub todavía"
             
             if response.status_code == 200:
                 release = response.json()
@@ -97,15 +108,22 @@ class UpdateManager:
                     config["download_url"] = release.get("zipball_url")
                     config["release_notes"] = release.get("body", "Sin descripción")
                     self.save_update_config(config)
-                    return True
+                    return True, None
                 else:
                     config["update_available"] = False
                     self.save_update_config(config)
-                    return False
-        except:
-            pass
+                    return False, None
+            else:
+                return False, f"Error HTTP {response.status_code}"
+                
+        except requests.exceptions.Timeout:
+            return False, "Timeout: No se pudo conectar a GitHub"
+        except requests.exceptions.ConnectionError:
+            return False, "Sin conexión a Internet"
+        except Exception as e:
+            return False, str(e)
         
-        return False
+        return False, "Error desconocido"
     
     def get_latest_version_info(self):
         """Obtener información de la última versión disponible"""

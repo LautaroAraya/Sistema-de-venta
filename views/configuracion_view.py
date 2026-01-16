@@ -618,9 +618,26 @@ DATOS INCLUIDOS:
         
         try:
             # Buscar actualizaciones (forzar búsqueda manual)
-            actualizar_disponible = self.update_manager.check_for_updates(force=True)
+            actualizar_disponible, error_msg = self.update_manager.check_for_updates(force=True)
             
-            if actualizar_disponible:
+            if error_msg:
+                # Hay un error específico
+                self.update_status_label.config(text=f"⚠ {error_msg}", fg='#F59E0B')
+                
+                if "No hay releases" in error_msg:
+                    messagebox.showinfo(
+                        "Sin Releases",
+                        f"No hay actualizaciones publicadas en GitHub todavía.\n\n"
+                        f"Versión actual: v{self.update_manager.current_version}\n\n"
+                        f"Para publicar una actualización:\n"
+                        f"1. Crea un tag: git tag v1.0.1\n"
+                        f"2. Sube el tag: git push origin v1.0.1\n"
+                        f"3. Crea un Release en GitHub con ese tag"
+                    )
+                else:
+                    messagebox.showerror("Error de Conexión", f"{error_msg}\n\nVerifica tu conexión a Internet.")
+                
+            elif actualizar_disponible:
                 config = self.update_manager.get_update_config()
                 latest_version = config.get("latest_version", "?")
                 release_notes = config.get("release_notes", "Sin descripción disponible")
@@ -662,7 +679,7 @@ DATOS INCLUIDOS:
                 messagebox.showinfo(
                     "Sin Actualizaciones",
                     f"Ya tienes la versión más reciente (v{self.update_manager.current_version})\n\n"
-                    f"Última verificación: {self.update_manager.get_update_config().get('last_check', 'Nunca')}"
+                    f"Última verificación: ahora"
                 )
         except Exception as e:
             self.update_status_label.config(
