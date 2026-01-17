@@ -30,6 +30,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "dist\SistemaVentas.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "version.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "database\*"; DestDir: "{app}\database"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "reports\*"; DestDir: "{app}\reports"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: No use "Flags: ignoreversion" en archivos del sistema
