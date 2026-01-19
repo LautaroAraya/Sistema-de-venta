@@ -21,19 +21,43 @@ class ErrorLogger:
             base_path = self._find_project_root()
         
         self.base_path = base_path
-        self.errors_dir = os.path.join(base_path, "logs", "errors")
+        
+        # Usar AppData si estamos en Program Files (sin permisos de escritura)
+        if self._is_protected_path(base_path):
+            appdata = os.path.join(os.environ.get('LOCALAPPDATA', os.path.expanduser('~')), 'SistemaVentas')
+            self.errors_dir = os.path.join(appdata, "logs", "errors")
+        else:
+            self.errors_dir = os.path.join(base_path, "logs", "errors")
+        
         self.error_log_file = os.path.join(self.errors_dir, "error_log.txt")
         self.error_summary_file = os.path.join(self.errors_dir, "errores_resumen.json")
         
         # Crear directorio de logs si no existe
-        os.makedirs(self.errors_dir, exist_ok=True)
+        try:
+            os.makedirs(self.errors_dir, exist_ok=True)
+        except PermissionError:
+            # Si falla, usar temp
+            import tempfile
+            self.errors_dir = os.path.join(tempfile.gettempdir(), 'SistemaVentas', 'logs', 'errors')
+            os.makedirs(self.errors_dir, exist_ok=True)
+            self.error_log_file = os.path.join(self.errors_dir, "error_log.txt")
+            self.error_summary_file = os.path.join(self.errors_dir, "errores_resumen.json")
         
         # Crear archivo de log si no existe
-        if not os.path.exists(self.error_log_file):
-            with open(self.error_log_file, 'w', encoding='utf-8') as f:
-                f.write("=== REGISTRO DE ERRORES - SISTEMA DE VENTAS ===\n")
-                f.write(f"Creado: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write("=" * 60 + "\n\n")
+        try:
+            if not os.path.exists(self.error_log_file):
+                with open(self.error_log_file, 'w', encoding='utf-8') as f:
+                    f.write("=== REGISTRO DE ERRORES - SISTEMA DE VENTAS ===\n")
+                    f.write(f"Creado: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                    f.write("=" * 60 + "\n\n")
+        except Exception:
+            pass  # Si no puede crear el archivo, continuar sin logs
+    
+    def _is_protected_path(self, path):
+        """Verificar si la ruta está en un directorio protegido del sistema"""
+        protected_paths = ['Program Files', 'Program Files (x86)', 'Windows']
+        path_upper = path.upper()
+        return any(protected in path_upper for protected in protected_paths)
     
     def _find_project_root(self):
         """Encontrar la carpeta raíz del proyecto"""
