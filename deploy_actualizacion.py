@@ -50,7 +50,7 @@ def main():
     print("\n" + "="*60)
     print("PASO 1: Compilar Ejecutable")
     print("="*60)
-    if not run_command(f"{sys.executable} generar_exe.py", "Compilación con PyInstaller"):
+    if not run_command(f'"{sys.executable}" generar_exe.py', "Compilación con PyInstaller"):
         return False
     
     # Paso 2: Copiar ejecutable a raíz
