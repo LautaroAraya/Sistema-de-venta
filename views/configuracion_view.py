@@ -158,7 +158,71 @@ actualizaciones automáticas. Diseñado para pequeños y medianos negocios."""
         desc_text.insert(1.0, desc_content)
         desc_text.config(state=tk.DISABLED)
         
-
+        # Información de licencia
+        license_frame = tk.Frame(about_container, bg='white', relief=tk.RIDGE, bd=1, padx=20, pady=20)
+        license_frame.pack(fill=tk.X, pady=10)
+        
+        tk.Label(license_frame,
+                text="🔐 Estado de Licencia:",
+                font=("Arial", 12, "bold"),
+                bg='white',
+                fg='#10B981').pack(anchor=tk.W, pady=10)
+        
+        # Obtener estado de licencia
+        try:
+            from utils.validador_public import ValidadorLicencias
+            validador = ValidadorLicencias()
+            resultado = validador.validar_licencia()
+            
+            if resultado['valido']:
+                dias = resultado['dias_restantes']
+                if dias == -1:
+                    status_text = "✓ Sistema Activado (Licencia Permanente)"
+                    status_color = '#10B981'
+                elif dias <= 30:
+                    status_text = f"⚠️ Sistema Activado - Quedan {dias} días"
+                    status_color = '#F59E0B'
+                else:
+                    status_text = f"✓ Sistema Activado - Quedan {dias} días"
+                    status_color = '#10B981'
+                
+                tk.Label(license_frame,
+                        text=status_text,
+                        font=("Arial", 11, "bold"),
+                        bg='white',
+                        fg=status_color).pack(anchor=tk.W, pady=5, padx=10)
+                
+                if 'cliente' in resultado and resultado['cliente'] != 'N/A':
+                    tk.Label(license_frame,
+                            text=f"Licenciado a: {resultado['cliente']}",
+                            font=("Arial", 10),
+                            bg='white',
+                            fg='#6B7280').pack(anchor=tk.W, pady=3, padx=10)
+                
+                if 'fecha_vencimiento' in resultado:
+                    tk.Label(license_frame,
+                            text=f"Vencimiento: {resultado['fecha_vencimiento']}",
+                            font=("Arial", 10),
+                            bg='white',
+                            fg='#6B7280').pack(anchor=tk.W, pady=3, padx=10)
+            else:
+                tk.Label(license_frame,
+                        text="❌ Licencia no válida",
+                        font=("Arial", 11, "bold"),
+                        bg='white',
+                        fg='#EF4444').pack(anchor=tk.W, pady=5, padx=10)
+                
+                tk.Label(license_frame,
+                        text=resultado.get('mensaje', 'Error desconocido'),
+                        font=("Arial", 10),
+                        bg='white',
+                        fg='#6B7280').pack(anchor=tk.W, pady=3, padx=10)
+        except Exception as e:
+            tk.Label(license_frame,
+                    text=f"⚠️ No se pudo verificar la licencia: {str(e)}",
+                    font=("Arial", 10),
+                    bg='white',
+                    fg='#F59E0B').pack(anchor=tk.W, pady=5, padx=10)
         
         # Características
         features_frame = tk.Frame(about_container, bg='white', relief=tk.RIDGE, bd=1, padx=20, pady=20)

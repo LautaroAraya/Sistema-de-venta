@@ -3,6 +3,14 @@ from tkinter import ttk, messagebox
 import sys
 import os
 
+# ====== VALIDACIÓN DE LICENCIA (DEBE SER LO PRIMERO) ======
+from utils.validador_public import validar_licencia_inicio
+
+resultado_licencia = validar_licencia_inicio()
+if resultado_licencia is None:
+    sys.exit(1)
+# =========================================================
+
 def find_project_root():
     """Encontrar la carpeta raíz del proyecto buscando version.txt
     

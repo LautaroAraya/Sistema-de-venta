@@ -5,8 +5,8 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[],
-    hiddenimports=[],
+    datas=[('firebase_config.py', '.')],  # Configuración pública (no sensible)
+    hiddenimports=['requests', 'urllib3', 'certifi'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
