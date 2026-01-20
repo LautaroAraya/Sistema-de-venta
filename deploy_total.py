@@ -32,8 +32,8 @@ class DeployTotal:
     def __init__(self):
         self.base_dir = os.getcwd()
         self.version_file = os.path.join(self.base_dir, "version.txt")
-        # Guardar config fuera del repo para evitar subir tokens
-        self.config_file = os.path.join(Path.home(), ".deploy_config.json")
+        # Guardar config en el repo (manual, bajo tu responsabilidad)
+        self.config_file = os.path.join(self.base_dir, ".deploy_config.json")
         self.exe_path = os.path.join(self.base_dir, "installer", "SistemaVentas_Setup.exe")
         self.github_token = None
         
