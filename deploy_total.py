@@ -20,6 +20,7 @@ import json
 import shutil
 from pathlib import Path
 from datetime import datetime
+import importlib
 
 # Forzar UTF-8 en Windows
 if sys.platform == 'win32':
@@ -179,9 +180,41 @@ class DeployTotal:
         except subprocess.CalledProcessError as e:
             print(f"❌ Git error: {e}")
             return False
+
+    def ensure_pygithub(self):
+        """Asegurar que PyGithub esté instalado (intenta instalar si falta)."""
+        try:
+            importlib.import_module("github")
+            return True
+        except ImportError:
+            print(f"\n{'='*70}")
+            print("⚠️  PyGithub no está instalado. Instalando automáticamente...")
+            print(f"{'='*70}")
+            try:
+                install_cmd = [sys.executable, "-m", "pip", "install", "PyGithub"]
+                result = subprocess.run(install_cmd, capture_output=True, text=True)
+                if result.returncode != 0:
+                    print("❌ No se pudo instalar PyGithub")
+                    if result.stderr:
+                        print(result.stderr)
+                    return False
+                print("✅ PyGithub instalado")
+                return True
+            except Exception as e:
+                print(f"❌ Error instalando PyGithub: {e}")
+                return False
     
     def create_github_release(self, version, changes):
         """Crear release en GitHub con PyGithub"""
+        # Asegurar que PyGithub está disponible
+        if not self.ensure_pygithub():
+            print("\n⚠️  PyGithub no está instalado y no se pudo instalar automáticamente")
+            print("   Puedes crear la release manualmente:")
+            print("   1. https://github.com/LautaroAraya/Sistema-de-venta/releases")
+            print(f"   2. Tag: v{version}")
+            print("   3. Adjunta installer/SistemaVentas_Setup.exe")
+            return False
+
         try:
             from github import Github
             
