@@ -257,12 +257,11 @@ class DeployTotal:
             # Subir .exe
             if os.path.exists(self.exe_path):
                 print("⏳ Subiendo ejecutable...")
-                with open(self.exe_path, 'rb') as f:
-                    release.upload_asset(
-                        file_path=self.exe_path,
-                        label="SistemaVentas_Setup.exe",
-                        content_type="application/octet-stream"
-                    )
+                release.upload_asset(
+                    self.exe_path,
+                    label="SistemaVentas_Setup.exe",
+                    content_type="application/octet-stream"
+                )
                 print("✅ Ejecutable subido")
             
             print(f"\n🔗 Release URL: {release.html_url}")
