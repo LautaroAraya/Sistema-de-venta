@@ -38,6 +38,7 @@ reports/*.pdf
 .vscode/
 .idea/
 *.swp
+.deploy_config.json
 *.swo
 *~
 .DS_Store
@@ -69,3 +70,4 @@ SistemaVentas.exe
 # Firebase - Credenciales sensibles
 serviceAccountKey.json
 .env
+.deploy_config.json
