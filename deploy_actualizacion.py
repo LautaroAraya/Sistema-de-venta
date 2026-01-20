@@ -12,6 +12,12 @@ import sys
 import os
 from pathlib import Path
 
+# Forzar UTF-8 en Windows
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
 def run_command(cmd, description):
     """Ejecutar un comando y mostrar progreso"""
     print(f"\n{'='*60}")

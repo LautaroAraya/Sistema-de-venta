@@ -2,6 +2,12 @@
 """Script de debug para ver exactamente dónde se crean archivos durante actualización"""
 import os
 import sys
+import io
+
+# Forzar UTF-8 en Windows
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 

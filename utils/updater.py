@@ -223,8 +223,30 @@ class UpdateManager:
 
     def _is_excluded(self, path: str) -> bool:
         """Definir rutas que no deben tocarse (datos y build)."""
-        excluded = ("database/", "build/", "dist/", "installer/", ".git/", "__pycache__/")
+        excluded = ("database/", "build/", "dist/", "installer/", ".git/")
         return any(path.startswith(e) for e in excluded)
+    
+    def _clean_pycache(self):
+        """Limpiar todos los archivos de caché de Python (__pycache__ y .pyc)"""
+        try:
+            for root, dirs, files in os.walk(self.base_path):
+                # Eliminar carpetas __pycache__
+                if '__pycache__' in dirs:
+                    pycache_path = os.path.join(root, '__pycache__')
+                    try:
+                        shutil.rmtree(pycache_path)
+                    except:
+                        pass
+                
+                # Eliminar archivos .pyc
+                for file in files:
+                    if file.endswith('.pyc'):
+                        try:
+                            os.remove(os.path.join(root, file))
+                        except:
+                            pass
+        except:
+            pass
 
     def _download_raw_file(self, file_path: str, tag: str):
         """Descargar un archivo individual desde GitHub raw a la ruta local."""
@@ -389,6 +411,8 @@ class UpdateManager:
                 if exe_url:
                     try:
                         self._apply_exe_update(exe_url)
+                        # Limpiar caché de Python
+                        self._clean_pycache()
                         # Éxito: solo actualizar versión y reinicar
                         self.save_version(latest_version)
                         config["update_available"] = False
@@ -462,6 +486,9 @@ class UpdateManager:
             finally:
                 # Restaurar el working directory original
                 os.chdir(original_cwd)
+            
+            # Limpiar caché de Python ANTES de reiniciar
+            self._clean_pycache()
             
             # Guardar nueva versión y config
             self.save_version(latest_version)

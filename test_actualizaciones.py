@@ -7,6 +7,12 @@ Ejecutar este script para verificar que todo funcione correctamente
 
 import os
 import sys
+import io
+
+# Forzar UTF-8 en Windows
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 # Agregar el directorio raíz al path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
