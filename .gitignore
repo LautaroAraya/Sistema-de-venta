@@ -64,6 +64,7 @@ installer/*.exe
 Sistema_de_Venta_*.zip
 *.exe
 SistemaVentas.exe
+.deploy_config.json
 
 # Firebase - Credenciales sensibles
 serviceAccountKey.json

@@ -32,7 +32,8 @@ class DeployTotal:
     def __init__(self):
         self.base_dir = os.getcwd()
         self.version_file = os.path.join(self.base_dir, "version.txt")
-        self.config_file = os.path.join(self.base_dir, ".deploy_config.json")
+        # Guardar config fuera del repo para evitar subir tokens
+        self.config_file = os.path.join(Path.home(), ".deploy_config.json")
         self.exe_path = os.path.join(self.base_dir, "installer", "SistemaVentas_Setup.exe")
         self.github_token = None
         
@@ -179,6 +180,8 @@ class DeployTotal:
             return True
         except subprocess.CalledProcessError as e:
             print(f"❌ Git error: {e}")
+            if e.stderr:
+                print(e.stderr)
             return False
 
     def ensure_pygithub(self):
