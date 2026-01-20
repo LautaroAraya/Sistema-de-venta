@@ -25,6 +25,9 @@ class ConfiguracionView:
         # Variables
         self.nombre_var = tk.StringVar()
         self.logo_path_var = tk.StringVar()
+        self.telefono_var = tk.StringVar()
+        self.direccion_var = tk.StringVar()
+        self.cuit_var = tk.StringVar()
         self.logo_image = None
         
         self.create_widgets()
@@ -398,6 +401,45 @@ actualizaciones automáticas. Diseñado para pequeños y medianos negocios."""
                                         fg='#6B7280')
         self.logo_info_label.grid(row=3, column=1, sticky=tk.W, pady=5, padx=5)
         
+        # Teléfono
+        tk.Label(config_frame, 
+                 text="Teléfono:",
+                 font=("Arial", 11, "bold"),
+                 bg='white',
+                 fg='black').grid(row=4, column=0, sticky=tk.W, pady=10, padx=5)
+        
+        telefono_entry = ttk.Entry(config_frame, 
+                                   textvariable=self.telefono_var,
+                                   font=("Arial", 11),
+                                   width=40)
+        telefono_entry.grid(row=4, column=1, sticky=tk.EW, pady=10, padx=5)
+        
+        # Dirección
+        tk.Label(config_frame, 
+                 text="Dirección:",
+                 font=("Arial", 11, "bold"),
+                 bg='white',
+                 fg='black').grid(row=5, column=0, sticky=tk.W, pady=10, padx=5)
+        
+        direccion_entry = ttk.Entry(config_frame, 
+                                    textvariable=self.direccion_var,
+                                    font=("Arial", 11),
+                                    width=40)
+        direccion_entry.grid(row=5, column=1, sticky=tk.EW, pady=10, padx=5)
+        
+        # CUIT
+        tk.Label(config_frame, 
+                 text="CUIT:",
+                 font=("Arial", 11, "bold"),
+                 bg='white',
+                 fg='black').grid(row=6, column=0, sticky=tk.W, pady=10, padx=5)
+        
+        cuit_entry = ttk.Entry(config_frame, 
+                               textvariable=self.cuit_var,
+                               font=("Arial", 11),
+                               width=40)
+        cuit_entry.grid(row=6, column=1, sticky=tk.EW, pady=10, padx=5)
+        
         # Configurar expansión de columna
         config_frame.grid_columnconfigure(1, weight=1)
         
@@ -516,6 +558,10 @@ actualizaciones automáticas. Diseñado para pequeños y medianos negocios."""
         config = self.config_model.obtener_configuracion()
         
         self.nombre_var.set(config.get('nombre_sistema', 'SISTEMA DE VENTAS'))
+        self.telefono_var.set(config.get('telefono', '') or '')
+        self.direccion_var.set(config.get('direccion', '') or '')
+        self.cuit_var.set(config.get('cuit', '') or '')
+        
         logo_path = config.get('logo_path')
         
         if logo_path and os.path.exists(logo_path):
@@ -571,6 +617,9 @@ actualizaciones automáticas. Diseñado para pequeños y medianos negocios."""
             return
         
         logo_path = self.logo_path_var.get()
+        telefono = self.telefono_var.get().strip()
+        direccion = self.direccion_var.get().strip()
+        cuit = self.cuit_var.get().strip()
         
         # Si hay un logo, copiarlo a la carpeta assets
         if logo_path and os.path.exists(logo_path):
@@ -593,7 +642,7 @@ actualizaciones automáticas. Diseñado para pequeños y medianos negocios."""
                 return
         
         # Guardar configuración
-        if self.config_model.actualizar_configuracion(nombre, logo_path):
+        if self.config_model.actualizar_configuracion(nombre, logo_path, telefono, direccion, cuit):
             messagebox.showinfo("Éxito", "Configuración guardada correctamente.\n\nReinicie la aplicación para ver los cambios.")
         else:
             messagebox.showerror("Error", "No se pudo guardar la configuración")
