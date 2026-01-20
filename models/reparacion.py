@@ -200,6 +200,13 @@ class Reparacion:
         
         return stats
     
+    def _carpeta_reparacion(self, reparacion):
+        """Devuelve la carpeta específica de la reparación dentro de fotos_reparaciones"""
+        numero = reparacion.get('numero_orden', f"rep_{reparacion.get('id','')}")
+        carpeta = os.path.join(self.db_manager.fotos_path, f"ticket_{numero}")
+        os.makedirs(carpeta, exist_ok=True)
+        return carpeta
+
     def agregar_foto(self, reparacion_id, foto_path):
         """Agregar foto a una reparación. Retorna la ruta de la foto guardada."""
         try:
@@ -208,17 +215,14 @@ class Reparacion:
             if not reparacion:
                 return False, "Reparación no encontrada"
             
-            # Obtener carpeta de fotos
-            fotos_dir = self.db_manager.fotos_path
+            # Carpeta específica del ticket
+            carpeta_ticket = self._carpeta_reparacion(reparacion)
             
-            # Contar fotos existentes para esta reparación
-            contador = 1
-            while True:
-                nombre_foto = f"rep_{reparacion_id:05d}_{contador}.jpg"
-                ruta_destino = os.path.join(fotos_dir, nombre_foto)
-                if not os.path.exists(ruta_destino):
-                    break
-                contador += 1
+            # Determinar próximo número de foto dentro de la carpeta
+            existentes = [f for f in os.listdir(carpeta_ticket) if f.lower().endswith('.jpg')]
+            contador = len(existentes) + 1
+            nombre_foto = f"foto_{contador:02d}.jpg"
+            ruta_destino = os.path.join(carpeta_ticket, nombre_foto)
             
             # Copiar foto
             shutil.copy(foto_path, ruta_destino)
@@ -230,66 +234,66 @@ class Reparacion:
     def obtener_fotos(self, reparacion_id):
         """Obtener lista de fotos de una reparación"""
         try:
-            fotos_dir = self.db_manager.fotos_path
-            fotos = []
-            
-            for i in range(1, 100):  # Máximo 99 fotos por reparación
-                nombre_foto = f"rep_{reparacion_id:05d}_{i}.jpg"
-                ruta_foto = os.path.join(fotos_dir, nombre_foto)
-                if os.path.exists(ruta_foto):
-                    fotos.append(ruta_foto)
-                else:
-                    break
-            
-            return fotos
-        except Exception as e:
+            reparacion = self.obtener_reparacion(reparacion_id)
+            if not reparacion:
+                return []
+            carpeta_ticket = self._carpeta_reparacion(reparacion)
+            if not os.path.exists(carpeta_ticket):
+                return []
+            archivos = [os.path.join(carpeta_ticket, f) for f in os.listdir(carpeta_ticket) if f.lower().endswith('.jpg')]
+            archivos.sort()
+            return archivos
+        except Exception:
             return []
     
     def eliminar_foto(self, reparacion_id, numero_foto):
         """Eliminar una foto específica de una reparación"""
         try:
-            fotos_dir = self.db_manager.fotos_path
-            nombre_foto = f"rep_{reparacion_id:05d}_{numero_foto}.jpg"
-            ruta_foto = os.path.join(fotos_dir, nombre_foto)
+            reparacion = self.obtener_reparacion(reparacion_id)
+            if not reparacion:
+                return False, "Reparación no encontrada"
+            carpeta_ticket = self._carpeta_reparacion(reparacion)
+            nombre_foto = f"foto_{numero_foto:02d}.jpg"
+            ruta_foto = os.path.join(carpeta_ticket, nombre_foto)
             
             if os.path.exists(ruta_foto):
                 os.remove(ruta_foto)
                 # Renumerar fotos después de la eliminada
-                self._renumerar_fotos(reparacion_id, numero_foto)
+                self._renumerar_fotos(reparacion, numero_foto)
                 return True, "Foto eliminada correctamente"
             return False, "Foto no encontrada"
         except Exception as e:
             return False, str(e)
     
-    def _renumerar_fotos(self, reparacion_id, desde_numero):
+    def _renumerar_fotos(self, reparacion, desde_numero):
         """Renumerar fotos después de eliminar una"""
         try:
-            fotos_dir = self.db_manager.fotos_path
-            
-            # Buscar fotos después de la eliminada y renumerarlas
+            carpeta_ticket = self._carpeta_reparacion(reparacion)
             contador = desde_numero + 1
             while True:
-                nombre_actual = f"rep_{reparacion_id:05d}_{contador}.jpg"
-                ruta_actual = os.path.join(fotos_dir, nombre_actual)
-                
+                nombre_actual = f"foto_{contador:02d}.jpg"
+                ruta_actual = os.path.join(carpeta_ticket, nombre_actual)
                 if not os.path.exists(ruta_actual):
                     break
-                
-                nombre_nuevo = f"rep_{reparacion_id:05d}_{contador - 1}.jpg"
-                ruta_nueva = os.path.join(fotos_dir, nombre_nuevo)
+                nombre_nuevo = f"foto_{contador - 1:02d}.jpg"
+                ruta_nueva = os.path.join(carpeta_ticket, nombre_nuevo)
                 os.rename(ruta_actual, ruta_nueva)
-                
                 contador += 1
-        except Exception as e:
+        except Exception:
             pass
     
     def eliminar_todas_fotos(self, reparacion_id):
         """Eliminar todas las fotos de una reparación"""
         try:
-            fotos = self.obtener_fotos(reparacion_id)
-            for foto in fotos:
-                if os.path.exists(foto):
-                    os.remove(foto)
+            reparacion = self.obtener_reparacion(reparacion_id)
+            if not reparacion:
+                return False, "Reparación no encontrada"
+            carpeta_ticket = self._carpeta_reparacion(reparacion)
+            if os.path.exists(carpeta_ticket):
+                for foto in os.listdir(carpeta_ticket):
+                    ruta = os.path.join(carpeta_ticket, foto)
+                    if os.path.isfile(ruta):
+                        os.remove(ruta)
             return True, "Fotos eliminadas correctamente"
         except Exception as e:
             return False, str(e)

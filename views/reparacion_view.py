@@ -231,7 +231,15 @@ class ReparacionView:
                  command=self.editar_reparacion).pack(side=tk.LEFT, padx=5)
         
         tk.Button(action_frame,
-                 text="🗑️ Eliminar",
+                 text="�️ Ver Fotos",
+                 font=('Arial', 10, 'bold'),
+                 bg='#6B7280',
+                 fg='white',
+                 activebackground='#4B5563',
+                 command=self.ver_fotos).pack(side=tk.LEFT, padx=5)
+        
+        tk.Button(action_frame,
+                 text="�🗑️ Eliminar",
                  font=('Arial', 10, 'bold'),
                  bg='#EF4444',
                  fg='white',
@@ -575,6 +583,24 @@ class ReparacionView:
             if rep['numero_orden'] == numero_orden:
                 self.mostrar_detalles(rep)
                 break
+    
+    def ver_fotos(self):
+        """Abrir la galería de fotos de la reparación seleccionada"""
+        seleccion = self.tree.selection()
+        if not seleccion:
+            messagebox.showwarning("Advertencia", "Por favor selecciona una reparación")
+            return
+        
+        item = self.tree.item(seleccion[0])
+        numero_orden = item['values'][0]
+        reparaciones = self.reparacion_model.obtener_reparaciones()
+        for rep in reparaciones:
+            if rep['numero_orden'] == numero_orden:
+                self.reparacion_actual = rep
+                self.cargar_fotos_reparacion(rep['id'])
+                self.ver_galeria_fotos()
+                return
+        messagebox.showerror("Error", "No se encontró la reparación seleccionada")
     
     def mostrar_detalles(self, reparacion):
         """Mostrar ventana con detalles de la reparación"""

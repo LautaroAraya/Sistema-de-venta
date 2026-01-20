@@ -26,8 +26,13 @@ class DatabaseManager:
         
         self.db_path = os.path.join(self.base_path, 'database', db_name)
         
-        # Crear carpeta de fotos si no existe
-        self.fotos_path = os.path.join(self.base_path, 'fotos_reparaciones')
+        # Ruta de fotos en ubicación escribible (evitar Program Files)
+        # En modo empaquetado, usar %LOCALAPPDATA%\SistemaVentas\fotos_reparaciones
+        if getattr(sys, 'frozen', False):
+            fotos_base = os.path.join(os.getenv('LOCALAPPDATA', self.base_path), 'SistemaVentas')
+        else:
+            fotos_base = self.base_path
+        self.fotos_path = os.path.join(fotos_base, 'fotos_reparaciones')
         os.makedirs(self.fotos_path, exist_ok=True)
         
         self.connection = None
