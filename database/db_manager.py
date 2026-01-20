@@ -23,18 +23,15 @@ class DatabaseManager:
         else:
             # Si está en desarrollo
             self.base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        
+
         self.db_path = os.path.join(self.base_path, 'database', db_name)
-        
-        # Ruta de fotos en ubicación escribible (evitar Program Files)
-        # En modo empaquetado, usar %LOCALAPPDATA%\SistemaVentas\fotos_reparaciones
-        if getattr(sys, 'frozen', False):
-            fotos_base = os.path.join(os.getenv('LOCALAPPDATA', self.base_path), 'SistemaVentas')
-        else:
-            fotos_base = self.base_path
+
+        # Usar siempre %APPDATA%\SistemaVentas\fotos_reparaciones para fotos
+        appdata = os.getenv('APPDATA', self.base_path)
+        fotos_base = os.path.join(appdata, 'SistemaVentas')
         self.fotos_path = os.path.join(fotos_base, 'fotos_reparaciones')
         os.makedirs(self.fotos_path, exist_ok=True)
-        
+
         self.connection = None
         self.init_database()
     
