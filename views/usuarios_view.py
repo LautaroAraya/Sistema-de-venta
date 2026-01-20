@@ -39,6 +39,10 @@ class UsuariosView:
         
         ttk.Button(buttons_frame, text="Nuevo Usuario", 
                   command=self.nuevo_usuario).pack(side=tk.LEFT, padx=5)
+        ttk.Button(buttons_frame, text="Editar Usuario", 
+              command=self.editar_usuario).pack(side=tk.LEFT, padx=5)
+        ttk.Button(buttons_frame, text="Eliminar Usuario", 
+              command=self.eliminar_usuario).pack(side=tk.LEFT, padx=5)
         ttk.Button(buttons_frame, text="Cambiar Contraseña", 
                   command=self.cambiar_password).pack(side=tk.LEFT, padx=5)
         ttk.Button(buttons_frame, text="Actualizar", 
@@ -86,6 +90,42 @@ class UsuariosView:
     def nuevo_usuario(self):
         """Nuevo usuario"""
         UsuarioDialog(self.parent, self.db_manager, self.cargar_usuarios)
+
+    def editar_usuario(self):
+        """Editar usuario seleccionado"""
+        selection = self.tree.selection()
+        if not selection:
+            messagebox.showwarning("Advertencia", "Seleccione un usuario")
+            return
+        item = self.tree.item(selection[0])
+        user_id, username, nombre, rol, _ = item['values']
+        # No permitir editar usuario admin si no es el mismo
+        EditUsuarioDialog(self.parent, self.db_manager, user_id, username, nombre, rol.lower(), self.cargar_usuarios)
+
+    def eliminar_usuario(self):
+        """Eliminar (desactivar) usuario seleccionado"""
+        selection = self.tree.selection()
+        if not selection:
+            messagebox.showwarning("Advertencia", "Seleccione un usuario")
+            return
+        item = self.tree.item(selection[0])
+        user_id, username, nombre, rol, _ = item['values']
+        
+        # Proteger usuario actual y admin
+        if user_id == self.user_data['id']:
+            messagebox.showwarning("Advertencia", "No puedes eliminar tu propio usuario")
+            return
+        if username == 'admin':
+            messagebox.showwarning("Advertencia", "No puedes eliminar el usuario admin")
+            return
+        
+        if messagebox.askyesno("Confirmar", f"¿Eliminar al usuario {username}?"):
+            exito, msg = self.usuario_model.eliminar_usuario(user_id)
+            if exito:
+                messagebox.showinfo("Éxito", msg)
+                self.cargar_usuarios()
+            else:
+                messagebox.showerror("Error", msg)
     
     def cambiar_password(self):
         """Cambiar contraseña de usuario"""
@@ -214,6 +254,83 @@ class CambiarPasswordDialog:
         self.dialog.geometry(f"350x200+{x}+{y}")
         
         self.create_widgets()
+
+
+class EditUsuarioDialog:
+    def __init__(self, parent, db_manager, user_id, username, nombre, rol, callback):
+        self.db_manager = db_manager
+        self.user_id = user_id
+        self.callback = callback
+        self.usuario_model = Usuario(db_manager)
+        
+        self.dialog = tk.Toplevel(parent)
+        self.dialog.title("Editar Usuario")
+        self.dialog.geometry("400x260")
+        self.dialog.resizable(False, False)
+        self.dialog.transient(parent)
+        self.dialog.grab_set()
+        
+        # Centrar diálogo
+        self.dialog.update_idletasks()
+        x = parent.winfo_x() + (parent.winfo_width() // 2) - 200
+        y = parent.winfo_y() + (parent.winfo_height() // 2) - 130
+        self.dialog.geometry(f"400x260+{x}+{y}")
+        
+        self.create_widgets(username, nombre, rol)
+    
+    def create_widgets(self, username, nombre, rol):
+        self.dialog.configure(bg='white')
+        main_frame = tk.Frame(self.dialog, bg='white', padx=20, pady=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Username
+        tk.Label(main_frame, text="Usuario:", bg='white', fg='black').grid(row=0, column=0, sticky=tk.W, pady=5)
+        self.username_entry = tk.Entry(main_frame, width=25)
+        self.username_entry.grid(row=0, column=1, pady=5, padx=5)
+        self.username_entry.insert(0, username)
+        
+        # Nombre completo
+        tk.Label(main_frame, text="Nombre Completo:", bg='white', fg='black').grid(row=1, column=0, sticky=tk.W, pady=5)
+        self.nombre_entry = tk.Entry(main_frame, width=25)
+        self.nombre_entry.grid(row=1, column=1, pady=5, padx=5)
+        self.nombre_entry.insert(0, nombre)
+        
+        # Rol
+        tk.Label(main_frame, text="Rol:", bg='white', fg='black').grid(row=2, column=0, sticky=tk.W, pady=5)
+        self.rol_combo = ttk.Combobox(main_frame, width=23, state='readonly')
+        self.rol_combo['values'] = ['admin', 'empleado']
+        try:
+            idx = ['admin', 'empleado'].index(rol)
+        except ValueError:
+            idx = 1
+        self.rol_combo.current(idx)
+        self.rol_combo.grid(row=2, column=1, pady=5, padx=5)
+        
+        # Botones
+        buttons_frame = tk.Frame(main_frame, bg='white')
+        buttons_frame.grid(row=3, column=0, columnspan=2, pady=20)
+        
+        tk.Button(buttons_frame, text="Guardar", font=('Arial', 10), bg='#10B981', fg='white', relief=tk.RAISED,
+                  command=self.guardar).pack(side=tk.LEFT, padx=5)
+        tk.Button(buttons_frame, text="Cancelar", font=('Arial', 10), bg='#EF4444', fg='white', relief=tk.RAISED,
+                  command=self.dialog.destroy).pack(side=tk.LEFT, padx=5)
+    
+    def guardar(self):
+        username = self.username_entry.get().strip()
+        nombre = self.nombre_entry.get().strip()
+        rol = self.rol_combo.get()
+        
+        if not username or not nombre:
+            messagebox.showerror("Error", "Complete todos los campos")
+            return
+        
+        exito, msg = self.usuario_model.actualizar_usuario(self.user_id, username, nombre, rol)
+        if exito:
+            messagebox.showinfo("Éxito", msg)
+            self.callback()
+            self.dialog.destroy()
+        else:
+            messagebox.showerror("Error", msg)
     
     def create_widgets(self):
         """Crear widgets"""

@@ -25,6 +25,11 @@ class DatabaseManager:
             self.base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         
         self.db_path = os.path.join(self.base_path, 'database', db_name)
+        
+        # Crear carpeta de fotos si no existe
+        self.fotos_path = os.path.join(self.base_path, 'fotos_reparaciones')
+        os.makedirs(self.fotos_path, exist_ok=True)
+        
         self.connection = None
         self.init_database()
     
@@ -142,17 +147,77 @@ class DatabaseManager:
                 id INTEGER PRIMARY KEY CHECK(id = 1),
                 nombre_sistema TEXT DEFAULT 'SISTEMA DE VENTAS',
                 logo_path TEXT,
+                telefono TEXT,
+                direccion TEXT,
+                cuit TEXT,
                 fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         
+        # Tabla de reparaciones
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS reparaciones (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                numero_orden TEXT UNIQUE NOT NULL,
+                usuario_id INTEGER NOT NULL,
+                cliente_nombre TEXT NOT NULL,
+                cliente_telefono TEXT,
+                cliente_email TEXT,
+                dispositivo TEXT NOT NULL,
+                modelo TEXT,
+                numero_serie TEXT,
+                problema TEXT NOT NULL,
+                sin_bateria INTEGER DEFAULT 0,
+                rajado INTEGER DEFAULT 0,
+                mojado INTEGER DEFAULT 0,
+                contrasena TEXT,
+                patron TEXT,
+                sena REAL DEFAULT 0,
+                total REAL NOT NULL,
+                estado TEXT NOT NULL CHECK(estado IN ('pendiente', 'en_proceso', 'completada', 'cancelada')),
+                fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                fecha_entrega TIMESTAMP,
+                observaciones TEXT,
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+            )
+        ''')
+        
         conn.commit()
+        
+        # Actualizar estructura de tablas existentes
+        self.actualizar_estructura_tablas()
         
         # Crear usuario admin por defecto si no existe
         self.crear_usuario_admin_default()
         
         # Crear configuración por defecto si no existe
         self.crear_configuracion_default()
+    
+    def actualizar_estructura_tablas(self):
+        """Actualizar estructura de tablas existentes agregando columnas nuevas"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        # Verificar y agregar columnas a la tabla reparaciones si no existen
+        cursor.execute("PRAGMA table_info(reparaciones)")
+        columnas_existentes = [col[1] for col in cursor.fetchall()]
+        
+        columnas_nuevas = {
+            'sin_bateria': 'INTEGER DEFAULT 0',
+            'rajado': 'INTEGER DEFAULT 0',
+            'mojado': 'INTEGER DEFAULT 0',
+            'contrasena': 'TEXT',
+            'patron': 'TEXT',
+            'fotos_reparacion_id': 'INTEGER'
+        }
+        
+        for columna, tipo in columnas_nuevas.items():
+            if columna not in columnas_existentes:
+                try:
+                    cursor.execute(f'ALTER TABLE reparaciones ADD COLUMN {columna} {tipo}')
+                    conn.commit()
+                except Exception as e:
+                    print(f"Error al agregar columna {columna}: {e}")
     
     def crear_usuario_admin_default(self):
         """Crear usuario administrador por defecto"""

@@ -7,6 +7,7 @@ from views.reportes_view import ReportesView
 from views.usuarios_view import UsuariosView
 from views.configuracion_view import ConfiguracionView
 from views.errores_view import ErroresView
+from views.reparacion_view import ReparacionView
 
 class MainView:
     def __init__(self, root, db_manager, user_data, logout_callback=None):
@@ -101,7 +102,8 @@ class MainView:
         # Botones del menú con iconos
         menu_buttons = [
             ("💰 Nueva Venta", self.mostrar_ventas, '#10B981'),
-            ("📦 Productos", self.mostrar_productos, '#3B82F6'),
+            ("� Reparaciones", self.mostrar_reparaciones, '#8B5CF6'),
+            ("�📦 Productos", self.mostrar_productos, '#3B82F6'),
             ("🏢 Proveedores", self.mostrar_proveedores, '#8B5CF6'),
             ("📊 Reportes", self.mostrar_reportes, '#F59E0B'),
         ]
@@ -120,7 +122,20 @@ class MainView:
                           command=command)
             btn.pack(fill=tk.X, padx=12, pady=6)
         
-        # Solo admin puede gestionar usuarios
+        # Configuración accesible para todos; Usuarios y Errores solo admin
+        config_btn = tk.Button(side_frame,
+                              text="⚙️ Configuración",
+                              font=('Arial', 11, 'bold'),
+                              bg='#6366F1',
+                              fg='white',
+                              activebackground='#4F46E5',
+                              activeforeground='white',
+                              bd=0,
+                              pady=12,
+                              cursor='hand2',
+                              command=self.mostrar_configuracion)
+        config_btn.pack(fill=tk.X, padx=12, pady=6)
+
         if self.user_data['rol'] == 'admin':
             admin_btn = tk.Button(side_frame,
                                  text="👥 Usuarios",
@@ -134,19 +149,6 @@ class MainView:
                                  cursor='hand2',
                                  command=self.mostrar_usuarios)
             admin_btn.pack(fill=tk.X, padx=12, pady=6)
-            
-            config_btn = tk.Button(side_frame,
-                                  text="⚙️ Configuración",
-                                  font=('Arial', 11, 'bold'),
-                                  bg='#6366F1',
-                                  fg='white',
-                                  activebackground='#4F46E5',
-                                  activeforeground='white',
-                                  bd=0,
-                                  pady=12,
-                                  cursor='hand2',
-                                  command=self.mostrar_configuracion)
-            config_btn.pack(fill=tk.X, padx=12, pady=6)
             
             errores_btn = tk.Button(side_frame,
                                    text="🐛 Errores del Sistema",
@@ -193,6 +195,11 @@ class MainView:
         self.limpiar_contenido()
         ReportesView(self.content_frame, self.db_manager, self.user_data)
     
+    def mostrar_reparaciones(self):
+        """Mostrar vista de reparaciones"""
+        self.limpiar_contenido()
+        ReparacionView(self.content_frame, self.db_manager, self.user_data)
+    
     def mostrar_usuarios(self):
         """Mostrar vista de usuarios (solo admin)"""
         if self.user_data['rol'] == 'admin':
@@ -200,10 +207,9 @@ class MainView:
             UsuariosView(self.content_frame, self.db_manager, self.user_data)
     
     def mostrar_configuracion(self):
-        """Mostrar vista de configuración (solo admin)"""
-        if self.user_data['rol'] == 'admin':
-            self.limpiar_contenido()
-            ConfiguracionView(self.content_frame, self.db_manager, self.user_data)
+        """Mostrar vista de configuración (acceso para todos los roles)"""
+        self.limpiar_contenido()
+        ConfiguracionView(self.content_frame, self.db_manager, self.user_data)
     
     def mostrar_errores(self):
         """Mostrar vista de errores del sistema (solo admin)"""

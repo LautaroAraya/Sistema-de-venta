@@ -35,19 +35,17 @@ class ProductosView:
         buttons_frame = ttk.Frame(self.parent)
         buttons_frame.pack(fill=tk.X, padx=10, pady=5)
         
-        # Verificar si el usuario es empleado
-        es_empleado = self.user_data['rol'] == 'empleado'
-        
+        # Permitir a empleados crear/editar/eliminar productos
         self.btn_nuevo = ttk.Button(buttons_frame, text="Nuevo Producto", 
-                  command=self.nuevo_producto, state='disabled' if es_empleado else 'normal')
+              command=self.nuevo_producto)
         self.btn_nuevo.pack(side=tk.LEFT, padx=5)
         
         self.btn_editar = ttk.Button(buttons_frame, text="Editar", 
-                  command=self.editar_producto, state='disabled' if es_empleado else 'normal')
+              command=self.editar_producto)
         self.btn_editar.pack(side=tk.LEFT, padx=5)
         
         self.btn_eliminar = ttk.Button(buttons_frame, text="Eliminar", 
-                  command=self.eliminar_producto, state='disabled' if es_empleado else 'normal')
+              command=self.eliminar_producto)
         self.btn_eliminar.pack(side=tk.LEFT, padx=5)
         
         ttk.Button(buttons_frame, text="Actualizar", 

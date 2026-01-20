@@ -1,5 +1,6 @@
 import hashlib
 from database.db_manager import DatabaseManager
+import sqlite3
 
 class Usuario:
     def __init__(self, db_manager):
@@ -46,6 +47,24 @@ class Usuario:
             return False, "El nombre de usuario ya existe"
         except Exception as e:
             return False, f"Error al crear usuario: {str(e)}"
+
+    def actualizar_usuario(self, user_id, username, nombre_completo, rol):
+        """Actualizar datos de usuario (sin contraseña)"""
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute('''
+                UPDATE usuarios
+                SET username = ?, nombre_completo = ?, rol = ?
+                WHERE id = ?
+            ''', (username, nombre_completo, rol, user_id))
+            conn.commit()
+            return True, "Usuario actualizado exitosamente"
+        except sqlite3.IntegrityError:
+            return False, "El nombre de usuario ya existe"
+        except Exception as e:
+            return False, f"Error al actualizar usuario: {str(e)}"
     
     def listar_usuarios(self):
         """Listar todos los usuarios activos"""
@@ -77,4 +96,19 @@ class Usuario:
         conn.commit()
         return True
 
-import sqlite3
+    def eliminar_usuario(self, user_id):
+        """Desactivar usuario (borrado lógico)"""
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute('''
+                UPDATE usuarios
+                SET activo = 0
+                WHERE id = ?
+            ''', (user_id,))
+            conn.commit()
+            return True, "Usuario eliminado correctamente"
+        except Exception as e:
+            return False, f"Error al eliminar usuario: {str(e)}"
+
