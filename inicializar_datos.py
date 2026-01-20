@@ -24,11 +24,16 @@ def inicializar_datos():
     # Crear categorías
     print("\nCreando categorías...")
     categorias = [
-        ("Bebidas", "Bebidas frías y calientes"),
-        ("Comida Rápida", "Hamburguesas, hot dogs, etc."),
-        ("Snacks", "Papas, nachos, etc."),
-        ("Postres", "Helados, pasteles, etc."),
-        ("Otros", "Productos varios")
+        ("Accesorios", "Accesorios para celular y otros dispositivos"),
+        ("Parlantes", "Parlantes para música y audio"),
+        ("Auriculares", "Auriculares y headsets"),
+        ("Relojes Smart", "Relojes inteligentes"),
+        ("Focos LED", "Focos de luz LED"),
+        ("Tiras LED", "Tiras de luz LED decorativas"),
+        ("Pendrives", "Memorias USB y pendrives"),
+        ("Cámaras de Seguridad", "Cámaras de vigilancia y seguridad"),
+        ("Cargadores", "Cargadores para dispositivos móviles"),
+        ("Otros", "Otros productos")
     ]
     
     for nombre, desc in categorias:

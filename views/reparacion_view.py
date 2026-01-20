@@ -34,6 +34,7 @@ class ReparacionView:
         self.total_var = tk.StringVar()
         self.estado_var = tk.StringVar(value='Pendiente')
         self.observaciones_var = tk.StringVar()
+        self.buscar_cliente_var = tk.StringVar()
         
         # Variables de estado inicial
         self.sin_bateria_var = tk.BooleanVar()
@@ -67,253 +68,86 @@ class ReparacionView:
         # Limpiar frame
         for widget in self.parent.winfo_children():
             widget.destroy()
-        
+
         self.parent.configure(bg='#F0F4F8')
-        
+
         # Título
         title_frame = tk.Frame(self.parent, bg='#8B5CF6', height=60)
         title_frame.pack(fill=tk.X, pady=(0, 15))
         title_frame.pack_propagate(False)
-        
+
         tk.Label(title_frame,
-                text="🔧 REPARACIONES DE CELULARES",
-                font=("Arial", 18, "bold"),
-                bg='#8B5CF6',
-                fg='white').pack(expand=True)
-        
-        # Contenedor principal con scroll
-        main_frame = tk.Frame(self.parent, bg='#F0F4F8')
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
-        
-        # Canvas y scrollbar
-        canvas = tk.Canvas(main_frame, bg='#F0F4F8', highlightthickness=0)
-        scrollbar = ttk.Scrollbar(main_frame, orient=tk.VERTICAL, command=canvas.yview)
-        
-        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        canvas.config(yscrollcommand=scrollbar.set)
-        
-        # Frame dentro del canvas
-        container = tk.Frame(canvas, bg='#F0F4F8')
-        canvas.create_window((0, 0), window=container, anchor=tk.NW)
-        
-        def on_frame_configure(event=None):
-            canvas.configure(scrollregion=canvas.bbox('all'))
-        
-        container.bind('<Configure>', on_frame_configure)
-        
-        # Permitir scroll con rueda del mouse
-        def _on_mousewheel(event):
-            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-        
-        canvas.bind_all("<MouseWheel>", _on_mousewheel)
-        
-        # Notebook para tabs
-        notebook = ttk.Notebook(container)
-        notebook.pack(fill=tk.BOTH, expand=True)
-        
-        # Tab 1: Lista de Reparaciones
-        list_tab = tk.Frame(notebook, bg='#F0F4F8')
-        notebook.add(list_tab, text="Mis Reparaciones")
-        
-        self.create_list_tab(list_tab)
-        
-        # Tab 2: Nueva Reparación
-        new_tab = tk.Frame(notebook, bg='#F0F4F8')
-        notebook.add(new_tab, text="Nueva Reparación")
-        
-        self.create_form_tab(new_tab)
-    
-    def estado_db_to_ui(self, estado_db):
-        """Convertir estado de base de datos a formato UI"""
-        estados_map = {
-            'pendiente': 'Pendiente',
-            'en_proceso': 'En Proceso',
-            'completada': 'Completada',
-            'cancelada': 'Cancelada'
-        }
-        return estados_map.get(estado_db, 'Pendiente')
-    
-    def estado_ui_to_db(self, estado_ui):
-        """Convertir estado de UI a formato base de datos"""
-        estados_map = {
-            'Pendiente': 'pendiente',
-            'En Proceso': 'en_proceso',
-            'Completada': 'completada',
-            'Cancelada': 'cancelada'
-        }
-        return estados_map.get(estado_ui, 'pendiente')
-    
-    def create_list_tab(self, parent):
-        """Crear pestaña de lista de reparaciones"""
-        list_frame = tk.Frame(parent, bg='white', relief=tk.RIDGE, bd=1, padx=15, pady=15)
-        list_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=15)
-        
-        # Botones de filtro
-        filter_frame = tk.Frame(list_frame, bg='white')
-        filter_frame.pack(fill=tk.X, pady=(0, 15))
-        
-        tk.Label(filter_frame, text="Filtrar por estado:", font=("Arial", 10, "bold"), bg='white').pack(side=tk.LEFT, padx=5)
-        
-        estados = ['Todas', 'pendiente', 'en_proceso', 'completada', 'cancelada']
-        for estado in estados:
-            tk.Button(filter_frame,
-                     text=estado.replace('_', ' ').title(),
-                     font=('Arial', 9),
-                     bg='#3B82F6',
-                     fg='white',
-                     activebackground='#2563EB',
-                     command=lambda e=estado: self.filtrar_reparaciones(e)).pack(side=tk.LEFT, padx=3)
-        
-        # Tabla de reparaciones
-        # Buscador por cliente
-        search_frame = tk.Frame(list_frame, bg='white')
-        search_frame.pack(fill=tk.X, pady=(0, 15))
-        
-        tk.Label(search_frame, text="Buscar por cliente:", font=("Arial", 10, "bold"), bg='white').pack(side=tk.LEFT, padx=5)
-        
-        self.buscar_cliente_var = tk.StringVar()
-        self.buscar_cliente_var.trace('w', lambda name, index, mode: self.buscar_cliente())
-        
-        entry_buscar = ttk.Entry(search_frame, textvariable=self.buscar_cliente_var, font=("Arial", 10), width=30)
-        entry_buscar.pack(side=tk.LEFT, padx=5)
-        
-        tk.Button(search_frame, text="🔎 Buscar", font=("Arial", 10), 
-             command=self.buscar_cliente).pack(side=tk.LEFT, padx=3)
-        
-        tk.Button(search_frame, text="✕ Limpiar", font=("Arial", 10),
-             command=self.limpiar_busqueda).pack(side=tk.LEFT, padx=3)
-        
-        # Tabla de reparaciones
-        columns = ('Orden', 'Cliente', 'Dispositivo', 'Estado', 'Seña', 'Total', 'Fecha', 'Acciones')
-        self.tree = ttk.Treeview(list_frame, columns=columns, height=15, show='headings')
-        
-        # Configurar columnas
-        self.tree.column('Orden', width=100, anchor=tk.CENTER)
-        self.tree.column('Cliente', width=150, anchor=tk.W)
-        self.tree.column('Dispositivo', width=120, anchor=tk.W)
-        self.tree.column('Estado', width=100, anchor=tk.CENTER)
-        self.tree.column('Seña', width=80, anchor=tk.E)
-        self.tree.column('Total', width=80, anchor=tk.E)
-        self.tree.column('Fecha', width=130, anchor=tk.CENTER)
-        self.tree.column('Acciones', width=100, anchor=tk.CENTER)
-        
-        # Headers
-        for col in columns:
-            self.tree.heading(col, text=col)
-        
-        self.tree.pack(fill=tk.BOTH, expand=True)
-        
-        # Scrollbar para la tabla
-        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.tree.yview)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.tree.config(yscrollcommand=scrollbar.set)
-        
-        # Frame de botones de acción
-        action_frame = tk.Frame(list_frame, bg='white')
-        action_frame.pack(fill=tk.X, pady=15)
-        
-        tk.Button(action_frame,
-                 text="📋 Ver Detalles",
-                 font=('Arial', 10, 'bold'),
-                 bg='#3B82F6',
-                 fg='white',
-                 activebackground='#2563EB',
-                 command=self.ver_detalles).pack(side=tk.LEFT, padx=5)
-        
-        tk.Button(action_frame,
-                 text="✏️ Editar",
-                 font=('Arial', 10, 'bold'),
-                 bg='#F59E0B',
-                 fg='white',
-                 activebackground='#D97706',
-                 command=self.editar_reparacion).pack(side=tk.LEFT, padx=5)
-        
-        tk.Button(action_frame,
-                 text="�️ Ver Fotos",
-                 font=('Arial', 10, 'bold'),
-                 bg='#6B7280',
-                 fg='white',
-                 activebackground='#4B5563',
-                 command=self.ver_fotos).pack(side=tk.LEFT, padx=5)
-        
-        tk.Button(action_frame,
-                 text="�🗑️ Eliminar",
-                 font=('Arial', 10, 'bold'),
-                 bg='#EF4444',
-                 fg='white',
-                 activebackground='#DC2626',
-                 command=self.eliminar_reparacion).pack(side=tk.LEFT, padx=5)
-        
-        tk.Button(action_frame,
-                 text="🖨️ Imprimir Boleta",
-                 font=('Arial', 10, 'bold'),
-                 bg='#10B981',
-                 fg='white',
-                 activebackground='#059669',
-                 command=self.imprimir_boleta).pack(side=tk.LEFT, padx=5)
-    
-    def create_form_tab(self, parent):
-        """Crear pestaña de formulario"""
-        form_frame = tk.Frame(parent, bg='white', relief=tk.RIDGE, bd=1, padx=15, pady=15)
-        form_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=15)
-        
-        # Fila 1: Cliente
-        tk.Label(form_frame, text="Cliente:", font=("Arial", 10, "bold"), bg='white').grid(row=0, column=0, sticky=tk.W, pady=10, padx=5)
-        ttk.Entry(form_frame, textvariable=self.cliente_nombre_var, font=("Arial", 10), width=40).grid(row=0, column=1, sticky=tk.EW, pady=10, padx=5)
-        
-        # Fila 2: Teléfono
-        tk.Label(form_frame, text="Teléfono:", font=("Arial", 10, "bold"), bg='white').grid(row=0, column=2, sticky=tk.W, pady=10, padx=5)
-        ttk.Entry(form_frame, textvariable=self.cliente_telefono_var, font=("Arial", 10), width=20).grid(row=0, column=3, sticky=tk.EW, pady=10, padx=5)
-        
-        # Fila 3: Email
-        tk.Label(form_frame, text="Email:", font=("Arial", 10, "bold"), bg='white').grid(row=1, column=0, sticky=tk.W, pady=10, padx=5)
-        ttk.Entry(form_frame, textvariable=self.cliente_email_var, font=("Arial", 10), width=40).grid(row=1, column=1, sticky=tk.EW, pady=10, padx=5)
-        
-        # Fila 4: Dispositivo
-        tk.Label(form_frame, text="Dispositivo:", font=("Arial", 10, "bold"), bg='white').grid(row=1, column=2, sticky=tk.W, pady=10, padx=5)
-        dispositivo_combo = ttk.Combobox(form_frame, textvariable=self.dispositivo_var, 
-                                        values=['iPhone', 'Samsung', 'Xiaomi', 'Huawei', 'Motorola', 'Nokia', 'Otro'],
-                                        font=("Arial", 10), width=18)
-        dispositivo_combo.grid(row=1, column=3, sticky=tk.EW, pady=10, padx=5)
-        
-        # Fila 5: Modelo
-        tk.Label(form_frame, text="Modelo:", font=("Arial", 10, "bold"), bg='white').grid(row=2, column=0, sticky=tk.W, pady=10, padx=5)
-        ttk.Entry(form_frame, textvariable=self.modelo_var, font=("Arial", 10), width=40).grid(row=2, column=1, sticky=tk.EW, pady=10, padx=5)
-        
-        # Fila 6: Número de Serie
-        tk.Label(form_frame, text="Nº Serie:", font=("Arial", 10, "bold"), bg='white').grid(row=2, column=2, sticky=tk.W, pady=10, padx=5)
-        ttk.Entry(form_frame, textvariable=self.numero_serie_var, font=("Arial", 10), width=20).grid(row=2, column=3, sticky=tk.EW, pady=10, padx=5)
-        
-        # Fila 7: Problema
-        tk.Label(form_frame, text="Problema:", font=("Arial", 10, "bold"), bg='white').grid(row=3, column=0, sticky=tk.NW, pady=10, padx=5)
-        problema_text = tk.Text(form_frame, font=("Arial", 10), height=3, width=50)
-        problema_text.grid(row=3, column=1, columnspan=3, sticky=tk.NSEW, pady=10, padx=5)
+                 text="🔧 REPARACIONES DE CELULARES",
+                 font=("Arial", 18, "bold"),
+                 bg='#8B5CF6',
+                 fg='white').pack(expand=True)
+
+        # Contenedor principal
+        parent = tk.Frame(self.parent, bg='#F0F4F8')
+        parent.pack(fill=tk.BOTH, expand=True, padx=15, pady=5)
+
+        # Panel superior: formulario y lista
+        top = tk.Frame(parent, bg='#F0F4F8')
+        top.pack(fill=tk.BOTH, expand=True)
+
+        # Formulario (izquierda)
+        form_frame = tk.Frame(top, bg='white', bd=1, relief=tk.RIDGE, padx=15, pady=15)
+        form_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
+
+        # Lista (derecha)
+        list_frame = tk.Frame(top, bg='white', bd=1, relief=tk.RIDGE, padx=10, pady=10)
+        list_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        columns = ('numero', 'cliente', 'dispositivo', 'estado', 'sena', 'total', 'fecha', 'accion')
+        self.tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=20)
+        headings = ['N° Orden', 'Cliente', 'Dispositivo', 'Estado', 'Seña', 'Total', 'Fecha', 'Acción']
+        for col, head in zip(columns, headings):
+            self.tree.heading(col, text=head)
+        self.tree.column('numero', width=90)
+        self.tree.column('cliente', width=140)
+        self.tree.column('dispositivo', width=120)
+        self.tree.column('estado', width=90)
+        self.tree.column('sena', width=80)
+        self.tree.column('total', width=80)
+        self.tree.column('fecha', width=90)
+        self.tree.column('accion', width=70)
+
+        yscroll = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.tree.yview)
+        self.tree.configure(yscrollcommand=yscroll.set)
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        yscroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # Cliente y contacto
+        tk.Label(form_frame, text="Cliente:", font=("Arial", 10, "bold"), bg='white').grid(row=0, column=0, sticky=tk.W, pady=5, padx=5)
+        ttk.Entry(form_frame, textvariable=self.cliente_nombre_var, font=("Arial", 10), width=30).grid(row=0, column=1, sticky=tk.EW, pady=5, padx=5)
+
+        tk.Label(form_frame, text="Teléfono:", font=("Arial", 10, "bold"), bg='white').grid(row=0, column=2, sticky=tk.W, pady=5, padx=5)
+        ttk.Entry(form_frame, textvariable=self.cliente_telefono_var, font=("Arial", 10), width=20).grid(row=0, column=3, sticky=tk.EW, pady=5, padx=5)
+
+        tk.Label(form_frame, text="Email:", font=("Arial", 10, "bold"), bg='white').grid(row=1, column=0, sticky=tk.W, pady=5, padx=5)
+        ttk.Entry(form_frame, textvariable=self.cliente_email_var, font=("Arial", 10), width=30).grid(row=1, column=1, sticky=tk.EW, pady=5, padx=5)
+
+        # Equipo
+        tk.Label(form_frame, text="Dispositivo:", font=("Arial", 10, "bold"), bg='white').grid(row=2, column=0, sticky=tk.W, pady=5, padx=5)
+        ttk.Entry(form_frame, textvariable=self.dispositivo_var, font=("Arial", 10), width=30).grid(row=2, column=1, sticky=tk.EW, pady=5, padx=5)
+
+        tk.Label(form_frame, text="Modelo:", font=("Arial", 10, "bold"), bg='white').grid(row=2, column=2, sticky=tk.W, pady=5, padx=5)
+        ttk.Entry(form_frame, textvariable=self.modelo_var, font=("Arial", 10), width=20).grid(row=2, column=3, sticky=tk.EW, pady=5, padx=5)
+
+        tk.Label(form_frame, text="N° Serie:", font=("Arial", 10, "bold"), bg='white').grid(row=3, column=0, sticky=tk.W, pady=5, padx=5)
+        ttk.Entry(form_frame, textvariable=self.numero_serie_var, font=("Arial", 10), width=30).grid(row=3, column=1, sticky=tk.EW, pady=5, padx=5)
+
+        # Problema
+        tk.Label(form_frame, text="Problema:", font=("Arial", 10, "bold"), bg='white').grid(row=4, column=0, sticky=tk.NW, pady=5, padx=5)
+        problema_text = tk.Text(form_frame, font=("Arial", 10), height=4, width=50)
+        problema_text.grid(row=4, column=1, columnspan=3, sticky=tk.NSEW, pady=5, padx=5)
         self.problema_text = problema_text
-        
-        # Fila 4: Estado Inicial
-        tk.Label(form_frame, text="Estado Inicial:", font=("Arial", 10, "bold"), bg='white').grid(row=4, column=0, sticky=tk.W, pady=10, padx=5)
-        estado_inicial_frame = tk.Frame(form_frame, bg='white')
-        estado_inicial_frame.grid(row=4, column=1, columnspan=1, sticky=tk.W, pady=10, padx=5)
-        
-        tk.Checkbutton(estado_inicial_frame, text="Sin Batería", variable=self.sin_bateria_var, 
-                      font=("Arial", 9), bg='white').pack(side=tk.LEFT, padx=5)
-        tk.Checkbutton(estado_inicial_frame, text="Rajado", variable=self.rajado_var, 
-                      font=("Arial", 9), bg='white').pack(side=tk.LEFT, padx=5)
-        tk.Checkbutton(estado_inicial_frame, text="Mojado", variable=self.mojado_var, 
-                      font=("Arial", 9), bg='white').pack(side=tk.LEFT, padx=5)
-        
-        # Fila 4 col 2-3: Contraseña
-        tk.Label(form_frame, text="Contraseña:", font=("Arial", 10, "bold"), bg='white').grid(row=4, column=2, sticky=tk.W, pady=10, padx=5)
-        ttk.Entry(form_frame, textvariable=self.contrasena_var, font=("Arial", 10), width=20).grid(row=4, column=3, sticky=tk.EW, pady=10, padx=5)
-        
-        # Fila 5: Patrón de desbloqueo con canvas interactivo
+
+        # Patrón (fila 5 col 0-1)
         tk.Label(form_frame, text="Patrón:", font=("Arial", 10, "bold"), bg='white').grid(row=5, column=0, sticky=tk.NW, pady=10, padx=5)
-        
         patron_frame = tk.Frame(form_frame, bg='white')
-        patron_frame.grid(row=5, column=1, columnspan=1, sticky=tk.W, pady=10, padx=5)
-        
+        patron_frame.grid(row=5, column=1, sticky=tk.W, pady=10, padx=5)
+
         # Canvas para dibujar el patrón
         self.patron_canvas = tk.Canvas(patron_frame, width=150, height=150, bg='white', relief=tk.RIDGE, bd=1)
         self.patron_canvas.pack(side=tk.LEFT, padx=(0, 10))
@@ -393,6 +227,17 @@ class ReparacionView:
                                     command=self.guardar_reparacion)
         self.btn_guardar.pack(side=tk.LEFT, padx=5, ipadx=20)
         
+        tk.Button(button_frame,
+             text="🖨️ Imprimir boleta",
+             font=('Arial', 11, 'bold'),
+             bg='#3B82F6',
+             fg='white',
+             activebackground='#2563EB',
+             bd=0,
+             pady=10,
+             cursor='hand2',
+             command=self.imprimir_boleta).pack(side=tk.LEFT, padx=5, ipadx=20)
+
         tk.Button(button_frame,
                  text="🔄 Limpiar",
                  font=('Arial', 11, 'bold'),
@@ -852,19 +697,29 @@ class ReparacionView:
     
     def imprimir_boleta(self):
         """Generar e imprimir boleta de reparación"""
-        seleccion = self.tree.selection()
-        if not seleccion:
-            messagebox.showwarning("Advertencia", "Por favor selecciona una reparación")
+        rep = None
+        # Si hay reparación cargada en el formulario, usarla
+        if self.reparacion_actual:
+            rep = self.reparacion_actual
+        else:
+            # Caso general: usar selección de la tabla
+            seleccion = self.tree.selection()
+            if not seleccion:
+                messagebox.showwarning("Advertencia", "Por favor selecciona una reparación")
+                return
+            item = self.tree.item(seleccion[0])
+            numero_orden = item['values'][0]
+            reparaciones = self.reparacion_model.obtener_reparaciones()
+            for r in reparaciones:
+                if r['numero_orden'] == numero_orden:
+                    rep = r
+                    break
+        
+        if not rep:
+            messagebox.showerror("Error", "No se encontró la reparación seleccionada")
             return
         
-        item = self.tree.item(seleccion[0])
-        numero_orden = item['values'][0]
-        
-        reparaciones = self.reparacion_model.obtener_reparaciones()
-        for rep in reparaciones:
-            if rep['numero_orden'] == numero_orden:
-                self.generar_boleta_pdf(rep)
-                break
+        self.generar_boleta_pdf(rep, auto_print=True)
     
     def crear_patron_grid(self, patron_str):
         """Crear cuadrícula visual 3x3 para el patrón de desbloqueo"""
@@ -923,8 +778,8 @@ class ReparacionView:
         
         return d
     
-    def generar_boleta_pdf(self, reparacion):
-        """Generar PDF de la boleta"""
+    def generar_boleta_pdf(self, reparacion, auto_print=False):
+        """Generar PDF de la boleta; si auto_print es True, envía a impresión."""
         # Seleccionar carpeta para guardar
         folder = filedialog.askdirectory(title="Seleccionar carpeta para guardar la boleta")
         if not folder:
@@ -947,7 +802,7 @@ class ReparacionView:
                                          alignment=1, spaceAfter=6)
             small_style = ParagraphStyle('small', parent=styles['Normal'], fontSize=7, alignment=1)
             
-            # ENCABEZADO - Tabla con logo, nombre empresa y número
+            # ENCABEZADO - Tabla con logo, nombre empresa, número y fecha manual
             header_data = []
             logo_cell = ''
             if config.get('logo_path') and os.path.exists(config['logo_path']):
@@ -955,19 +810,47 @@ class ReparacionView:
                     logo_cell = RLImage(config['logo_path'], width=1.3*inch, height=1.3*inch)
                 except:
                     logo_cell = ''
-            
+
             empresa_info = f"""<b style="font-size: 16">{config.get('nombre_sistema', 'EMPRESA')}</b><br/>
 <font size="8">☎ {config.get('telefono', 'N/A')}<br/>
 {config.get('direccion', 'N/A')}<br/>
 CUIT: {config.get('cuit', 'N/A')}</font>"""
-            
+
             numero_info = f"""<b style="font-size: 18">PRESUPUESTO</b><br/>
-<font size="9">N° {reparacion['numero_orden']}<br/>
-CUIT: {config.get('cuit', 'N/A')}</font>"""
-            
-            header_data.append([logo_cell, Paragraph(empresa_info, small_style), Paragraph(numero_info, small_style)])
-            
-            header_table = Table(header_data, colWidths=[1.6*inch, 3.2*inch, 2*inch])
+<font size="9">N° {reparacion['numero_orden']}</font>"""
+
+            # Celdas para completar manualmente día/mes/año (dentro del cuadro de la derecha)
+            fecha_data = [
+                ['Día', 'Mes', 'Año'],
+                ['', '', '']
+            ]
+            fecha_table = Table(fecha_data, colWidths=[0.6*inch, 0.6*inch, 0.6*inch])
+            fecha_table.setStyle(TableStyle([
+                ('FONTSIZE', (0, 0), (-1, -1), 7),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('BOX', (0, 0), (-1, -1), 1, colors.black),
+                ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('TOPPADDING', (0, 0), (-1, -1), 2),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ]))
+
+            right_cell = Table(
+                [
+                    [Paragraph(numero_info, small_style)],
+                    [fecha_table]
+                ],
+                colWidths=[2*inch]
+            )
+            right_cell.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('TOPPADDING', (0, 0), (-1, -1), 2),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ]))
+
+            header_data.append([logo_cell, Paragraph(empresa_info, small_style), right_cell])
+
+            header_table = Table(header_data, colWidths=[1.6*inch, 3.2*inch, 2.4*inch])
             header_table.setStyle(TableStyle([
                 ('ALIGN', (0, 0), (0, 0), 'CENTER'),
                 ('ALIGN', (1, 0), (1, 0), 'CENTER'),
@@ -976,6 +859,7 @@ CUIT: {config.get('cuit', 'N/A')}</font>"""
                 ('BOX', (0, 0), (-1, -1), 1.5, colors.black),
             ]))
             story.append(header_table)
+            
             story.append(Spacer(1, 0.1*inch))
             
             # DATOS DEL CLIENTE
@@ -1152,6 +1036,13 @@ CUIT: {config.get('cuit', 'N/A')}</font>"""
             
             # Generar PDF
             doc.build(story)
+
+            # Imprimir automáticamente si se solicita (solo Windows)
+            if auto_print:
+                try:
+                    os.startfile(pdf_path, "print")
+                except Exception as e:
+                    messagebox.showwarning("Impresión", f"No se pudo enviar a la impresora automáticamente:\n{str(e)}")
             
             messagebox.showinfo("Éxito", f"Presupuesto guardado en:\n{pdf_path}")
             
