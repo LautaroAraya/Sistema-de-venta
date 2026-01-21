@@ -14,14 +14,79 @@ from reportlab.graphics.shapes import Drawing, Circle, Line
 from reportlab.graphics import renderPDF
 import io
 
+
 class ReparacionView:
+    def agregar_foto_reparacion(self):
+        """Permitir agregar fotos antes de guardar la reparación"""
+        from tkinter import filedialog
+        from PIL import Image
+        import shutil
+        import uuid
+        # Abrir diálogo para seleccionar imagen
+        archivo = filedialog.askopenfilename(
+            title="Seleccionar foto",
+            filetypes=[("Imágenes", "*.jpg *.jpeg *.png"), ("Todos", "*.*")]
+        )
+        if not archivo:
+            return
+        # Carpeta temporal
+        carpeta_temp = os.path.join(os.getcwd(), 'fotos_temporales')
+        os.makedirs(carpeta_temp, exist_ok=True)
+        # Nombre único
+        ext = os.path.splitext(archivo)[1].lower()
+        nombre_foto = f"temp_{uuid.uuid4().hex}{ext}"
+        ruta_destino = os.path.join(carpeta_temp, nombre_foto)
+        # Copiar imagen
+        shutil.copy(archivo, ruta_destino)
+        # Guardar en lista temporal
+        if not hasattr(self, 'fotos_temporales'):
+            self.fotos_temporales = []
+        self.fotos_temporales.append(ruta_destino)
+        self.actualizar_contador_fotos_temporales()
+        messagebox.showinfo("Foto agregada", "La foto se agregó temporalmente. Se guardará al registrar la reparación.")
+
+    def actualizar_contador_fotos_temporales(self):
+        if hasattr(self, 'fotos_label'):
+            cantidad = len(getattr(self, 'fotos_temporales', []))
+            self.fotos_label.config(text=f"Fotos: {cantidad}")
+
+    def limpiar_fotos_temporales(self):
+        import os
+        if hasattr(self, 'fotos_temporales'):
+            for foto in self.fotos_temporales:
+                try:
+                    os.remove(foto)
+                except Exception:
+                    pass
+            self.fotos_temporales = []
+            self.actualizar_contador_fotos_temporales()
+
+    def estado_ui_to_db(self, estado_ui):
+        """Convierte el estado mostrado en la UI al valor de la base de datos"""
+        mapa = {
+            'Pendiente': 'pendiente',
+            'En Proceso': 'en_proceso',
+            'Completada': 'completada',
+            'Cancelada': 'cancelada',
+        }
+        return mapa.get(estado_ui, 'pendiente')
+
+    def estado_db_to_ui(self, estado_db):
+        """Convierte el estado de la base de datos al mostrado en la UI"""
+        mapa = {
+            'pendiente': 'Pendiente',
+            'en_proceso': 'En Proceso',
+            'completada': 'Completada',
+            'cancelada': 'Cancelada',
+        }
+        return mapa.get(estado_db, 'Pendiente')
+
     def __init__(self, parent, db_manager, user_data):
         self.parent = parent
         self.db_manager = db_manager
         self.user_data = user_data
         self.reparacion_model = Reparacion(db_manager)
         self.config_model = Configuracion(db_manager)
-        
         # Variables para el formulario
         self.cliente_nombre_var = tk.StringVar()
         self.cliente_telefono_var = tk.StringVar()
@@ -35,34 +100,28 @@ class ReparacionView:
         self.estado_var = tk.StringVar(value='Pendiente')
         self.observaciones_var = tk.StringVar()
         self.buscar_cliente_var = tk.StringVar()
-        
         # Variables de estado inicial
         self.sin_bateria_var = tk.BooleanVar()
         self.rajado_var = tk.BooleanVar()
         self.mojado_var = tk.BooleanVar()
-        
         # Variables de seguridad
         self.contrasena_var = tk.StringVar()
         self.patron_var = tk.StringVar()  # Almacenará el patrón como string
-        
         # Variables para el canvas del patrón
         self.patron_puntos = []  # Lista de números del patrón
         self.patron_arrastrando = False
         self.patron_canvas = None
         self.patron_circulos = {}  # Diccionario de círculos dibujados
         self.patron_lineas = []  # Lista de líneas dibujadas
-        
         # Variables de fotos
         self.fotos_actuales = []  # Lista de rutas de fotos
         self.fotos_frame = None  # Frame para mostrar miniaturas de fotos
-        
         # Variables de control
         self.reparacion_actual = None
         self.modo_edicion = False
-        
         self.create_widgets()
         self.cargar_reparaciones()
-    
+
     def create_widgets(self):
         """Crear widgets de la interfaz"""
         # Limpiar frame
@@ -86,17 +145,9 @@ class ReparacionView:
         parent = tk.Frame(self.parent, bg='#F0F4F8')
         parent.pack(fill=tk.BOTH, expand=True, padx=15, pady=5)
 
-        # Panel superior: formulario y lista
-        top = tk.Frame(parent, bg='#F0F4F8')
-        top.pack(fill=tk.BOTH, expand=True)
-
-        # Formulario (izquierda)
-        form_frame = tk.Frame(top, bg='white', bd=1, relief=tk.RIDGE, padx=15, pady=15)
-        form_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
-
-        # Lista (derecha)
-        list_frame = tk.Frame(top, bg='white', bd=1, relief=tk.RIDGE, padx=10, pady=10)
-        list_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        # Solo la lista de comprobantes y el botón para abrir el formulario
+        list_frame = tk.Frame(parent, bg='white', bd=1, relief=tk.RIDGE, padx=10, pady=10)
+        list_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=5)
 
         columns = ('numero', 'cliente', 'dispositivo', 'estado', 'sena', 'total', 'fecha', 'accion')
         self.tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=20)
@@ -116,6 +167,31 @@ class ReparacionView:
         self.tree.configure(yscrollcommand=yscroll.set)
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         yscroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+
+        # Botón para abrir el formulario completo
+        btn_formulario = tk.Button(self.parent,
+            text="📝 Formulario Completo",
+            font=('Arial', 11, 'bold'),
+            bg='#6366F1',
+            fg='white',
+            activebackground='#4338CA',
+            bd=0,
+            pady=10,
+            cursor='hand2',
+            command=self.abrir_formulario_completo)
+        btn_formulario.pack(pady=10)
+
+    def abrir_formulario_completo(self):
+        # Ventana modal para el formulario completo
+        top = tk.Toplevel(self.parent)
+        top.title("Formulario Completo de Reparación")
+        top.grab_set()
+        top.geometry("900x700")
+        top.configure(bg='#F0F4F8')
+
+        form_frame = tk.Frame(top, bg='white', bd=1, relief=tk.RIDGE, padx=20, pady=20)
+        form_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
 
         # Cliente y contacto
         tk.Label(form_frame, text="Cliente:", font=("Arial", 10, "bold"), bg='white').grid(row=0, column=0, sticky=tk.W, pady=5, padx=5)
@@ -151,70 +227,69 @@ class ReparacionView:
         # Canvas para dibujar el patrón
         self.patron_canvas = tk.Canvas(patron_frame, width=150, height=150, bg='white', relief=tk.RIDGE, bd=1)
         self.patron_canvas.pack(side=tk.LEFT, padx=(0, 10))
-        
         # Inicializar el canvas del patrón
         self.inicializar_patron_canvas()
-        
+
         # Frame para botón y label del patrón
         patron_controls = tk.Frame(patron_frame, bg='white')
         patron_controls.pack(side=tk.LEFT, fill=tk.Y)
-        
+
         # Botón para limpiar el patrón
         tk.Button(patron_controls, text="🔄 Limpiar", font=("Arial", 8), 
                  bg='#F59E0B', fg='white', command=self.limpiar_patron, 
                  width=10).pack(pady=5)
-        
+
         # Label para mostrar el patrón actual
         self.patron_label = tk.Label(patron_controls, text="", font=("Arial", 8), bg='white', fg='gray', wraplength=100)
         self.patron_label.pack(pady=5)
-        
+
         # Fila 5 col 2-3: Seña y Total
         tk.Label(form_frame, text="Seña ($):", font=("Arial", 10, "bold"), bg='white').grid(row=5, column=2, sticky=tk.W, pady=10, padx=5)
         ttk.Entry(form_frame, textvariable=self.sena_var, font=("Arial", 10), width=20).grid(row=5, column=3, sticky=tk.EW, pady=10, padx=5)
-        
+
         tk.Label(form_frame, text="Total ($):", font=("Arial", 10, "bold"), bg='white').grid(row=6, column=2, sticky=tk.W, pady=10, padx=5)
         ttk.Entry(form_frame, textvariable=self.total_var, font=("Arial", 10), width=20).grid(row=6, column=3, sticky=tk.EW, pady=10, padx=5)
-        
+
         # Fila 6: Estado
         tk.Label(form_frame, text="Estado:", font=("Arial", 10, "bold"), bg='white').grid(row=6, column=0, sticky=tk.W, pady=10, padx=5)
         estado_combo = ttk.Combobox(form_frame, textvariable=self.estado_var, 
                                    values=['Pendiente', 'En Proceso', 'Completada', 'Cancelada'],
                                    font=("Arial", 10), width=18)
         estado_combo.grid(row=6, column=1, sticky=tk.EW, pady=10, padx=5)
-        
+
         # Fila 7: Observaciones
         tk.Label(form_frame, text="Observaciones:", font=("Arial", 10, "bold"), bg='white').grid(row=7, column=0, sticky=tk.NW, pady=10, padx=5)
         obs_text = tk.Text(form_frame, font=("Arial", 10), height=3, width=50)
         obs_text.grid(row=7, column=1, columnspan=3, sticky=tk.NSEW, pady=10, padx=5)
         self.observaciones_text = obs_text
-        
+
         # Fila 8: Fotos
         tk.Label(form_frame, text="Fotos:", font=("Arial", 10, "bold"), bg='white').grid(row=8, column=0, sticky=tk.NW, pady=10, padx=5)
-        
+
         fotos_controls = tk.Frame(form_frame, bg='white')
         fotos_controls.grid(row=8, column=1, columnspan=3, sticky=tk.EW, pady=10, padx=5)
-        
+
         tk.Button(fotos_controls, text="📷 Agregar Foto", font=("Arial", 10), 
                  command=self.agregar_foto_reparacion).pack(side=tk.LEFT, padx=5)
-        
+
         tk.Button(fotos_controls, text="🖼️ Ver Galería", font=("Arial", 10), 
                  command=self.ver_galeria_fotos).pack(side=tk.LEFT, padx=5)
-        
+
         tk.Button(fotos_controls, text="🗑️ Eliminar Todas", font=("Arial", 10), 
                  command=self.eliminar_todas_fotos).pack(side=tk.LEFT, padx=5)
-        
+
         # Mostrar cantidad de fotos
         self.fotos_label = tk.Label(fotos_controls, text="Fotos: 0", font=("Arial", 9), fg='gray', bg='white')
         self.fotos_label.pack(side=tk.LEFT, padx=10)
-        
+
         # Configurar expansión de columnas
         form_frame.grid_columnconfigure(1, weight=1)
         form_frame.grid_columnconfigure(3, weight=1)
-        
+
         # Botones de acción
-        button_frame = tk.Frame(parent, bg='#F0F4F8')
+        button_frame = tk.Frame(top, bg='#F0F4F8')
         button_frame.pack(fill=tk.X, pady=20, padx=20)
-        
+
         self.btn_guardar = tk.Button(button_frame,
                                     text="💾 Guardar Reparación",
                                     font=('Arial', 11, 'bold'),
@@ -226,7 +301,7 @@ class ReparacionView:
                                     cursor='hand2',
                                     command=self.guardar_reparacion)
         self.btn_guardar.pack(side=tk.LEFT, padx=5, ipadx=20)
-        
+
         tk.Button(button_frame,
              text="🖨️ Imprimir boleta",
              font=('Arial', 11, 'bold'),
@@ -239,16 +314,16 @@ class ReparacionView:
              command=self.imprimir_boleta).pack(side=tk.LEFT, padx=5, ipadx=20)
 
         tk.Button(button_frame,
-                 text="🔄 Limpiar",
-                 font=('Arial', 11, 'bold'),
-                 bg='#F59E0B',
-                 fg='white',
-                 activebackground='#D97706',
-                 bd=0,
-                 pady=10,
-                 cursor='hand2',
-                 command=self.limpiar_formulario).pack(side=tk.LEFT, padx=5, ipadx=20)
-    
+            text="🔄 Limpiar",
+            font=('Arial', 11, 'bold'),
+            bg='#F59E0B',
+            fg='white',
+            activebackground='#D97706',
+            bd=0,
+            pady=10,
+            cursor='hand2',
+            command=self.limpiar_formulario).pack(side=tk.LEFT, padx=5, ipadx=20)
+
     def inicializar_patron_canvas(self):
         """Inicializar el canvas del patrón con círculos interactivos"""
         if not self.patron_canvas:
@@ -633,10 +708,37 @@ class ReparacionView:
                 contrasena=self.contrasena_var.get().strip(),
                 patron=self.patron_var.get().strip()
             )
-            
             if success:
+                # Mover fotos temporales a la carpeta definitiva
+                import shutil
+                reparaciones = self.reparacion_model.obtener_reparaciones()
+                nueva_rep = None
+                for rep in reparaciones:
+                    if str(rep.get('numero_orden')) == str(numero_orden):
+                        nueva_rep = rep
+                        break
+                if nueva_rep and hasattr(self, 'fotos_temporales') and self.fotos_temporales:
+                    carpeta_destino = os.path.join(os.getcwd(), 'fotos_reparaciones', f"ticket_{numero_orden}")
+                    os.makedirs(carpeta_destino, exist_ok=True)
+                    for i, foto_temp in enumerate(self.fotos_temporales, 1):
+                        ext = os.path.splitext(foto_temp)[1].lower()
+                        nombre_final = f"foto_{i:02d}{ext}"
+                        shutil.move(foto_temp, os.path.join(carpeta_destino, nombre_final))
+                    self.fotos_temporales = []
+                    self.actualizar_contador_fotos_temporales()
                 messagebox.showinfo("Éxito", f"Reparación registrada con número: {numero_orden}")
-                self.limpiar_formulario()
+                if nueva_rep:
+                    self.reparacion_actual = nueva_rep
+                    self.cargar_datos_en_formulario(nueva_rep)
+                    # Si se está en un modal, cerrarlo
+                    if hasattr(self, 'parent') and isinstance(self.parent, tk.Tk):
+                        pass
+                    else:
+                        for w in self.parent.winfo_children():
+                            if isinstance(w, tk.Toplevel):
+                                w.destroy()
+                else:
+                    self.limpiar_formulario()
                 self.cargar_reparaciones()
             else:
                 messagebox.showerror("Error", numero_orden)
@@ -668,8 +770,10 @@ class ReparacionView:
         # Limpiar fotos
         self.fotos_actuales = []
         self.actualizar_contador_fotos()
-        
-        self.reparacion_actual = None
+        self.limpiar_fotos_temporales()
+        # Solo limpiar self.reparacion_actual si se está editando o eliminando, no tras crear
+        if self.modo_edicion:
+            self.reparacion_actual = None
         self.modo_edicion = False
         self.btn_guardar.config(text="💾 Guardar Reparación")
     
@@ -1049,103 +1153,62 @@ CUIT: {config.get('cuit', 'N/A')}</font>"""
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo generar el presupuesto:\n{str(e)}")
     
-    def agregar_foto_reparacion(self):
-        """Agregar foto a la reparación actual"""
-        if not self.reparacion_actual:
-            messagebox.showwarning("Advertencia", "Primero debes crear o seleccionar una reparación")
-            return
-        
-        from tkinter import filedialog
-        from PIL import Image
-        
-        # Abrir diálogo para seleccionar imagen
-        archivo = filedialog.askopenfilename(
-            title="Seleccionar foto",
-            filetypes=[("Imágenes", "*.jpg *.jpeg *.png"), ("Todos", "*.*")]
-        )
-        
-        if not archivo:
-            return
-        
-        try:
-            # Convertir a JPG si es necesario
-            if not archivo.lower().endswith('.jpg'):
-                img = Image.open(archivo)
-                if img.mode != 'RGB':
-                    img = img.convert('RGB')
-            
-            # Agregar foto al modelo
-            reparacion_id = self.reparacion_actual['id']
-            exito, resultado = self.reparacion_model.agregar_foto(reparacion_id, archivo)
-            
-            if exito:
-                self.fotos_actuales.append(resultado)
-                self.actualizar_contador_fotos()
-                messagebox.showinfo("Éxito", "Foto agregada correctamente")
-            else:
-                messagebox.showerror("Error", f"No se pudo agregar la foto:\n{resultado}")
-        except Exception as e:
-            messagebox.showerror("Error", f"Error al procesar la imagen:\n{str(e)}")
     
     def ver_galeria_fotos(self):
-        """Mostrar galería de fotos en una ventana"""
-        if not self.fotos_actuales:
+        """Mostrar galería de fotos en una ventana (temporales si es nueva, actuales si es edición)"""
+        if self.modo_edicion:
+            fotos = self.fotos_actuales
+        else:
+            fotos = getattr(self, 'fotos_temporales', [])
+        if not fotos:
             messagebox.showinfo("Información", "No hay fotos para mostrar")
             return
-        
         from PIL import Image, ImageTk
-        
-        # Crear ventana de galería
         galeria_window = tk.Toplevel(self.parent)
         galeria_window.title("Galería de Fotos")
         galeria_window.geometry("600x500")
-        
-        # Frame para las fotos
         fotos_frame = ttk.Frame(galeria_window)
         fotos_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
-        # Canvas con scrollbar
         canvas = tk.Canvas(fotos_frame, bg='white')
         scrollbar = ttk.Scrollbar(fotos_frame, orient=tk.VERTICAL, command=canvas.yview)
-        
         canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
         canvas.config(yscrollcommand=scrollbar.set)
-        
-        # Frame dentro del canvas
         interior = ttk.Frame(canvas)
         canvas.create_window((0, 0), window=interior, anchor=tk.NW)
-        
-        for i, foto_path in enumerate(self.fotos_actuales, 1):
+        for i, foto_path in enumerate(fotos, 1):
             try:
-                # Cargar y redimensionar imagen
                 img = Image.open(foto_path)
                 img.thumbnail((500, 400), Image.Resampling.LANCZOS)
                 photo = ImageTk.PhotoImage(img)
-                
-                # Frame para cada foto
                 frame_foto = tk.Frame(interior, bg='white', relief=tk.SUNKEN, bd=1)
                 frame_foto.pack(fill=tk.BOTH, padx=5, pady=5)
-                
-                # Mostrar imagen
                 lbl_img = tk.Label(frame_foto, image=photo, bg='white')
                 lbl_img.image = photo
                 lbl_img.pack()
-                
-                # Botón para eliminar
-                btn_eliminar = tk.Button(frame_foto, text="❌ Eliminar", 
-                                       command=lambda idx=i: self.eliminar_foto_id(idx))
-                btn_eliminar.pack(pady=5)
-                
+                # Botón para eliminar solo si es temporal
+                if not self.modo_edicion:
+                    btn_eliminar = tk.Button(frame_foto, text="❌ Eliminar", command=lambda idx=i-1: self.eliminar_foto_temporal(idx, galeria_window))
+                    btn_eliminar.pack(pady=5)
             except Exception as e:
-                tk.Label(interior, text=f"Error al cargar foto {i}: {str(e)}", 
-                        bg='white', fg='red').pack()
-        
+                tk.Label(interior, text=f"Error al cargar foto {i}: {str(e)}", bg='white', fg='red').pack()
         def on_frame_configure(event=None):
             canvas.configure(scrollregion=canvas.bbox('all'))
-        
         interior.bind('<Configure>', on_frame_configure)
+
+    def eliminar_foto_temporal(self, idx, galeria_window=None):
+        """Eliminar una foto temporal antes de guardar la reparación"""
+        if hasattr(self, 'fotos_temporales') and 0 <= idx < len(self.fotos_temporales):
+            import os
+            try:
+                os.remove(self.fotos_temporales[idx])
+            except Exception:
+                pass
+            del self.fotos_temporales[idx]
+            self.actualizar_contador_fotos_temporales()
+            if galeria_window:
+                galeria_window.destroy()
+                self.ver_galeria_fotos()
     
     def eliminar_foto_id(self, numero_foto):
         """Eliminar una foto específica"""
@@ -1184,9 +1247,12 @@ CUIT: {config.get('cuit', 'N/A')}</font>"""
                 messagebox.showerror("Error", f"Error al eliminar fotos:\n{resultado}")
     
     def actualizar_contador_fotos(self):
-        """Actualizar el contador de fotos"""
+        """Actualizar el contador de fotos (edición)"""
         if hasattr(self, 'fotos_label'):
-            cantidad = len(self.fotos_actuales)
+            if self.modo_edicion:
+                cantidad = len(self.fotos_actuales)
+            else:
+                cantidad = len(getattr(self, 'fotos_temporales', []))
             self.fotos_label.config(text=f"Fotos: {cantidad}")
     
     def cargar_fotos_reparacion(self, reparacion_id):
