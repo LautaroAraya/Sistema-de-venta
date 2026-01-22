@@ -13,6 +13,15 @@ class VentasView:
         self.user_data = user_data
         self.producto_model = Producto(db_manager)
         self.venta_model = Venta(db_manager)
+        self.items_venta = []  # Lista de items en la venta actual
+        self.productos_cache = {}  # Diccionario para guardar datos de productos buscados
+        self.create_widgets()
+    def __init__(self, parent, db_manager, user_data):
+        self.parent = parent
+        self.db_manager = db_manager
+        self.user_data = user_data
+        self.producto_model = Producto(db_manager)
+        self.venta_model = Venta(db_manager)
         
         self.items_venta = []  # Lista de items en la venta actual
         self.productos_cache = {}  # Diccionario para guardar datos de productos buscados
@@ -87,12 +96,36 @@ class VentasView:
         self.cliente_nombre_entry.grid(row=1, column=1, pady=5, padx=5)
         
         tk.Label(client_frame,
-                text="Documento:",
-                font=("Arial", 10, "bold"),
-                bg='white',
-                fg='black').grid(row=1, column=2, sticky=tk.W, pady=5, padx=(10, 0))
+            text="Documento:",
+            font=("Arial", 10, "bold"),
+            bg='white',
+            fg='black').grid(row=1, column=2, sticky=tk.W, pady=5, padx=(10, 0))
         self.cliente_documento_entry = tk.Entry(client_frame, width=20, font=("Arial", 10))
         self.cliente_documento_entry.grid(row=1, column=3, pady=5, padx=5)
+
+        # Método de pago
+        tk.Label(client_frame, text="Método de Pago:", font=("Arial", 10, "bold"), bg='white', fg='black').grid(row=2, column=0, sticky=tk.W, pady=5, padx=5)
+        self.metodo_pago_var = tk.StringVar(value="Efectivo")
+        self.metodo_pago_combo = ttk.Combobox(client_frame, textvariable=self.metodo_pago_var, state="readonly", font=("Arial", 10), width=18)
+        self.metodo_pago_combo['values'] = ("Efectivo", "Transferencia", "Tarjeta")
+        self.metodo_pago_combo.grid(row=2, column=1, pady=5, padx=5, sticky=tk.W)
+
+        # Campo de recargo (solo visible si es Tarjeta)
+        self.recargo_label = tk.Label(client_frame, text="Recargo %:", font=("Arial", 10, "bold"), bg='white', fg='black')
+        self.recargo_entry = tk.Entry(client_frame, width=10, font=("Arial", 10))
+        self.recargo_entry.insert(0, "0")
+        self.recargo_label.grid_forget()
+        self.recargo_entry.grid_forget()
+
+        def on_metodo_pago_change(event=None):
+            if self.metodo_pago_var.get() == "Tarjeta":
+                self.recargo_label.grid(row=2, column=2, sticky=tk.W, pady=5, padx=(10, 0))
+                self.recargo_entry.grid(row=2, column=3, pady=5, padx=5)
+            else:
+                self.recargo_label.grid_forget()
+                self.recargo_entry.grid_forget()
+
+        self.metodo_pago_combo.bind("<<ComboboxSelected>>", on_metodo_pago_change)
         
         # Buscar producto
         search_frame = tk.Frame(left_frame, bg='white', relief=tk.RIDGE, bd=1)
@@ -248,37 +281,42 @@ class VentasView:
         totals_frame.pack(fill=tk.X, pady=10, padx=10)
         
         tk.Label(totals_frame, text="Subtotal:", 
-                font=("Arial", 11, "bold"),
-                bg='#F9FAFB',
-                fg='#374151').grid(row=0, column=0, sticky=tk.E, padx=10, pady=5)
+            font=("Arial", 11, "bold"),
+            bg='#F9FAFB',
+            fg='#374151').grid(row=0, column=0, sticky=tk.E, padx=10, pady=5)
         self.subtotal_label = tk.Label(totals_frame, text="$0.00", 
-                                      font=("Arial", 11),
-                                      bg='#F9FAFB',
-                                      fg='#1F2937')
+                          font=("Arial", 11),
+                          bg='#F9FAFB',
+                          fg='#1F2937')
         self.subtotal_label.grid(row=0, column=1, sticky=tk.W, padx=10, pady=5)
-        
+
         tk.Label(totals_frame, text="Descuento:", 
-                font=("Arial", 11, "bold"),
-                bg='#F9FAFB',
-                fg='#374151').grid(row=1, column=0, sticky=tk.E, padx=10, pady=5)
+            font=("Arial", 11, "bold"),
+            bg='#F9FAFB',
+            fg='#374151').grid(row=1, column=0, sticky=tk.E, padx=10, pady=5)
         self.descuento_total_label = tk.Label(totals_frame, text="$0.00", 
-                                             font=("Arial", 11),
-                                             bg='#F9FAFB',
-                                             fg='#DC2626')
+                     font=("Arial", 11),
+                     bg='#F9FAFB',
+                     fg='#DC2626')
         self.descuento_total_label.grid(row=1, column=1, sticky=tk.W, padx=10, pady=5)
-        
-        # Separador
-        tk.Frame(totals_frame, height=2, bg='#E5E7EB').grid(row=2, column=0, columnspan=2, sticky='ew', padx=10, pady=5)
-        
+
+        # Recargo
+        tk.Label(totals_frame, text="Recargo:", font=("Arial", 11, "bold"), bg='#F9FAFB', fg='#374151').grid(row=2, column=0, sticky=tk.E, padx=10, pady=5)
+        self.recargo_total_label = tk.Label(totals_frame, text="$0.00", font=("Arial", 11), bg='#F9FAFB', fg='#F59E0B')
+        self.recargo_total_label.grid(row=2, column=1, sticky=tk.W, padx=10, pady=5)
+
+        # Separador (ahora debajo del recargo)
+        tk.Frame(totals_frame, height=2, bg='#E5E7EB').grid(row=3, column=0, columnspan=2, sticky='ew', padx=10, pady=5)
+
         tk.Label(totals_frame, text="TOTAL:", 
-                font=("Arial", 16, "bold"),
-                bg='#F9FAFB',
-                fg='#1F2937').grid(row=3, column=0, sticky=tk.E, padx=10, pady=8)
+            font=("Arial", 16, "bold"),
+            bg='#F9FAFB',
+            fg='#1F2937').grid(row=4, column=0, sticky=tk.E, padx=10, pady=8)
         self.total_label = tk.Label(totals_frame, text="$0.00", 
-                                   font=("Arial", 16, "bold"),
-                                   bg='#F9FAFB',
-                                   fg='#10B981')
-        self.total_label.grid(row=3, column=1, sticky=tk.W, padx=10, pady=8)
+                       font=("Arial", 16, "bold"),
+                       bg='#F9FAFB',
+                       fg='#10B981')
+        self.total_label.grid(row=4, column=1, sticky=tk.W, padx=10, pady=8)
         
         # Botones de acción con colores
         buttons_frame = tk.Frame(right_frame, bg='white')
@@ -427,10 +465,24 @@ class VentasView:
         descuento_total = sum(item['cantidad'] * item['precio_unitario'] * (item['descuento_porcentaje'] / 100) 
                              for item in self.items_venta)
         total = subtotal - descuento_total
-        
+
+        # Calcular recargo solo si corresponde
+        recargo = 0.0
+        metodo = self.metodo_pago_var.get() if hasattr(self, 'metodo_pago_var') else "Efectivo"
+        if metodo == "Tarjeta":
+            try:
+                recargo_pct = float(self.recargo_entry.get())
+                if recargo_pct > 0:
+                    recargo = (total * recargo_pct) / 100
+            except Exception:
+                recargo = 0.0
+        else:
+            recargo = 0.0
+
         self.subtotal_label.config(text=f"${subtotal:.2f}")
         self.descuento_total_label.config(text=f"${descuento_total:.2f}")
-        self.total_label.config(text=f"${total:.2f}")
+        self.recargo_total_label.config(text=f"${recargo:.2f}")
+        self.total_label.config(text=f"${(total + recargo):.2f}")
     
     def limpiar_seleccion(self):
         """Limpiar la selección de producto"""

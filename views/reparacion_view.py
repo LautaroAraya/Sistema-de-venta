@@ -149,9 +149,9 @@ class ReparacionView:
         list_frame = tk.Frame(parent, bg='white', bd=1, relief=tk.RIDGE, padx=10, pady=10)
         list_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=5)
 
-        columns = ('numero', 'cliente', 'dispositivo', 'estado', 'sena', 'total', 'fecha', 'accion')
+        columns = ('numero', 'cliente', 'dispositivo', 'estado', 'sena', 'total', 'fecha')
         self.tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=20)
-        headings = ['N° Orden', 'Cliente', 'Dispositivo', 'Estado', 'Seña', 'Total', 'Fecha', 'Acción']
+        headings = ['N° Orden', 'Cliente', 'Dispositivo', 'Estado', 'Seña', 'Total', 'Fecha']
         for col, head in zip(columns, headings):
             self.tree.heading(col, text=head)
         self.tree.column('numero', width=90)
@@ -161,16 +161,24 @@ class ReparacionView:
         self.tree.column('sena', width=80)
         self.tree.column('total', width=80)
         self.tree.column('fecha', width=90)
-        self.tree.column('accion', width=70)
 
         yscroll = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.tree.yview)
         self.tree.configure(yscrollcommand=yscroll.set)
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         yscroll.pack(side=tk.RIGHT, fill=tk.Y)
 
+        # Botonera de acciones debajo de la tabla
+        actions_frame = tk.Frame(self.parent, bg='#F0F4F8')
+        actions_frame.pack(pady=(0, 10))
+        btn_ver = tk.Button(actions_frame, text="👁️ Ver", font=('Arial', 11, 'bold'), bg='#3B82F6', fg='white', activebackground='#2563EB', bd=0, pady=10, cursor='hand2', command=self.ver_detalles)
+        btn_ver.pack(side=tk.LEFT, padx=5, ipadx=10)
+        btn_editar = tk.Button(actions_frame, text="✏️ Editar", font=('Arial', 11, 'bold'), bg='#F59E0B', fg='white', activebackground='#D97706', bd=0, pady=10, cursor='hand2', command=self.editar_reparacion)
+        btn_editar.pack(side=tk.LEFT, padx=5, ipadx=10)
+        btn_eliminar = tk.Button(actions_frame, text="🗑️ Eliminar", font=('Arial', 11, 'bold'), bg='#EF4444', fg='white', activebackground='#B91C1C', bd=0, pady=10, cursor='hand2', command=self.eliminar_reparacion)
+        btn_eliminar.pack(side=tk.LEFT, padx=5, ipadx=10)
 
         # Botón para abrir el formulario completo
-        btn_formulario = tk.Button(self.parent,
+        btn_formulario = tk.Button(actions_frame,
             text="📝 Formulario Completo",
             font=('Arial', 11, 'bold'),
             bg='#6366F1',
@@ -180,7 +188,10 @@ class ReparacionView:
             pady=10,
             cursor='hand2',
             command=self.abrir_formulario_completo)
-        btn_formulario.pack(pady=10)
+        btn_formulario.pack(side=tk.LEFT, padx=5, ipadx=10)
+
+
+        # (El botón para abrir el formulario completo ya está en la botonera de acciones)
 
     def abrir_formulario_completo(self):
         # Ventana modal para el formulario completo
@@ -190,8 +201,19 @@ class ReparacionView:
         top.geometry("900x700")
         top.configure(bg='#F0F4F8')
 
-        form_frame = tk.Frame(top, bg='white', bd=1, relief=tk.RIDGE, padx=20, pady=20)
-        form_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        # Canvas con scrollbar para el formulario
+        canvas = tk.Canvas(top, bg='#F0F4F8')
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        vsb = ttk.Scrollbar(top, orient="vertical", command=canvas.yview)
+        vsb.pack(side=tk.RIGHT, fill=tk.Y)
+        canvas.configure(yscrollcommand=vsb.set)
+
+        form_frame = tk.Frame(canvas, bg='white', bd=1, relief=tk.RIDGE, padx=20, pady=20)
+        canvas.create_window((0, 0), window=form_frame, anchor="nw")
+
+        def _on_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        form_frame.bind("<Configure>", _on_configure)
 
         # Cliente y contacto
         tk.Label(form_frame, text="Cliente:", font=("Arial", 10, "bold"), bg='white').grid(row=0, column=0, sticky=tk.W, pady=5, padx=5)
@@ -210,7 +232,7 @@ class ReparacionView:
         tk.Label(form_frame, text="Modelo:", font=("Arial", 10, "bold"), bg='white').grid(row=2, column=2, sticky=tk.W, pady=5, padx=5)
         ttk.Entry(form_frame, textvariable=self.modelo_var, font=("Arial", 10), width=20).grid(row=2, column=3, sticky=tk.EW, pady=5, padx=5)
 
-        tk.Label(form_frame, text="N° Serie:", font=("Arial", 10, "bold"), bg='white').grid(row=3, column=0, sticky=tk.W, pady=5, padx=5)
+        tk.Label(form_frame, text="DNI:", font=("Arial", 10, "bold"), bg='white').grid(row=3, column=0, sticky=tk.W, pady=5, padx=5)
         ttk.Entry(form_frame, textvariable=self.numero_serie_var, font=("Arial", 10), width=30).grid(row=3, column=1, sticky=tk.EW, pady=5, padx=5)
 
         # Problema
@@ -219,99 +241,102 @@ class ReparacionView:
         problema_text.grid(row=4, column=1, columnspan=3, sticky=tk.NSEW, pady=5, padx=5)
         self.problema_text = problema_text
 
-        # Patrón (fila 5 col 0-1)
-        tk.Label(form_frame, text="Patrón:", font=("Arial", 10, "bold"), bg='white').grid(row=5, column=0, sticky=tk.NW, pady=10, padx=5)
-        patron_frame = tk.Frame(form_frame, bg='white')
-        patron_frame.grid(row=5, column=1, sticky=tk.W, pady=10, padx=5)
+        # Estado Inicial (checkboxes)
+        tk.Label(form_frame, text="Estado Inicial:", font=("Arial", 10, "bold"), bg='white').grid(row=5, column=0, sticky=tk.W, pady=5, padx=5)
+        estado_inicial_frame = tk.Frame(form_frame, bg='white')
+        estado_inicial_frame.grid(row=5, column=1, columnspan=3, sticky=tk.W, pady=5, padx=5)
+        self.chk_sin_bateria = tk.Checkbutton(estado_inicial_frame, text="Sin Batería", variable=self.sin_bateria_var, bg='white', font=("Arial", 10))
+        self.chk_sin_bateria.pack(side=tk.LEFT, padx=5)
+        self.chk_rajado = tk.Checkbutton(estado_inicial_frame, text="Rajado", variable=self.rajado_var, bg='white', font=("Arial", 10))
+        self.chk_rajado.pack(side=tk.LEFT, padx=5)
+        self.chk_mojado = tk.Checkbutton(estado_inicial_frame, text="Mojado", variable=self.mojado_var, bg='white', font=("Arial", 10))
+        self.chk_mojado.pack(side=tk.LEFT, padx=5)
 
-        # Canvas para dibujar el patrón
+
+           # Patrón y contraseña (fila 6 col 0-1)
+        tk.Label(form_frame, text="Patrón:", font=("Arial", 10, "bold"), bg='white').grid(row=6, column=0, sticky=tk.NW, pady=10, padx=5)
+        patron_frame = tk.Frame(form_frame, bg='white')
+        patron_frame.grid(row=6, column=1, sticky=tk.W, pady=10, padx=5)
+           # Canvas para dibujar el patrón
         self.patron_canvas = tk.Canvas(patron_frame, width=150, height=150, bg='white', relief=tk.RIDGE, bd=1)
         self.patron_canvas.pack(side=tk.LEFT, padx=(0, 10))
         # Inicializar el canvas del patrón
         self.inicializar_patron_canvas()
-
-        # Frame para botón y label del patrón
+           # Frame para botón y label del patrón
         patron_controls = tk.Frame(patron_frame, bg='white')
         patron_controls.pack(side=tk.LEFT, fill=tk.Y)
-
-        # Botón para limpiar el patrón
+           # Botón para limpiar el patrón
         tk.Button(patron_controls, text="🔄 Limpiar", font=("Arial", 8), 
-                 bg='#F59E0B', fg='white', command=self.limpiar_patron, 
-                 width=10).pack(pady=5)
-
-        # Label para mostrar el patrón actual
+                  bg='#F59E0B', fg='white', command=self.limpiar_patron, 
+                  width=10).pack(pady=5)
+           # Label para mostrar el patrón actual
         self.patron_label = tk.Label(patron_controls, text="", font=("Arial", 8), bg='white', fg='gray', wraplength=100)
         self.patron_label.pack(pady=5)
 
-        # Fila 5 col 2-3: Seña y Total
-        tk.Label(form_frame, text="Seña ($):", font=("Arial", 10, "bold"), bg='white').grid(row=5, column=2, sticky=tk.W, pady=10, padx=5)
-        ttk.Entry(form_frame, textvariable=self.sena_var, font=("Arial", 10), width=20).grid(row=5, column=3, sticky=tk.EW, pady=10, padx=5)
+           # Campo contraseña debajo del patrón
+        tk.Label(form_frame, text="Contraseña:", font=("Arial", 10, "bold"), bg='white').grid(row=7, column=0, sticky=tk.W, pady=5, padx=5)
+        ttk.Entry(form_frame, textvariable=self.contrasena_var, font=("Arial", 10), width=30, show='*').grid(row=7, column=1, sticky=tk.EW, pady=5, padx=5)
 
-        tk.Label(form_frame, text="Total ($):", font=("Arial", 10, "bold"), bg='white').grid(row=6, column=2, sticky=tk.W, pady=10, padx=5)
-        ttk.Entry(form_frame, textvariable=self.total_var, font=("Arial", 10), width=20).grid(row=6, column=3, sticky=tk.EW, pady=10, padx=5)
+           # Fila 7 col 2-3: Seña y Total
+        tk.Label(form_frame, text="Seña ($):", font=("Arial", 10, "bold"), bg='white').grid(row=8, column=2, sticky=tk.W, pady=10, padx=5)
+        ttk.Entry(form_frame, textvariable=self.sena_var, font=("Arial", 10), width=20).grid(row=8, column=3, sticky=tk.EW, pady=10, padx=5)
 
-        # Fila 6: Estado
-        tk.Label(form_frame, text="Estado:", font=("Arial", 10, "bold"), bg='white').grid(row=6, column=0, sticky=tk.W, pady=10, padx=5)
+        tk.Label(form_frame, text="Total ($):", font=("Arial", 10, "bold"), bg='white').grid(row=9, column=2, sticky=tk.W, pady=10, padx=5)
+        ttk.Entry(form_frame, textvariable=self.total_var, font=("Arial", 10), width=20).grid(row=9, column=3, sticky=tk.EW, pady=10, padx=5)
+
+           # Fila 9: Estado
+        tk.Label(form_frame, text="Estado:", font=("Arial", 10, "bold"), bg='white').grid(row=9, column=0, sticky=tk.W, pady=10, padx=5)
         estado_combo = ttk.Combobox(form_frame, textvariable=self.estado_var, 
-                                   values=['Pendiente', 'En Proceso', 'Completada', 'Cancelada'],
-                                   font=("Arial", 10), width=18)
-        estado_combo.grid(row=6, column=1, sticky=tk.EW, pady=10, padx=5)
+                       values=['Pendiente', 'En Proceso', 'Completada', 'Cancelada'],
+                       font=("Arial", 10), width=18)
+        estado_combo.grid(row=9, column=1, sticky=tk.EW, pady=10, padx=5)
 
-        # Fila 7: Observaciones
-        tk.Label(form_frame, text="Observaciones:", font=("Arial", 10, "bold"), bg='white').grid(row=7, column=0, sticky=tk.NW, pady=10, padx=5)
+           # Fila 10: Observaciones
+        tk.Label(form_frame, text="Observaciones:", font=("Arial", 10, "bold"), bg='white').grid(row=10, column=0, sticky=tk.NW, pady=10, padx=5)
         obs_text = tk.Text(form_frame, font=("Arial", 10), height=3, width=50)
-        obs_text.grid(row=7, column=1, columnspan=3, sticky=tk.NSEW, pady=10, padx=5)
+        obs_text.grid(row=10, column=1, columnspan=3, sticky=tk.NSEW, pady=10, padx=5)
         self.observaciones_text = obs_text
 
-        # Fila 8: Fotos
-        tk.Label(form_frame, text="Fotos:", font=("Arial", 10, "bold"), bg='white').grid(row=8, column=0, sticky=tk.NW, pady=10, padx=5)
-
+        # Fila 11: Fotos
+        tk.Label(form_frame, text="Fotos:", font=("Arial", 10, "bold"), bg='white').grid(row=11, column=0, sticky=tk.NW, pady=10, padx=5)
         fotos_controls = tk.Frame(form_frame, bg='white')
-        fotos_controls.grid(row=8, column=1, columnspan=3, sticky=tk.EW, pady=10, padx=5)
-
+        fotos_controls.grid(row=11, column=1, columnspan=3, sticky=tk.EW, pady=10, padx=5)
         tk.Button(fotos_controls, text="📷 Agregar Foto", font=("Arial", 10), 
-                 command=self.agregar_foto_reparacion).pack(side=tk.LEFT, padx=5)
-
+             command=self.agregar_foto_reparacion).pack(side=tk.LEFT, padx=5)
         tk.Button(fotos_controls, text="🖼️ Ver Galería", font=("Arial", 10), 
-                 command=self.ver_galeria_fotos).pack(side=tk.LEFT, padx=5)
-
+             command=self.ver_galeria_fotos).pack(side=tk.LEFT, padx=5)
         tk.Button(fotos_controls, text="🗑️ Eliminar Todas", font=("Arial", 10), 
-                 command=self.eliminar_todas_fotos).pack(side=tk.LEFT, padx=5)
-
+             command=self.eliminar_todas_fotos).pack(side=tk.LEFT, padx=5)
         # Mostrar cantidad de fotos
         self.fotos_label = tk.Label(fotos_controls, text="Fotos: 0", font=("Arial", 9), fg='gray', bg='white')
         self.fotos_label.pack(side=tk.LEFT, padx=10)
 
-        # Configurar expansión de columnas
-        form_frame.grid_columnconfigure(1, weight=1)
-        form_frame.grid_columnconfigure(3, weight=1)
-
-        # Botones de acción
-        button_frame = tk.Frame(top, bg='#F0F4F8')
-        button_frame.pack(fill=tk.X, pady=20, padx=20)
+        # Botonera principal dentro del formulario, bien separada (solo una vez)
+        button_frame = tk.Frame(form_frame, bg='#F0F4F8')
+        button_frame.grid(row=12, column=0, columnspan=4, sticky=tk.EW, pady=25, padx=20)
 
         self.btn_guardar = tk.Button(button_frame,
-                                    text="💾 Guardar Reparación",
-                                    font=('Arial', 11, 'bold'),
-                                    bg='#10B981',
-                                    fg='white',
-                                    activebackground='#059669',
-                                    bd=0,
-                                    pady=10,
-                                    cursor='hand2',
-                                    command=self.guardar_reparacion)
+                              text="💾 Guardar Reparación",
+                              font=('Arial', 11, 'bold'),
+                              bg='#10B981',
+                              fg='white',
+                              activebackground='#059669',
+                              bd=0,
+                              pady=10,
+                              cursor='hand2',
+                              command=self.guardar_reparacion)
         self.btn_guardar.pack(side=tk.LEFT, padx=5, ipadx=20)
 
         tk.Button(button_frame,
-             text="🖨️ Imprimir boleta",
-             font=('Arial', 11, 'bold'),
-             bg='#3B82F6',
-             fg='white',
-             activebackground='#2563EB',
-             bd=0,
-             pady=10,
-             cursor='hand2',
-             command=self.imprimir_boleta).pack(side=tk.LEFT, padx=5, ipadx=20)
+            text="🖨️ Imprimir boleta",
+            font=('Arial', 11, 'bold'),
+            bg='#3B82F6',
+            fg='white',
+            activebackground='#2563EB',
+            bd=0,
+            pady=10,
+            cursor='hand2',
+            command=self.imprimir_boleta).pack(side=tk.LEFT, padx=5, ipadx=20)
 
         tk.Button(button_frame,
             text="🔄 Limpiar",
@@ -323,6 +348,10 @@ class ReparacionView:
             pady=10,
             cursor='hand2',
             command=self.limpiar_formulario).pack(side=tk.LEFT, padx=5, ipadx=20)
+
+        # Configurar expansión de columnas
+        form_frame.grid_columnconfigure(1, weight=1)
+        form_frame.grid_columnconfigure(3, weight=1)
 
     def inicializar_patron_canvas(self):
         """Inicializar el canvas del patrón con círculos interactivos"""
@@ -445,24 +474,17 @@ class ReparacionView:
         # Obtener reparaciones
         reparaciones = self.reparacion_model.obtener_reparaciones()
         
-        # Colores de estado
-        estado_colores = {
-            'pendiente': '#F59E0B',
-            'en_proceso': '#3B82F6',
-            'completada': '#10B981',
-            'cancelada': '#EF4444'
-        }
-        
         # Agregar filas
         for rep in reparaciones:
             fecha = rep['fecha_creacion'].split(' ')[0] if rep['fecha_creacion'] else 'N/A'
-            sena = f"${rep['sena']:.2f}" if rep['sena'] else "$0.00"
-            total = f"${rep['total']:.2f}" if rep['total'] else "$0.00"
-            
+            sena = f"${int(rep['sena'])}" if rep['sena'] else "$0"
+            total = f"${int(rep['total'])}" if rep['total'] else "$0"
             self.tree.insert('', 'end', 
                            values=(rep['numero_orden'], rep['cliente_nombre'], 
                                   rep['dispositivo'], rep['estado'],
-                                  sena, total, fecha, 'Ver'))
+                                  sena, total, fecha))
+
+    # Eliminada la función on_tree_action_click porque ya no hay columna de acción
     
     def filtrar_reparaciones(self, estado):
         """Filtrar reparaciones por estado"""
@@ -575,18 +597,22 @@ class ReparacionView:
         if not seleccion:
             messagebox.showwarning("Advertencia", "Por favor selecciona una reparación")
             return
-        
+
         # Obtener número de orden
         item = self.tree.item(seleccion[0])
         numero_orden = item['values'][0]
-        
+
         # Buscar reparación
         reparaciones = self.reparacion_model.obtener_reparaciones()
         for rep in reparaciones:
             if rep['numero_orden'] == numero_orden:
                 self.reparacion_actual = rep
                 self.modo_edicion = True
+                # Abrir el formulario completo antes de cargar los datos
+                self.abrir_formulario_completo()
+                # Cargar los datos en el formulario (widgets ya existen)
                 self.cargar_datos_en_formulario(rep)
+                # Cambiar el texto del botón guardar
                 self.btn_guardar.config(text="💾 Actualizar Reparación")
                 break
     
@@ -639,26 +665,26 @@ class ReparacionView:
         if not self.cliente_nombre_var.get().strip():
             messagebox.showwarning("Validación", "El nombre del cliente es obligatorio")
             return
-        
+
         if not self.dispositivo_var.get().strip():
             messagebox.showwarning("Validación", "El dispositivo es obligatorio")
             return
-        
+
         if not self.problema_text.get(1.0, tk.END).strip():
             messagebox.showwarning("Validación", "La descripción del problema es obligatoria")
             return
-        
+
         try:
             sena = float(self.sena_var.get() or 0)
             total = float(self.total_var.get() or 0)
         except:
             messagebox.showwarning("Validación", "La seña y total deben ser números")
             return
-        
+
         if total <= 0:
             messagebox.showwarning("Validación", "El total debe ser mayor a 0")
             return
-        
+
         if self.modo_edicion:
             # Actualizar reparación
             success, msg = self.reparacion_model.actualizar_reparacion(
@@ -680,10 +706,11 @@ class ReparacionView:
                 contrasena=self.contrasena_var.get().strip(),
                 patron=self.patron_var.get().strip()
             )
-            
+
             if success:
                 messagebox.showinfo("Éxito", "Reparación actualizada correctamente")
                 self.limpiar_formulario()
+                self.reparacion_actual = None  # Limpiar referencia después de editar
                 self.cargar_reparaciones()
             else:
                 messagebox.showerror("Error", msg)
@@ -783,17 +810,18 @@ class ReparacionView:
         if not seleccion:
             messagebox.showwarning("Advertencia", "Por favor selecciona una reparación")
             return
-        
+
         if messagebox.askyesno("Confirmar", "¿Estás seguro de que deseas eliminar esta reparación?"):
             item = self.tree.item(seleccion[0])
             numero_orden = item['values'][0]
-            
+
             reparaciones = self.reparacion_model.obtener_reparaciones()
             for rep in reparaciones:
                 if rep['numero_orden'] == numero_orden:
                     success, msg = self.reparacion_model.eliminar_reparacion(rep['id'])
                     if success:
                         messagebox.showinfo("Éxito", msg)
+                        self.reparacion_actual = None  # Limpiar referencia después de eliminar
                         self.cargar_reparaciones()
                     else:
                         messagebox.showerror("Error", msg)
@@ -968,7 +996,7 @@ CUIT: {config.get('cuit', 'N/A')}</font>"""
             
             # DATOS DEL CLIENTE
             cliente_data = [
-                ['Señor/es:', reparacion['cliente_nombre'], 'D.N.I.:', '', 'Tel:', reparacion['cliente_telefono'] or ''],
+                ['Señor/es:', reparacion['cliente_nombre'], 'D.N.I.:', reparacion.get('numero_serie', ''), 'Tel:', reparacion['cliente_telefono'] or ''],
             ]
             
             cliente_table = Table(cliente_data, colWidths=[0.7*inch, 2.5*inch, 0.6*inch, 1.2*inch, 0.5*inch, 1*inch])
@@ -1075,7 +1103,7 @@ CUIT: {config.get('cuit', 'N/A')}</font>"""
             saldo = reparacion['total'] - reparacion['sena']
             precios_data = [
                 ['Precio $', 'Seña $', 'Saldo $'],
-                [f"${reparacion['total']:.2f}", f"${reparacion['sena']:.2f}", f"${saldo:.2f}"],
+                [f"${int(reparacion['total'])}", f"${int(reparacion['sena'])}", f"${int(saldo)}"],
             ]
             precios_table = Table(precios_data, colWidths=[2.17*inch, 2.17*inch, 2.16*inch])
             precios_table.setStyle(TableStyle([
