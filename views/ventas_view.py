@@ -250,19 +250,21 @@ class VentasView:
         tk.Label(right_frame, text="Detalle de la Venta", font=("Arial", 11, "bold"), bg='white', fg='black').pack(fill=tk.X, pady=5, padx=10)
         
         # Tabla de items
-        columns = ('producto', 'cantidad', 'precio', 'descuento', 'subtotal')
+        columns = ('producto', 'cantidad', 'precio', 'descuento', 'recargo', 'subtotal')
         self.items_tree = ttk.Treeview(right_frame, columns=columns, show='headings', height=15)
-        
+
         self.items_tree.heading('producto', text='Producto')
         self.items_tree.heading('cantidad', text='Cantidad')
         self.items_tree.heading('precio', text='Precio Unit.')
         self.items_tree.heading('descuento', text='Desc. %')
+        self.items_tree.heading('recargo', text='Recargo')
         self.items_tree.heading('subtotal', text='Subtotal')
-        
+
         self.items_tree.column('producto', width=200)
         self.items_tree.column('cantidad', width=80, anchor=tk.CENTER)
         self.items_tree.column('precio', width=100, anchor=tk.E)
         self.items_tree.column('descuento', width=80, anchor=tk.CENTER)
+        self.items_tree.column('recargo', width=80, anchor=tk.CENTER)
         self.items_tree.column('subtotal', width=100, anchor=tk.E)
         
         self.items_tree.pack(fill=tk.BOTH, expand=True)
@@ -412,23 +414,33 @@ class VentasView:
             subtotal = subtotal_sin_desc - descuento_monto
             
             # Agregar item a la lista
+            # Recargo global (solo para mostrar en la columna, no por producto)
+            metodo_pago = self.metodo_pago_var.get() if hasattr(self, 'metodo_pago_var') else "Efectivo"
+            recargo_val = 0.0
+            if metodo_pago == "Tarjeta":
+                try:
+                    recargo_val = float(self.recargo_entry.get())
+                except Exception:
+                    recargo_val = 0.0
             item = {
                 'producto_id': self.producto_seleccionado[0],
                 'producto_nombre': self.producto_seleccionado[2],
                 'cantidad': cantidad,
                 'precio_unitario': precio,
                 'descuento_porcentaje': descuento,
+                'recargo': recargo_val,
                 'subtotal': subtotal
             }
-            
+
             self.items_venta.append(item)
-            
+
             # Agregar a la tabla
             self.items_tree.insert('', tk.END, values=(
                 item['producto_nombre'],
                 item['cantidad'],
                 f"${item['precio_unitario']:.2f}",
                 f"{item['descuento_porcentaje']}%",
+                f"{item['recargo']}%",
                 f"${item['subtotal']:.2f}"
             ))
             
@@ -527,11 +539,20 @@ class VentasView:
             cliente_nombre = "Cliente Genérico"
         
         # Crear venta
+        # Obtener método de pago y recargo
+        metodo_pago = self.metodo_pago_var.get() if hasattr(self, 'metodo_pago_var') else "Efectivo"
+        try:
+            recargo_val = float(self.recargo_entry.get()) if metodo_pago == "Tarjeta" else 0.0
+        except Exception:
+            recargo_val = 0.0
+
         exito, mensaje, venta_id = self.venta_model.crear_venta(
             self.user_data['id'],
             cliente_nombre,
             cliente_documento,
-            self.items_venta
+            self.items_venta,
+            metodo_pago,
+            recargo_val
         )
         
         if exito:
@@ -588,6 +609,10 @@ class VentasView:
             c.drawString(1*inch, y, f"Fecha: {venta[7]}")
             y -= 0.3*inch
             c.drawString(1*inch, y, f"Vendedor: {venta[8]}")
+            y -= 0.3*inch
+            c.drawString(1*inch, y, f"Método de Pago: {venta[9]}")
+            y -= 0.3*inch
+            c.drawString(1*inch, y, f"Recargo: {venta[10]}%")
             
             # Información del cliente
             y -= 0.5*inch
@@ -630,15 +655,23 @@ class VentasView:
             c.setFont("Helvetica-Bold", 12)
             c.drawString(4.5*inch, y, f"Subtotal:")
             c.drawString(5.8*inch, y, f"${venta[4]:.2f}")
-            
+
             y -= 0.3*inch
             c.drawString(4.5*inch, y, f"Descuento:")
             c.drawString(5.8*inch, y, f"${venta[5]:.2f}")
-            
+
+            # Mostrar recargo y total con recargo
+            y -= 0.3*inch
+            c.drawString(4.5*inch, y, f"Recargo:")
+            # Calcular el monto del recargo
+            recargo_monto = (venta[6] * venta[10]) / 100 if venta[10] else 0.0
+            c.drawString(5.8*inch, y, f"${recargo_monto:.2f}")
+
             y -= 0.4*inch
             c.setFont("Helvetica-Bold", 14)
             c.drawString(4.5*inch, y, f"TOTAL:")
-            c.drawString(5.8*inch, y, f"${venta[6]:.2f}")
+            total_con_recargo = venta[6] + recargo_monto
+            c.drawString(5.8*inch, y, f"${total_con_recargo:.2f}")
             
             c.save()
             

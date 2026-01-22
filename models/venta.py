@@ -12,7 +12,7 @@ class Venta:
         random_num = random.randint(1000, 9999)
         return f"FAC-{fecha}-{random_num}"
     
-    def crear_venta(self, usuario_id, cliente_nombre, cliente_documento, items):
+    def crear_venta(self, usuario_id, cliente_nombre, cliente_documento, items, metodo_pago="Efectivo", recargo=0.0):
         """
         Crear nueva venta con sus detalles
         items = [{
@@ -44,10 +44,10 @@ class Venta:
             # Insertar venta
             cursor.execute('''
                 INSERT INTO ventas (numero_factura, usuario_id, cliente_nombre, cliente_documento, 
-                                   subtotal, descuento_total, total)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                                   subtotal, descuento_total, total, metodo_pago, recargo)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (numero_factura, usuario_id, cliente_nombre, cliente_documento, 
-                  subtotal, descuento_total, total))
+                  subtotal, descuento_total, total, metodo_pago, recargo))
             
             venta_id = cursor.lastrowid
             
@@ -87,7 +87,7 @@ class Venta:
         cursor.execute('''
             SELECT v.id, v.numero_factura, v.cliente_nombre, v.cliente_documento,
                    v.subtotal, v.descuento_total, v.total, v.fecha_venta,
-                   u.nombre_completo as vendedor
+                   u.nombre_completo as vendedor, v.metodo_pago, v.recargo
             FROM ventas v
             JOIN usuarios u ON v.usuario_id = u.id
             WHERE v.id = ?
