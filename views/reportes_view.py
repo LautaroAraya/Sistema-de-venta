@@ -285,47 +285,49 @@ class DetalleVentaDialog:
         # Detalles
         tk.Label(main_frame, text="Detalle de Productos:", font=("Arial", 11, "bold"), bg='white', fg='black').pack(anchor=tk.W, pady=(10, 5))
         
-        columns = ('producto', 'cantidad', 'precio', 'descuento', 'subtotal')
+        columns = ('producto', 'cantidad', 'precio', 'descuento', 'recargo', 'subtotal')
         tree = ttk.Treeview(main_frame, columns=columns, show='headings', height=10)
-        
+
         tree.heading('producto', text='Producto')
         tree.heading('cantidad', text='Cantidad')
         tree.heading('precio', text='Precio Unit.')
         tree.heading('descuento', text='Descuento')
+        tree.heading('recargo', text='Recargo')
         tree.heading('subtotal', text='Subtotal')
-        
-        tree.column('producto', width=250)
+
+        tree.column('producto', width=200)
         tree.column('cantidad', width=80, anchor=tk.CENTER)
         tree.column('precio', width=100, anchor=tk.E)
-        tree.column('descuento', width=100, anchor=tk.E)
+        tree.column('descuento', width=80, anchor=tk.CENTER)
+        tree.column('recargo', width=80, anchor=tk.CENTER)
         tree.column('subtotal', width=100, anchor=tk.E)
-        
+
+        recargo_global = self.venta_data['venta'][10] if len(self.venta_data['venta']) > 10 else 0
+
         for detalle in self.venta_data['detalles']:
             tree.insert('', tk.END, values=(
                 detalle[5],  # Producto
                 detalle[0],  # Cantidad
                 f"${detalle[1]:.2f}",  # Precio
                 f"{detalle[2]:.0f}% (${detalle[3]:.2f})",  # Descuento
+                f"{recargo_global}%" if recargo_global else "-",
                 f"${detalle[4]:.2f}"  # Subtotal
             ))
-        
+
         tree.pack(fill=tk.BOTH, expand=True)
         
         # Totales
         totals_frame = ttk.Frame(main_frame)
         totals_frame.pack(fill=tk.X, pady=10)
-        
-        ttk.Label(totals_frame, text="Subtotal:", 
-                 font=("Arial", 11, "bold")).grid(row=0, column=0, sticky=tk.E, padx=5)
-        ttk.Label(totals_frame, text=f"${venta[4]:.2f}", 
-                 font=("Arial", 11)).grid(row=0, column=1, sticky=tk.W, padx=5)
-        
-        ttk.Label(totals_frame, text="Descuento:", 
-                 font=("Arial", 11, "bold")).grid(row=1, column=0, sticky=tk.E, padx=5)
-        ttk.Label(totals_frame, text=f"${venta[5]:.2f}", 
-                 font=("Arial", 11)).grid(row=1, column=1, sticky=tk.W, padx=5)
-        
-        ttk.Label(totals_frame, text="TOTAL:", 
-                 font=("Arial", 13, "bold")).grid(row=2, column=0, sticky=tk.E, padx=5, pady=5)
-        ttk.Label(totals_frame, text=f"${venta[6]:.2f}", 
-                 font=("Arial", 13, "bold"), foreground="green").grid(row=2, column=1, sticky=tk.W, padx=5, pady=5)
+
+        ttk.Label(totals_frame, text="Subtotal:", font=("Arial", 11, "bold")).grid(row=0, column=0, sticky=tk.E, padx=5)
+        ttk.Label(totals_frame, text=f"${venta[4]:.2f}", font=("Arial", 11)).grid(row=0, column=1, sticky=tk.W, padx=5)
+
+        ttk.Label(totals_frame, text="Descuento:", font=("Arial", 11, "bold")).grid(row=1, column=0, sticky=tk.E, padx=5)
+        ttk.Label(totals_frame, text=f"${venta[5]:.2f}", font=("Arial", 11)).grid(row=1, column=1, sticky=tk.W, padx=5)
+
+        ttk.Label(totals_frame, text="Recargo:", font=("Arial", 11, "bold")).grid(row=2, column=0, sticky=tk.E, padx=5)
+        ttk.Label(totals_frame, text=f"{recargo_global}%", font=("Arial", 11), foreground="#F59E0B").grid(row=2, column=1, sticky=tk.W, padx=5)
+
+        ttk.Label(totals_frame, text="TOTAL:", font=("Arial", 13, "bold")).grid(row=3, column=0, sticky=tk.E, padx=5, pady=5)
+        ttk.Label(totals_frame, text=f"${venta[6]:.2f}", font=("Arial", 13, "bold"), foreground="green").grid(row=3, column=1, sticky=tk.W, padx=5, pady=5)

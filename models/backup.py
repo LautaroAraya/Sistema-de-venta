@@ -8,30 +8,37 @@ class Backup:
         self.db_manager = db_manager
     
     def crear_backup(self, ruta_destino):
-        """Crear copia de seguridad de la base de datos"""
+        """Crear copia de seguridad completa: base de datos y carpetas de fotos en un ZIP"""
+        import zipfile
         try:
-            # Obtener ruta de la BD actual
             db_path = self.db_manager.db_path
-            
-            # Crear nombre con fecha y hora
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            nombre_archivo = f"backup_sistema_ventas_{timestamp}.db"
-            
-            # Si no se especifica ruta, usar Desktop
+            nombre_archivo = f"backup_sistema_ventas_{timestamp}.zip"
             if not ruta_destino:
                 ruta_destino = os.path.expanduser("~/Desktop")
-            
             ruta_completa = os.path.join(ruta_destino, nombre_archivo)
-            
-            # Cerrar conexión actual
+
+            # Cerrar conexión actual para asegurar integridad
             self.db_manager.close()
-            
-            # Copiar archivo
-            shutil.copy2(db_path, ruta_completa)
-            
+
+            with zipfile.ZipFile(ruta_completa, 'w', zipfile.ZIP_DEFLATED) as backup_zip:
+                # Agregar base de datos
+                backup_zip.write(db_path, arcname=os.path.join('database', os.path.basename(db_path)))
+
+                # Agregar carpetas de fotos
+                carpetas = ['fotos_reparaciones', 'fotos_temporales']
+                base_dir = os.path.dirname(os.path.dirname(db_path))
+                for carpeta in carpetas:
+                    carpeta_path = os.path.join(base_dir, carpeta)
+                    if os.path.exists(carpeta_path):
+                        for root, dirs, files in os.walk(carpeta_path):
+                            for file in files:
+                                file_path = os.path.join(root, file)
+                                arcname = os.path.relpath(file_path, base_dir)
+                                backup_zip.write(file_path, arcname=arcname)
+
             # Reconectar
             self.db_manager.get_connection()
-            
             return True, ruta_completa
         except Exception as e:
             return False, str(e)

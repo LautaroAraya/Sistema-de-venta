@@ -68,17 +68,27 @@ from views.main_view import MainView
 from utils.updater import UpdateManager
 
 class SistemaVentas:
+
     def __init__(self):
         self.root = tk.Tk()
         self.root.withdraw()  # Ocultar ventana principal temporalmente
-        
+
         # Inicializar gestor de actualizaciones
         self.update_manager = UpdateManager(BASE_DIR)
         self.update_manager.check_updates_async(self.root)
-        
+
+        # Ejecutar migraciones automáticas antes de inicializar la base de datos
+        try:
+            import subprocess
+            migracion_path = os.path.join(BASE_DIR, 'database', 'migrar_metodo_pago_recargo.py')
+            if os.path.exists(migracion_path):
+                subprocess.run([sys.executable, migracion_path], check=True)
+        except Exception as e:
+            print(f"Error al ejecutar la migración automática: {e}")
+
         # Inicializar base de datos
         self.db_manager = DatabaseManager()
-        
+
         # Mostrar login
         self.mostrar_login()
         
