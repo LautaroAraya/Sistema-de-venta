@@ -113,17 +113,17 @@ class ConfiguracionView:
         info_frame = tk.Frame(about_container, bg='white', relief=tk.RIDGE, bd=1, padx=20, pady=20)
         info_frame.pack(fill=tk.X, pady=10)
         
-        # Versión
-        tk.Label(info_frame,
-                text="Versión:",
-                font=("Arial", 11, "bold"),
-                bg='white',
-                fg='#374151').grid(row=0, column=0, sticky=tk.W, pady=8, padx=10)
-        tk.Label(info_frame,
-                text=f"v{self.update_manager.current_version}",
-                font=("Arial", 11),
-                bg='white',
-                fg='#2563EB').grid(row=0, column=1, sticky=tk.W, pady=8, padx=10)
+        # Versión (oculto por requerimiento)
+        # tk.Label(info_frame,
+        #         text="Versión:",
+        #         font=("Arial", 11, "bold"),
+        #         bg='white',
+        #         fg='#374151').grid(row=0, column=0, sticky=tk.W, pady=8, padx=10)
+        # tk.Label(info_frame,
+        #         text=f"v{self.update_manager.current_version}",
+        #         font=("Arial", 11),
+        #         bg='white',
+        #         fg='#2563EB').grid(row=0, column=1, sticky=tk.W, pady=8, padx=10)
         
         # Desarrollador
         tk.Label(info_frame,
@@ -712,95 +712,84 @@ DATOS INCLUIDOS:
             else:
                 messagebox.showerror("Error", message)
     
-    def buscar_actualizaciones(self):
-        """Buscar actualizaciones manualmente"""
-        # Deshabilitar botón mientras busca
-        for widget in self.parent.winfo_children():
-            if isinstance(widget, tk.Button):
-                widget.config(state=tk.DISABLED)
-        
-        self.update_status_label.config(text="Buscando actualizaciones...", fg='#3B82F6')
-        self.parent.update()
-        
-        try:
-            # Buscar actualizaciones (forzar búsqueda manual)
-            actualizar_disponible, error_msg = self.update_manager.check_for_updates(force=True)
-            
-            if error_msg:
-                # Hay un error específico
-                self.update_status_label.config(text=f"⚠ {error_msg}", fg='#F59E0B')
-                
-                if "No hay releases" in error_msg:
-                    messagebox.showinfo(
-                        "Sin Releases",
-                        f"No hay actualizaciones publicadas en GitHub todavía.\n\n"
-                        f"Versión actual: v{self.update_manager.current_version}\n\n"
-                        f"Para publicar una actualización:\n"
-                        f"1. Crea un tag: git tag v1.0.1\n"
-                        f"2. Sube el tag: git push origin v1.0.1\n"
-                        f"3. Crea un Release en GitHub con ese tag"
-                    )
-                else:
-                    messagebox.showerror("Error de Conexión", f"{error_msg}\n\nVerifica tu conexión a Internet.")
-                
-            elif actualizar_disponible:
-                config = self.update_manager.get_update_config()
-                latest_version = config.get("latest_version", "?")
-                release_notes = config.get("release_notes", "Sin descripción disponible")
-                
-                self.update_status_label.config(
-                    text=f"✓ Actualización disponible: v{latest_version}",
-                    fg='#10B981'
-                )
-                
-                # Crear ventana de detalles
-                detalle_msg = (
-                    f"Se encontró una nueva versión: v{latest_version}\n"
-                    f"Versión actual: v{self.update_manager.current_version}\n\n"
-                    f"📝 Notas de la actualización:\n"
-                    f"{release_notes[:300]}{'...' if len(release_notes) > 300 else ''}\n\n"
-                    f"✓ Tus datos y base de datos NO serán eliminados\n\n"
-                    f"¿Deseas instalar la actualización ahora?"
-                )
-                
-                resultado = messagebox.askyesno(
-                    "Actualización Disponible",
-                    detalle_msg
-                )
-                
-                if resultado:
-                    self.update_status_label.config(text="Instalando actualización...", fg='#F59E0B')
-                    self.parent.update()
+    # def buscar_actualizaciones(self):
+    #     """Buscar actualizaciones manualmente"""
+    #     # Deshabilitar botón mientras busca
+    #     for widget in self.parent.winfo_children():
+    #         if isinstance(widget, tk.Button):
+    #             widget.config(state=tk.DISABLED)
+    #     self.update_status_label.config(text="Buscando actualizaciones...", fg='#3B82F6')
+    #     self.parent.update()
+    #     try:
+    #         # Buscar actualizaciones (forzar búsqueda manual)
+    #         actualizar_disponible, error_msg = self.update_manager.check_for_updates(force=True)
+    #         if error_msg:
+    #             self.update_status_label.config(text=f"⚠ {error_msg}", fg='#F59E0B')
+    #             if "No hay releases" in error_msg:
+    #                 messagebox.showinfo(
+    #                     "Sin Releases",
+    #                     f"No hay actualizaciones publicadas en GitHub todavía.\n\n"
+    #                     f"Versión actual: v{self.update_manager.current_version}\n\n"
+    #                     f"Para publicar una actualización:\n"
+    #                     f"1. Crea un tag: git tag v1.0.1\n"
+    #                     f"2. Sube el tag: git push origin v1.0.1\n"
+    #                     f"3. Crea un Release en GitHub con ese tag"
+    #                 )
+    #             else:
+    #                 messagebox.showerror("Error de Conexión", f"{error_msg}\n\nVerifica tu conexión a Internet.")
+    #         elif actualizar_disponible:
+    #             config = self.update_manager.get_update_config()
+    #             latest_version = config.get("latest_version", "?")
+    #             release_notes = config.get("release_notes", "Sin descripción disponible")
+    #             self.update_status_label.config(
+    #                 text=f"✓ Actualización disponible: v{latest_version}",
+    #                 fg='#10B981'
+    #             )
+    #             detalle_msg = (
+    #                 f"Se encontró una nueva versión: v{latest_version}\n"
+    #                 f"Versión actual: v{self.update_manager.current_version}\n\n"
+    #                 f"📝 Notas de la actualización:\n"
+    #                 f"{release_notes[:300]}{'...' if len(release_notes) > 300 else ''}\n\n"
+    #                 f"✓ Tus datos y base de datos NO serán eliminados\n\n"
+    #                 f"¿Deseas instalar la actualización ahora?"
+    #             )
+    #             resultado = messagebox.askyesno(
+    #                 "Actualización Disponible",
+    #                 detalle_msg
+    #             )
+    #             if resultado:
+    #                 self.update_status_label.config(text="Instalando actualización...", fg='#F59E0B')
+    #                 self.parent.update()
                     
-                    if self.update_manager.perform_update():
-                        # El reinicio es automático en perform_update
-                        pass
-                    else:
-                        self.update_status_label.config(text="Error en la actualización", fg='#EF4444')
-            else:
-                self.update_status_label.config(
-                    text="✓ Tu versión está actualizada",
-                    fg='#10B981'
-                )
-                messagebox.showinfo(
-                    "Sin Actualizaciones",
-                    f"Ya tienes la versión más reciente (v{self.update_manager.current_version})\n\n"
-                    f"Última verificación: ahora"
-                )
-        except Exception as e:
-            import traceback
-            error_details = traceback.format_exc()
-            self.update_status_label.config(
-                text=f"Error en la actualización",
-                fg='#EF4444'
-            )
-            messagebox.showerror(
-                "Error", 
-                f"No se pudo verificar las actualizaciones:\n\n{str(e)}\n\n"
-                f"Detalles técnicos:\n{error_details[:500]}"
-            )
-        finally:
-            # Habilitar botón nuevamente
-            for widget in self.parent.winfo_children():
-                if isinstance(widget, tk.Button):
-                    widget.config(state=tk.NORMAL)
+    #                 if self.update_manager.perform_update():
+    #                     # El reinicio es automático en perform_update
+    #                     pass
+    #                 else:
+    #                     self.update_status_label.config(text="Error en la actualización", fg='#EF4444')
+    #         else:
+    #             self.update_status_label.config(
+    #                 text="✓ Tu versión está actualizada",
+    #                 fg='#10B981'
+    #             )
+    #             messagebox.showinfo(
+    #                 "Sin Actualizaciones",
+    #                 f"Ya tienes la versión más reciente (v{self.update_manager.current_version})\n\n"
+    #                 f"Última verificación: ahora"
+    #             )
+    #     except Exception as e:
+    #         import traceback
+    #         error_details = traceback.format_exc()
+    #         self.update_status_label.config(
+    #             text=f"Error en la actualización",
+    #             fg='#EF4444'
+    #         )
+    #         messagebox.showerror(
+    #             "Error", 
+    #             f"No se pudo verificar las actualizaciones:\n\n{str(e)}\n\n"
+    #             f"Detalles técnicos:\n{error_details[:500]}"
+    #         )
+    #     finally:
+    #         # Habilitar botón nuevamente
+    #         for widget in self.parent.winfo_children():
+    #             if isinstance(widget, tk.Button):
+    #                 widget.config(state=tk.NORMAL)

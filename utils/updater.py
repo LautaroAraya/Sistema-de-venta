@@ -114,77 +114,64 @@ class UpdateManager:
             pass
     
     def should_check_for_updates(self):
-        """Verificar si pasaron 5 días desde el último chequeo"""
-        config = self.get_update_config()
-        last_check = config.get("last_check")
-        
-        if not last_check:
-            return True
-        
-        try:
-            last_check_date = datetime.fromisoformat(last_check)
-            days_passed = (datetime.now() - last_check_date).days
-            return days_passed >= 5
-        except:
-            return True
+        """(DESHABILITADO) Verificar si pasaron 5 días desde el último chequeo"""
+        # return True para deshabilitar el chequeo automático por días
+        # Código original comentado para futura reactivación
+        # config = self.get_update_config()
+        # last_check = config.get("last_check")
+        # if not last_check:
+        #     return True
+        # try:
+        #     last_check_date = datetime.fromisoformat(last_check)
+        #     days_passed = (datetime.now() - last_check_date).days
+        #     return days_passed >= 5
+        # except:
+        #     return True
+        return False
     
     def check_for_updates(self, force=False):
-        """Verificar si hay actualizaciones en GitHub
-        
-        Args:
-            force: Si True, no espera 5 días, busca siempre
-        
-        Returns:
-            tuple: (has_updates: bool, error_message: str or None)
-        """
-        if not force and not self.should_check_for_updates():
-            return False, None
-        
-        try:
-            # Obtener releases de GitHub
-            url = f"{self.github_api}/{self.repo}/releases/latest"
-            response = requests.get(url, timeout=10)
-            
-            if response.status_code == 404:
-                # No hay releases creados
-                config = self.get_update_config()
-                config["last_check"] = datetime.now().isoformat()
-                config["update_available"] = False
-                config["latest_version"] = self.current_version
-                self.save_update_config(config)
-                return False, "No hay releases publicados en GitHub todavía"
-            
-            if response.status_code == 200:
-                release = response.json()
-                latest_version = release.get("tag_name", "").lstrip('v')
-                
-                config = self.get_update_config()
-                config["last_check"] = datetime.now().isoformat()
-                
-                if latest_version and self._is_newer_version(latest_version, self.current_version):
-                    config["update_available"] = True
-                    config["latest_version"] = latest_version
-                    config["download_url"] = release.get("zipball_url")
-                    config["release_notes"] = release.get("body", "Sin descripción")
-                    config["release_url"] = release.get("html_url", "")
-                    self.save_update_config(config)
-                    return True, None
-                else:
-                    config["update_available"] = False
-                    config["latest_version"] = latest_version or self.current_version
-                    self.save_update_config(config)
-                    return False, None
-            else:
-                return False, f"Error HTTP {response.status_code}"
-                
-        except requests.exceptions.Timeout:
-            return False, "Timeout: No se pudo conectar a GitHub"
-        except requests.exceptions.ConnectionError:
-            return False, "Sin conexión a Internet"
-        except Exception as e:
-            return False, str(e)
-        
-        return False, "Error desconocido"
+        """(DESHABILITADO) Verificar si hay actualizaciones en GitHub"""
+        # Código original comentado para futura reactivación
+        # if not force and not self.should_check_for_updates():
+        #     return False, None
+        # try:
+        #     url = f"{self.github_api}/{self.repo}/releases/latest"
+        #     response = requests.get(url, timeout=10)
+        #     if response.status_code == 404:
+        #         config = self.get_update_config()
+        #         config["last_check"] = datetime.now().isoformat()
+        #         config["update_available"] = False
+        #         config["latest_version"] = self.current_version
+        #         self.save_update_config(config)
+        #         return False, "No hay releases publicados en GitHub todavía"
+        #     if response.status_code == 200:
+        #         release = response.json()
+        #         latest_version = release.get("tag_name", "").lstrip('v')
+        #         config = self.get_update_config()
+        #         config["last_check"] = datetime.now().isoformat()
+        #         if latest_version and self._is_newer_version(latest_version, self.current_version):
+        #             config["update_available"] = True
+        #             config["latest_version"] = latest_version
+        #             config["download_url"] = release.get("zipball_url")
+        #             config["release_notes"] = release.get("body", "Sin descripción")
+        #             config["release_url"] = release.get("html_url", "")
+        #             self.save_update_config(config)
+        #             return True, None
+        #         else:
+        #             config["update_available"] = False
+        #             config["latest_version"] = latest_version or self.current_version
+        #             self.save_update_config(config)
+        #             return False, None
+        #     else:
+        #         return False, f"Error HTTP {response.status_code}"
+        # except requests.exceptions.Timeout:
+        #     return False, "Timeout: No se pudo conectar a GitHub"
+        # except requests.exceptions.ConnectionError:
+        #     return False, "Sin conexión a Internet"
+        # except Exception as e:
+        #     return False, str(e)
+        # return False, "Error desconocido"
+        return False, None
     
     def get_latest_version_info(self):
         """Obtener información de la última versión disponible"""
@@ -198,14 +185,15 @@ class UpdateManager:
         }
     
     def is_update_time(self):
-        """Verificar si es hora de actualizar (14:00-16:00 Argentina UTC-3)"""
-        # Zona horaria Argentina (UTC-3)
-        tz_offset = -3
-        current_utc = datetime.utcnow()
-        current_argentina = current_utc.replace(tzinfo=None) + timedelta(hours=tz_offset)
-        
-        hour = current_argentina.hour
-        return 14 <= hour < 16
+        """(DESHABILITADO) Verificar si es hora de actualizar (14:00-16:00 Argentina UTC-3)"""
+        # return False para deshabilitar el chequeo por horario
+        # Código original comentado para futura reactivación
+        # tz_offset = -3
+        # current_utc = datetime.utcnow()
+        # current_argentina = current_utc.replace(tzinfo=None) + timedelta(hours=tz_offset)
+        # hour = current_argentina.hour
+        # return 14 <= hour < 16
+        return False
 
     def _compare_versions(self, latest_version: str) -> List[Dict]:
         """Obtener lista de archivos cambiados entre la versión actual y la nueva.

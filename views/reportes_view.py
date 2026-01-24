@@ -261,7 +261,81 @@ class DetalleVentaDialog:
         y = parent.winfo_y() + (parent.winfo_height() // 2) - 250
         self.dialog.geometry(f"700x500+{x}+{y}")
         
-        self.create_widgets()
+        self.create_widgets_with_scroll()
+
+    def create_widgets_with_scroll(self):
+        """Crear widgets con scroll general para todo el contenido"""
+        self.dialog.configure(bg='white')
+        # Canvas para scroll general
+        canvas = tk.Canvas(self.dialog, bg='white', highlightthickness=0)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        v_scroll = ttk.Scrollbar(self.dialog, orient=tk.VERTICAL, command=canvas.yview)
+        v_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        h_scroll = ttk.Scrollbar(self.dialog, orient=tk.HORIZONTAL, command=canvas.xview)
+        h_scroll.pack(side=tk.BOTTOM, fill=tk.X)
+        canvas.configure(yscrollcommand=v_scroll.set, xscrollcommand=h_scroll.set)
+        # Frame interior
+        main_frame = tk.Frame(canvas, bg='white', padx=20, pady=20)
+        main_frame_id = canvas.create_window((0, 0), window=main_frame, anchor="nw")
+        def _on_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        main_frame.bind("<Configure>", _on_configure)
+        # Permitir scroll con mouse
+        def _on_mousewheel(event):
+            if str(canvas) in canvas.tk.call('winfo', 'children', '.'):  # Verifica que canvas exista
+                canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas.bind("<MouseWheel>", _on_mousewheel)
+        # Resto del contenido igual que antes
+        venta = self.venta_data['venta']
+        info_frame = tk.Frame(main_frame, bg='white', relief=tk.RIDGE, bd=1, padx=10, pady=10)
+        info_frame.pack(fill=tk.X, pady=(0, 10))
+        tk.Label(info_frame, text="Información de la Venta", font=("Arial", 11, "bold"), bg='white', fg='black').pack(anchor=tk.W)
+        tk.Label(info_frame, text=f"Factura: {venta[1]}", font=("Arial", 12, "bold"), bg='white', fg='black').pack(anchor=tk.W)
+        tk.Label(info_frame, text=f"Fecha: {venta[7]}", bg='white', fg='black').pack(anchor=tk.W)
+        tk.Label(info_frame, text=f"Vendedor: {venta[8]}", bg='white', fg='black').pack(anchor=tk.W)
+        tk.Label(info_frame, text=f"Cliente: {venta[2] or 'N/A'}", bg='white', fg='black').pack(anchor=tk.W)
+        tk.Label(info_frame, text=f"Documento: {venta[3] or 'N/A'}", bg='white', fg='black').pack(anchor=tk.W)
+        tk.Label(main_frame, text="Detalle de Productos:", font=("Arial", 11, "bold"), bg='white', fg='black').pack(anchor=tk.W, pady=(10, 5))
+        columns = ('producto', 'cantidad', 'precio', 'descuento', 'recargo', 'subtotal')
+        tree_frame = tk.Frame(main_frame, bg='white')
+        tree_frame.pack(fill=tk.BOTH, expand=True)
+        tree = ttk.Treeview(tree_frame, columns=columns, show='headings', height=10)
+        tree.heading('producto', text='Producto')
+        tree.heading('cantidad', text='Cantidad')
+        tree.heading('precio', text='Precio Unit.')
+        tree.heading('descuento', text='Descuento')
+        tree.heading('recargo', text='Recargo')
+        tree.heading('subtotal', text='Subtotal')
+        tree.column('producto', width=200)
+        tree.column('cantidad', width=80, anchor=tk.CENTER)
+        tree.column('precio', width=100, anchor=tk.E)
+        tree.column('descuento', width=80, anchor=tk.CENTER)
+        tree.column('recargo', width=80, anchor=tk.CENTER)
+        tree.column('subtotal', width=100, anchor=tk.E)
+        recargo_global = self.venta_data['venta'][10] if len(self.venta_data['venta']) > 10 else 0
+        for detalle in self.venta_data['detalles']:
+            tree.insert('', tk.END, values=(
+                detalle[5],  # Producto
+                detalle[0],  # Cantidad
+                f"${detalle[1]:.2f}",  # Precio
+                f"{detalle[2]:.0f}% (${detalle[3]:.2f})",  # Descuento
+                f"{recargo_global}%" if recargo_global else "-",
+                f"${detalle[4]:.2f}"  # Subtotal
+            ))
+        scrollbar_v = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar_v.set)
+        tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar_v.pack(side=tk.RIGHT, fill=tk.Y)
+        totals_frame = tk.Frame(main_frame, bg='white')
+        totals_frame.pack(fill=tk.X, pady=10)
+        tk.Label(totals_frame, text="Subtotal:", font=("Arial", 11, "bold"), bg='white').grid(row=0, column=0, sticky=tk.E, padx=5)
+        tk.Label(totals_frame, text=f"${venta[4]:.2f}", font=("Arial", 11), bg='white').grid(row=0, column=1, sticky=tk.W, padx=5)
+        tk.Label(totals_frame, text="Descuento:", font=("Arial", 11, "bold"), bg='white').grid(row=1, column=0, sticky=tk.E, padx=5)
+        tk.Label(totals_frame, text=f"${venta[5]:.2f}", font=("Arial", 11), bg='white').grid(row=1, column=1, sticky=tk.W, padx=5)
+        tk.Label(totals_frame, text="Recargo:", font=("Arial", 11, "bold"), bg='white').grid(row=2, column=0, sticky=tk.E, padx=5)
+        tk.Label(totals_frame, text=f"{recargo_global}%", font=("Arial", 11), fg="#F59E0B", bg='white').grid(row=2, column=1, sticky=tk.W, padx=5)
+        tk.Label(totals_frame, text="TOTAL:", font=("Arial", 13, "bold"), bg='white').grid(row=3, column=0, sticky=tk.E, padx=5, pady=5)
+        tk.Label(totals_frame, text=f"${venta[6]:.2f}", font=("Arial", 13, "bold"), fg="green", bg='white').grid(row=3, column=1, sticky=tk.W, padx=5, pady=5)
     
     def create_widgets(self):
         """Crear widgets"""
@@ -286,7 +360,9 @@ class DetalleVentaDialog:
         tk.Label(main_frame, text="Detalle de Productos:", font=("Arial", 11, "bold"), bg='white', fg='black').pack(anchor=tk.W, pady=(10, 5))
         
         columns = ('producto', 'cantidad', 'precio', 'descuento', 'recargo', 'subtotal')
-        tree = ttk.Treeview(main_frame, columns=columns, show='headings', height=10)
+        tree_frame = tk.Frame(main_frame, bg='white')
+        tree_frame.pack(fill=tk.BOTH, expand=True)
+        tree = ttk.Treeview(tree_frame, columns=columns, show='headings', height=10)
 
         tree.heading('producto', text='Producto')
         tree.heading('cantidad', text='Cantidad')
@@ -314,7 +390,11 @@ class DetalleVentaDialog:
                 f"${detalle[4]:.2f}"  # Subtotal
             ))
 
-        tree.pack(fill=tk.BOTH, expand=True)
+        # Scrollbar vertical para el detalle de productos
+        scrollbar_v = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar_v.set)
+        tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar_v.pack(side=tk.RIGHT, fill=tk.Y)
         
         # Totales
         totals_frame = ttk.Frame(main_frame)

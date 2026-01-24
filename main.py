@@ -75,7 +75,7 @@ class SistemaVentas:
 
         # Inicializar gestor de actualizaciones
         self.update_manager = UpdateManager(BASE_DIR)
-        self.update_manager.check_updates_async(self.root)
+        # self.update_manager.check_updates_async(self.root)  # Deshabilitado: no buscar ni recibir actualizaciones
 
         # Ejecutar migraciones automáticas antes de inicializar la base de datos
         try:

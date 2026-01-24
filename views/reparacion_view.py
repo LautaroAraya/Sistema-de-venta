@@ -275,7 +275,7 @@ class ReparacionView:
 
            # Campo contraseña debajo del patrón
         tk.Label(form_frame, text="Contraseña:", font=("Arial", 10, "bold"), bg='white').grid(row=7, column=0, sticky=tk.W, pady=5, padx=5)
-        ttk.Entry(form_frame, textvariable=self.contrasena_var, font=("Arial", 10), width=30, show='*').grid(row=7, column=1, sticky=tk.EW, pady=5, padx=5)
+        ttk.Entry(form_frame, textvariable=self.contrasena_var, font=("Arial", 10), width=30).grid(row=7, column=1, sticky=tk.EW, pady=5, padx=5)
 
            # Fila 7 col 2-3: Seña y Total
         tk.Label(form_frame, text="Seña ($):", font=("Arial", 10, "bold"), bg='white').grid(row=8, column=2, sticky=tk.W, pady=10, padx=5)
@@ -923,6 +923,7 @@ class ReparacionView:
             
             # Crear PDF en formato A5
             pdf_path = os.path.join(folder, f"Presupuesto_{reparacion['numero_orden']}.pdf")
+            from reportlab.lib.pagesizes import A4
             doc = SimpleDocTemplate(pdf_path, pagesize=A4, topMargin=0.2*inch, bottomMargin=0.2*inch, 
                                    leftMargin=0.3*inch, rightMargin=0.3*inch)
             
@@ -1138,13 +1139,13 @@ CUIT: {config.get('cuit', 'N/A')}</font>"""
             story.append(Spacer(1, 0.1*inch))
             
             # CONDICIONES (PIE DE PÁGINA)
-            condiciones = """<font size=6><b>CONDICIONES:</b> Estimado cliente, Queremos brindarle la mejor experiencia en nuestro servicio de reparación de celulares. Por favor, tenga en cuenta las siguientes condiciones antes de dejar su equipo:Retiro del equipo: Retiro del equipos dentro de los 30 días posteriores a su reparación tendrá un recargo del 50% sobre el precio pactado. Si transcurren 45 días desde la fecha de recepción, el equipo se considerará abandonado, conforme a los artículos 2525 y 2526 del Código Civil. En tal caso, la empresa podrá disponer del mismo en concepto de compensación de tiempo prestado y el costo de almacenamiento. Responsabilidad sobre la información y procedencia del equipo: No nos hacemos responsables por la pérdida parcial o total de la información contenida en el dispositivo. Asimismo, el cliente asume total responsabilidad por la procedencia del equipo entregado. Garantía sobre equipos mojados, celulares que han sufrido daños por humedad o contacto con líquidos no cuentan con ningún tipo de garantía una vez reparados. Garantía de reparación: La reparación del equipo está garantizada por tres días hábiles a partir de la fecha de entrega, siempre que el dispositivo no presente daños físicos posteriores, como golpes o rupturas, y que conserve el film protector en la pantalla. Agradecemos su confianza en nuestro servicio. Estamos aquí para ayudarle a mantener su dispositivo en óptimas condiciones.</font>"""
-            
+            condiciones = """<font size=8><b>CONDICIONES:</b></font> <b><font size=7>Estimado cliente, Queremos brindarle la mejor experiencia en nuestro servicio de reparación de celulares. Por favor, tenga en cuenta las siguientes condiciones antes de dejar su equipo:Retiro del equipo: Retiro del equipos dentro de los 30 días posteriores a su reparación tendrá un recargo del 50% sobre el precio pactado. Si transcurren 45 días desde la fecha de recepción, el equipo se considerará abandonado, conforme a los artículos 2525 y 2526 del Código Civil. En tal caso, la empresa podrá disponer del mismo en concepto de compensación de tiempo prestado y el costo de almacenamiento. Responsabilidad sobre la información y procedencia del equipo: No nos hacemos responsables por la pérdida parcial o total de la información contenida en el dispositivo. Asimismo, el cliente asume total responsabilidad por la procedencia del equipo entregado. Garantía sobre equipos mojados, celulares que han sufrido daños por humedad o contacto con líquidos no cuentan con ningún tipo de garantía una vez reparados. Garantía de reparación: La reparación del equipo está garantizada por tres días hábiles a partir de la fecha de entrega, siempre que el dispositivo no presente daños físicos posteriores, como golpes o rupturas, y que conserve el film protector en la pantalla. Agradecemos su confianza en nuestro servicio. Estamos aquí para ayudarle a mantener su dispositivo en óptimas condiciones.</font></b>"""
             cond_table = Table([[Paragraph(condiciones, styles['Normal'])]], colWidths=[6.5*inch])
             cond_table.setStyle(TableStyle([
-                ('BOX', (0, 0), (-1, -1), 1, colors.black),
-                ('TOPPADDING', (0, 0), (-1, -1), 5),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                ('BOX', (0, 0), (-1, -1), 3, colors.black),
+                ('BACKGROUND', (0, 0), (-1, -1), colors.lightgrey),
+                ('TOPPADDING', (0, 0), (-1, -1), 7),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
                 ('VALIGN', (0, 0), (-1, -1), 'TOP'),
             ]))
             story.append(cond_table)
