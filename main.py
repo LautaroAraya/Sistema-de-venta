@@ -65,7 +65,6 @@ sys.path.insert(0, BASE_DIR)
 from database.db_manager import DatabaseManager
 from views.login_view import LoginView
 from views.main_view import MainView
-from utils.updater import UpdateManager
 
 class SistemaVentas:
 
@@ -73,9 +72,7 @@ class SistemaVentas:
         self.root = tk.Tk()
         self.root.withdraw()  # Ocultar ventana principal temporalmente
 
-        # Inicializar gestor de actualizaciones
-        self.update_manager = UpdateManager(BASE_DIR)
-        # self.update_manager.check_updates_async(self.root)  # Deshabilitado: no buscar ni recibir actualizaciones
+        # ...eliminado gestor de actualizaciones...
 
         # Ejecutar migraciones automáticas antes de inicializar la base de datos
         try:
