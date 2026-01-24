@@ -334,8 +334,13 @@ class DetalleVentaDialog:
         tk.Label(totals_frame, text=f"${venta[5]:.2f}", font=("Arial", 11), bg='white').grid(row=1, column=1, sticky=tk.W, padx=5)
         tk.Label(totals_frame, text="Recargo:", font=("Arial", 11, "bold"), bg='white').grid(row=2, column=0, sticky=tk.E, padx=5)
         tk.Label(totals_frame, text=f"{recargo_global}%", font=("Arial", 11), fg="#F59E0B", bg='white').grid(row=2, column=1, sticky=tk.W, padx=5)
+        # Calcular el total con recargo
+        total_con_recargo = venta[6]
+        if recargo_global:
+            total_con_recargo = venta[4] - venta[5]  # subtotal - descuento
+            total_con_recargo += total_con_recargo * (recargo_global / 100)
         tk.Label(totals_frame, text="TOTAL:", font=("Arial", 13, "bold"), bg='white').grid(row=3, column=0, sticky=tk.E, padx=5, pady=5)
-        tk.Label(totals_frame, text=f"${venta[6]:.2f}", font=("Arial", 13, "bold"), fg="green", bg='white').grid(row=3, column=1, sticky=tk.W, padx=5, pady=5)
+        tk.Label(totals_frame, text=f"${total_con_recargo:.2f}", font=("Arial", 13, "bold"), fg="green", bg='white').grid(row=3, column=1, sticky=tk.W, padx=5, pady=5)
     
     def create_widgets(self):
         """Crear widgets"""
