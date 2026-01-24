@@ -75,14 +75,13 @@ class SistemaVentas:
         self.update_manager = UpdateManager(BASE_DIR)
         # self.update_manager.check_updates_async(self.root)  # Deshabilitado: no buscar ni recibir actualizaciones
 
-        # Ejecutar migraciones automáticas antes de inicializar la base de datos
+# Ejecutar migraciones automáticas de forma segura
         try:
-            import subprocess
-            migracion_path = os.path.join(BASE_DIR, 'database', 'migrar_metodo_pago_recargo.py')
-            if os.path.exists(migracion_path):
-                subprocess.run([sys.executable, migracion_path], check=True)
+            # Importación dinámica para evitar problemas de ruta inicial
+            from database.migrar_metodo_pago_recargo import ejecutar_migracion
+            ejecutar_migracion(BASE_DIR)
         except Exception as e:
-            print(f"Error al ejecutar la migración automática: {e}")
+            print(f"Aviso: No se pudo realizar la migración automática: {e}")
 
         # Inicializar base de datos
         self.db_manager = DatabaseManager()
