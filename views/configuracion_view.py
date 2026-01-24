@@ -286,46 +286,46 @@ actualizaciones automáticas. Diseñado para pequeños y medianos negocios."""
                 bg='#F0F4F8',
                 fg='#9CA3AF').pack(pady=5)
         
-        # Tab 1: Actualizaciones (DESHABILITADA)
-        # updates_tab = tk.Frame(notebook, bg='#F0F4F8')
-        # notebook.add(updates_tab, text="Actualizaciones")
-        # # Frame de actualizaciones
-        # updates_frame = tk.Frame(updates_tab, bg='white', relief=tk.RIDGE, bd=1, padx=20, pady=20)
-        # updates_frame.pack(fill=tk.X, padx=15, pady=15)
-        # tk.Label(updates_frame,
-        #         text="🔄 Buscar Actualizaciones",
-        #         font=("Arial", 13, "bold"),
-        #         bg='white',
-        #         fg='black').pack(anchor=tk.W, pady=10)
-        # tk.Label(updates_frame,
-        #         text="Verifica si hay una nueva versión disponible en GitHub.\n"
-        #              "Tus datos NO se perderán durante la actualización.",
-        #         font=("Arial", 10),
-        #         bg='white',
-        #         fg='#6B7280').pack(anchor=tk.W, pady=5)
-        # info_frame = tk.Frame(updates_frame, bg='#F0F4F8', relief=tk.RIDGE, bd=1, padx=10, pady=10)
-        # info_frame.pack(fill=tk.X, pady=15)
-        # tk.Label(info_frame,
-        #         text=f"Versión actual: {self.update_manager.current_version}",
-        #         font=("Arial", 10),
-        #         bg='#F0F4F8',
-        #         fg='#374151').pack(anchor=tk.W, pady=5)
-        # self.update_status_label = tk.Label(info_frame,
-        #                                    text="",
-        #                                    font=("Arial", 9),
-        #                                    bg='#F0F4F8',
-        #                                    fg='#3B82F6')
-        # self.update_status_label.pack(anchor=tk.W, pady=5)
-        # tk.Button(updates_frame,
-        #          text="🔍 Buscar Actualizaciones",
-        #          font=('Arial', 12, 'bold'),
-        #          bg='#3B82F6',
-        #          fg='white',
-        #          activebackground='#2563EB',
-        #          bd=0,
-        #          pady=12,
-        #          cursor='hand2',
-        #          command=self.buscar_actualizaciones).pack(pady=15, ipadx=30)
+        # Tab 1: Actualizaciones
+        updates_tab = tk.Frame(notebook, bg='#F0F4F8')
+        notebook.add(updates_tab, text="Actualizaciones")
+        # Frame de actualizaciones
+        updates_frame = tk.Frame(updates_tab, bg='white', relief=tk.RIDGE, bd=1, padx=20, pady=20)
+        updates_frame.pack(fill=tk.X, padx=15, pady=15)
+        tk.Label(updates_frame,
+            text="🔄 Buscar Actualizaciones",
+            font=("Arial", 13, "bold"),
+            bg='white',
+            fg='black').pack(anchor=tk.W, pady=10)
+        tk.Label(updates_frame,
+            text="Verifica si hay una nueva versión disponible en GitHub.\n"
+                 "Tus datos NO se perderán durante la actualización.",
+            font=("Arial", 10),
+            bg='white',
+            fg='#6B7280').pack(anchor=tk.W, pady=5)
+        info_frame = tk.Frame(updates_frame, bg='#F0F4F8', relief=tk.RIDGE, bd=1, padx=10, pady=10)
+        info_frame.pack(fill=tk.X, pady=15)
+        tk.Label(info_frame,
+            text=f"Versión actual: {self.update_manager.current_version}",
+            font=("Arial", 10),
+            bg='#F0F4F8',
+            fg='#374151').pack(anchor=tk.W, pady=5)
+        self.update_status_label = tk.Label(info_frame,
+                           text="",
+                           font=("Arial", 9),
+                           bg='#F0F4F8',
+                           fg='#3B82F6')
+        self.update_status_label.pack(anchor=tk.W, pady=5)
+        tk.Button(updates_frame,
+             text="🔍 Buscar Actualizaciones",
+             font=('Arial', 12, 'bold'),
+             bg='#3B82F6',
+             fg='white',
+             activebackground='#2563EB',
+             bd=0,
+             pady=12,
+             cursor='hand2',
+             command=self.buscar_actualizaciones).pack(pady=15, ipadx=30)
         
         # Tab 2: Personalización
         config_tab = tk.Frame(notebook, bg='#F0F4F8')

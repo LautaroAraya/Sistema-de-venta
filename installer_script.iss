@@ -7,7 +7,7 @@
 #define MyAppExeName "SistemaVentas.exe"
 
 [Setup]
-AppId={{SISTEMA-VENTAS-2026}
+AppId={{SISTEMA-VENTAS-2026}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
@@ -31,9 +31,18 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "dist\SistemaVentas.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "version.txt"; DestDir: "{app}"; Flags: ignoreversion
-Source: "database\*"; DestDir: "{app}\database"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "reports\*"; DestDir: "{app}\reports"; Flags: ignoreversion recursesubdirs createallsubdirs
-; NOTE: No use "Flags: ignoreversion" en archivos del sistema
+Source: "serviceAccountKey.json"; DestDir: "{app}"; Flags: ignoreversion
+Source: "serviceAccountKey.json.example"; DestDir: "{app}"; Flags: ignoreversion
+Source: "firebase_config.py"; DestDir: "{app}"; Flags: ignoreversion
+Source: "requirements.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "database\\*"; DestDir: "{app}\\database"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "reports\\*"; DestDir: "{app}\\reports"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "assets\\*"; DestDir: "{app}\\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "logs\\*"; DestDir: "{app}\\logs"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "views\\*"; DestDir: "{app}\\views"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "models\\*"; DestDir: "{app}\\models"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "utils\\*"; DestDir: "{app}\\utils"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: ".update_config.json"; DestDir: "{app}"; Flags: ignoreversion
 
 [Dirs]
 Name: "{app}\database"; Permissions: users-full

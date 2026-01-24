@@ -5,7 +5,21 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('firebase_config.py', '.')],  # Configuración pública (no sensible)
+    datas=[
+        ('firebase_config.py', '.'),
+        ('version.txt', '.'),
+        ('serviceAccountKey.json', '.'),
+        ('serviceAccountKey.json.example', '.'),
+        ('assets/*', 'assets'),
+        ('logs/*', 'logs'),
+        ('requirements.txt', '.'),
+        ('database/*', 'database'),
+        ('installer/*', 'installer'),
+        ('views/*', 'views'),
+        ('models/*', 'models'),
+        ('utils/*', 'utils'),
+        # Agrega aquí cualquier otro archivo/carpeta que tu app necesite en runtime
+    ],
     hiddenimports=['requests', 'urllib3', 'certifi'],
     hookspath=[],
     hooksconfig={},

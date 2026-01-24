@@ -504,30 +504,10 @@ class UpdateManager:
             return False
     
     def restart_app(self):
-        """Reiniciar la aplicación de forma segura"""
-        try:
-            # Usar script restart.py que garantiza ejecución desde la carpeta correcta
-            restart_script = os.path.abspath(os.path.join(self.base_path, "restart.py"))
-            
-            if os.path.exists(restart_script):
-                # Si existe restart.py, usarlo
-                python = sys.executable
-                subprocess.Popen([python, restart_script], cwd=os.path.abspath(self.base_path))
-            else:
-                # Fallback: intentar reiniciar directamente
-                if getattr(sys, 'frozen', False):
-                    subprocess.Popen([sys.executable])
-                else:
-                    python = sys.executable
-                    script = os.path.abspath(os.path.join(self.base_path, "main.py"))
-                    subprocess.Popen([python, script], cwd=os.path.abspath(self.base_path))
-            
-            # Cerrar la aplicación actual
-            sys.exit(0)
-        except Exception as e:
-            # Fallback: cerrar y que el usuario reinicie
-            messagebox.showerror("Error", f"No se pudo reiniciar: {str(e)}")
-            sys.exit(0)
+        """Reinicio deshabilitado para evitar bucles. No hace nada."""
+        print("[INFO] Llamada a restart_app ignorada para evitar bucles de reinicio.")
+        messagebox.showinfo("Reinicio deshabilitado", "El reinicio automático está deshabilitado para evitar bucles. Si es necesario, cierre y abra el sistema manualmente.")
+        # No hacer nada más
     
     def check_updates_async(self, root):
         """Verificar actualizaciones en background (no bloquea UI)"""
