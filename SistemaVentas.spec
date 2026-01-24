@@ -14,7 +14,6 @@ a = Analysis(
         ('logs/*', 'logs'),
         ('requirements.txt', '.'),
         ('database/*', 'database'),
-        ('installer/*', 'installer'),
         ('views/*', 'views'),
         ('models/*', 'models'),
         ('utils/*', 'utils'),
