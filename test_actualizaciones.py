@@ -18,7 +18,7 @@ if sys.platform == 'win32':
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_DIR)
 
-## from utils.updater import UpdateManager
+from utils.updater import UpdateManager
 
 def test_update_system():
     """Probar el sistema de actualizaciones"""
@@ -27,8 +27,8 @@ def test_update_system():
     print("🔧 PRUEBA DEL SISTEMA DE ACTUALIZACIONES")
     print("="*60)
     
-    ## # Inicializar UpdateManager
-    ## update_manager = UpdateManager(BASE_DIR)
+    # Inicializar UpdateManager
+    update_manager = UpdateManager(BASE_DIR)
     
     print(f"\n📦 Versión actual: v{update_manager.current_version}")
     print(f"📂 Directorio base: {BASE_DIR}")

@@ -1,3 +1,4 @@
+from utils.updater import UpdateManager
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from models.configuracion import Configuracion
@@ -8,6 +9,12 @@ import shutil
 
 class ConfiguracionView:
     def __init__(self, parent, db_manager, user_data):
+        # Inicializar UpdateManager para búsqueda manual
+        if getattr(__import__('sys'), 'frozen', False):
+            base_path = os.path.dirname(__import__('sys').executable)
+        else:
+            base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        self.update_manager = UpdateManager(base_path)
         self.parent = parent
         self.db_manager = db_manager
         self.user_data = user_data
@@ -113,7 +120,7 @@ class ConfiguracionView:
         #         bg='white',
         #         fg='#374151').grid(row=0, column=0, sticky=tk.W, pady=8, padx=10)
         # tk.Label(info_frame,
-        #         text=f"vX.Y.Z",
+        #         text=f"v{self.update_manager.current_version}",
         #         font=("Arial", 11),
         #         bg='white',
         #         fg='#2563EB').grid(row=0, column=1, sticky=tk.W, pady=8, padx=10)
