@@ -9,12 +9,9 @@ class UsuariosView:
         self.user_data = user_data
         self.usuario_model = Usuario(db_manager)
         
-        # Solo admin puede acceder
-        if user_data['rol'] != 'admin':
-            ttk.Label(parent, text="Acceso Denegado", 
-                     font=("Arial", 16, "bold")).pack(pady=50)
-            return
+
         
+		# ...existing code...
         self.create_widgets()
         self.cargar_usuarios()
     
@@ -235,6 +232,49 @@ class UsuarioDialog:
 
 
 class CambiarPasswordDialog:
+    def create_widgets(self):
+        self.dialog.configure(bg='white')
+        main_frame = tk.Frame(self.dialog, bg='white', padx=20, pady=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Nueva contraseña
+        tk.Label(main_frame, text="Nueva Contraseña:", bg='white', fg='black').grid(row=0, column=0, sticky=tk.W, pady=5)
+        self.password_entry = tk.Entry(main_frame, width=25, show="*")
+        self.password_entry.grid(row=0, column=1, pady=5, padx=5)
+
+        # Confirmar contraseña
+        tk.Label(main_frame, text="Confirmar Contraseña:", bg='white', fg='black').grid(row=1, column=0, sticky=tk.W, pady=5)
+        self.confirm_entry = tk.Entry(main_frame, width=25, show="*")
+        self.confirm_entry.grid(row=1, column=1, pady=5, padx=5)
+
+        # Botones
+        buttons_frame = tk.Frame(main_frame, bg='white')
+        buttons_frame.grid(row=2, column=0, columnspan=2, pady=20)
+
+        tk.Button(buttons_frame, text="Guardar", font=('Arial', 10), bg='#10B981', fg='white', relief=tk.RAISED,
+                  command=self.guardar).pack(side=tk.LEFT, padx=5)
+        tk.Button(buttons_frame, text="Cancelar", font=('Arial', 10), bg='#EF4444', fg='white', relief=tk.RAISED,
+                  command=self.dialog.destroy).pack(side=tk.LEFT, padx=5)
+
+    def guardar(self):
+        password = self.password_entry.get()
+        confirm = self.confirm_entry.get()
+        if not password or not confirm:
+            messagebox.showerror("Error", "Complete ambos campos de contraseña")
+            return
+        if password != confirm:
+            messagebox.showerror("Error", "Las contraseñas no coinciden")
+            return
+        if len(password) < 6:
+            messagebox.showerror("Error", "La contraseña debe tener al menos 6 caracteres")
+            return
+        # Aquí deberías agregar la lógica para actualizar la contraseña en la base de datos
+        exito, mensaje = self.usuario_model.cambiar_password(self.user_id, password)
+        if exito:
+            messagebox.showinfo("Éxito", mensaje)
+            self.dialog.destroy()
+        else:
+            messagebox.showerror("Error", mensaje)
     def __init__(self, parent, db_manager, user_id, username):
         self.db_manager = db_manager
         self.user_id = user_id
@@ -276,9 +316,8 @@ class EditUsuarioDialog:
         y = parent.winfo_y() + (parent.winfo_height() // 2) - 130
         self.dialog.geometry(f"400x260+{x}+{y}")
         
-        self.create_widgets(username, nombre, rol)
-    
-    def create_widgets(self, username, nombre, rol):
+        self.create_widgets_editar_usuario(username, nombre, rol)
+    def create_widgets_editar_usuario(self, username, nombre, rol):
         self.dialog.configure(bg='white')
         main_frame = tk.Frame(self.dialog, bg='white', padx=20, pady=20)
         main_frame.pack(fill=tk.BOTH, expand=True)

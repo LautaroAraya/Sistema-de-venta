@@ -121,9 +121,7 @@ class ReportesView:
                   command=self.eliminar_venta)
         self.btn_eliminar.pack(side=tk.LEFT, padx=5)
         
-        # Mostrar/ocultar botón según rol del usuario
-        if self.user_data['rol'] != 'admin':
-            self.btn_eliminar.config(state=tk.DISABLED)
+        # El botón de eliminar venta ahora está habilitado para todos los roles
         
         # Formato de fecha
         ttk.Label(self.parent, text="Formato de fecha: YYYY-MM-DD (ej: 2026-01-15)", 
@@ -208,12 +206,6 @@ class ReportesView:
         DetalleVentaDialog(self.parent, venta_data)
     
     def eliminar_venta(self):
-        """Eliminar una venta seleccionada (solo para admin)"""
-        # Verificar que es admin
-        if self.user_data['rol'] != 'admin':
-            messagebox.showerror("Acceso Denegado", "Solo los administradores pueden eliminar ventas")
-            return
-        
         # Verificar que haya seleccionado una venta
         selection = self.tree.selection()
         if not selection:
