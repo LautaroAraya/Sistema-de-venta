@@ -29,8 +29,13 @@ class ReparacionView:
         )
         if not archivo:
             return
-        # Carpeta temporal
-        carpeta_temp = os.path.join(os.getcwd(), 'fotos_temporales')
+        # Carpeta temporal segura en el usuario
+        import platform
+        if platform.system() == "Windows":
+            base_dir = os.environ.get("APPDATA", os.path.expanduser("~"))
+            carpeta_temp = os.path.join(base_dir, "SistemaDeVentas", "fotos_temporales")
+        else:
+            carpeta_temp = os.path.join(os.path.expanduser("~"), ".sistemaventas", "fotos_temporales")
         os.makedirs(carpeta_temp, exist_ok=True)
         # Nombre único
         ext = os.path.splitext(archivo)[1].lower()
@@ -708,6 +713,18 @@ class ReparacionView:
             )
 
             if success:
+                # Mover fotos temporales a la carpeta definitiva (igual que en alta)
+                import shutil
+                numero_orden = self.reparacion_actual['numero_orden']
+                if hasattr(self, 'fotos_temporales') and self.fotos_temporales:
+                    carpeta_destino = os.path.join(os.getcwd(), 'fotos_reparaciones', f"ticket_{numero_orden}")
+                    os.makedirs(carpeta_destino, exist_ok=True)
+                    for i, foto_temp in enumerate(self.fotos_temporales, 1):
+                        ext = os.path.splitext(foto_temp)[1].lower()
+                        nombre_final = f"foto_{i:02d}{ext}"
+                        shutil.move(foto_temp, os.path.join(carpeta_destino, nombre_final))
+                    self.fotos_temporales = []
+                    self.actualizar_contador_fotos_temporales()
                 messagebox.showinfo("Éxito", "Reparación actualizada correctamente")
                 self.limpiar_formulario()
                 self.reparacion_actual = None  # Limpiar referencia después de editar
