@@ -26,10 +26,8 @@ class DatabaseManager:
 
         self.db_path = os.path.join(self.base_path, 'database', db_name)
 
-        # Usar siempre %APPDATA%\SistemaVentas\fotos_reparaciones para fotos
-        appdata = os.getenv('APPDATA', self.base_path)
-        fotos_base = os.path.join(appdata, 'SistemaVentas')
-        self.fotos_path = os.path.join(fotos_base, 'fotos_reparaciones')
+        # Guardar fotos junto al ejecutable/script, en "fotos_reparaciones"
+        self.fotos_path = os.path.join(self.base_path, 'fotos_reparaciones')
         os.makedirs(self.fotos_path, exist_ok=True)
 
         self.connection = None
