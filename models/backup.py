@@ -114,12 +114,18 @@ class Backup:
                     'proveedores': 0,
                     'categorias': 0,
                     'ventas': 0,
-                    'detalles_venta': 0
+                    'detalles_venta': 0,
+                    'caja': 0,
+                    'reparaciones': 0
                 }
                 
                 for tabla in tablas:
-                    cursor.execute(f"SELECT COUNT(*) FROM {tabla}")
-                    tablas[tabla] = cursor.fetchone()[0]
+                    try:
+                        cursor.execute(f"SELECT COUNT(*) FROM {tabla}")
+                        tablas[tabla] = cursor.fetchone()[0]
+                    except:
+                        # Si la tabla no existe, dejar en 0
+                        tablas[tabla] = 0
                 
                 conn.close()
                 
@@ -132,7 +138,9 @@ class Backup:
                     'proveedores': tablas['proveedores'],
                     'categorias': tablas['categorias'],
                     'ventas': tablas['ventas'],
-                    'detalles_venta': tablas['detalles_venta']
+                    'detalles_venta': tablas['detalles_venta'],
+                    'caja': tablas['caja'],
+                    'reparaciones': tablas['reparaciones']
                 }
             except:
                 return {
@@ -144,7 +152,9 @@ class Backup:
                     'proveedores': '?',
                     'categorias': '?',
                     'ventas': '?',
-                    'detalles_venta': '?'
+                    'detalles_venta': '?',
+                    'caja': '?',
+                    'reparaciones': '?'
                 }
         except:
             return None
