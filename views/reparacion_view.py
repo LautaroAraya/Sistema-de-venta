@@ -771,18 +771,7 @@ class ReparacionView:
                     self.fotos_temporales = []
                     self.actualizar_contador_fotos_temporales()
                 messagebox.showinfo("Éxito", f"Reparación registrada con número: {numero_orden}")
-                if nueva_rep:
-                    self.reparacion_actual = nueva_rep
-                    self.cargar_datos_en_formulario(nueva_rep)
-                    # Si se está en un modal, cerrarlo
-                    if hasattr(self, 'parent') and isinstance(self.parent, tk.Tk):
-                        pass
-                    else:
-                        for w in self.parent.winfo_children():
-                            if isinstance(w, tk.Toplevel):
-                                w.destroy()
-                else:
-                    self.limpiar_formulario()
+                self.limpiar_formulario()
                 self.cargar_reparaciones()
             else:
                 messagebox.showerror("Error", numero_orden)
@@ -1311,6 +1300,7 @@ CUIT: {config.get('cuit', 'N/A')}</font>"""
         fotos = self.reparacion_model.obtener_fotos(reparacion_id)
         # Validar que los archivos existan
         self.fotos_actuales = [foto for foto in fotos if os.path.exists(foto)]
+        self.fotos_temporales = []  # Limpiar fotos temporales al cargar una reparación
         self.actualizar_contador_fotos()
 
     def buscar_cliente(self):
