@@ -35,7 +35,7 @@ class Reparacion:
                 INSERT INTO reparaciones (
                     numero_orden, usuario_id, cliente_nombre, cliente_telefono, cliente_email,
                     dispositivo, modelo, numero_serie, problema, sin_bateria, rajado, mojado,
-                    contrasena, patron, sena, total, estado, observaciones, fecha_ingreso
+                    contrasena, patron, sena, total, estado, observaciones, fecha_creacion
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (numero_orden, usuario_id, cliente_nombre, cliente_telefono, cliente_email,
