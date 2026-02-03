@@ -28,19 +28,20 @@ class Reparacion:
         cursor = conn.cursor()
         
         numero_orden = self.generar_numero_orden()
+        fecha_actual = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
         try:
             cursor.execute('''
                 INSERT INTO reparaciones (
                     numero_orden, usuario_id, cliente_nombre, cliente_telefono, cliente_email,
                     dispositivo, modelo, numero_serie, problema, sin_bateria, rajado, mojado,
-                    contrasena, patron, sena, total, estado, observaciones
+                    contrasena, patron, sena, total, estado, observaciones, fecha_ingreso
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (numero_orden, usuario_id, cliente_nombre, cliente_telefono, cliente_email,
                   dispositivo, modelo, numero_serie, problema, 1 if sin_bateria else 0, 
                   1 if rajado else 0, 1 if mojado else 0, contrasena, patron, sena, total, 
-                  estado, observaciones))
+                  estado, observaciones, fecha_actual))
             
             conn.commit()
             return True, numero_orden
@@ -144,7 +145,9 @@ class Reparacion:
             updates.append("estado = ?")
             values.append(estado)
             if estado == 'completada':
-                updates.append("fecha_entrega = CURRENT_TIMESTAMP")
+                fecha_entrega = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                updates.append("fecha_entrega = ?")
+                values.append(fecha_entrega)
         if observaciones is not None:
             updates.append("observaciones = ?")
             values.append(observaciones)
@@ -240,8 +243,11 @@ class Reparacion:
             carpeta_ticket = self._carpeta_reparacion(reparacion)
             if not os.path.exists(carpeta_ticket):
                 return []
-            archivos = [os.path.join(carpeta_ticket, f) for f in os.listdir(carpeta_ticket) if f.lower().endswith('.jpg')]
+            archivos = [os.path.join(carpeta_ticket, f) for f in os.listdir(carpeta_ticket) 
+                       if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp'))]
             archivos.sort()
+            # Validar que los archivos existan
+            archivos = [f for f in archivos if os.path.exists(f) and os.path.isfile(f)]
             return archivos
         except Exception:
             return []

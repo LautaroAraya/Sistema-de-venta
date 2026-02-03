@@ -51,6 +51,10 @@ class ProductosView:
         ttk.Button(buttons_frame, text="Actualizar", 
                   command=self.cargar_productos).pack(side=tk.LEFT, padx=5)
         
+        # Botón para agregar categorías
+        ttk.Button(buttons_frame, text="➕ Nueva Categoría", 
+                  command=self.nueva_categoria).pack(side=tk.LEFT, padx=5)
+        
         # Tabla de productos
         columns = ('id', 'codigo', 'nombre', 'categoria', 'precio', 'stock', 'proveedor')
         self.tree = ttk.Treeview(self.parent, columns=columns, show='headings', height=20)
@@ -127,6 +131,10 @@ class ProductosView:
             self.producto_model.eliminar_producto(producto_id)
             messagebox.showinfo("Éxito", "Producto eliminado")
             self.cargar_productos()
+    
+    def nueva_categoria(self):
+        """Abrir ventana para crear nueva categoría"""
+        CategoriaDialog(self.parent, self.db_manager)
 
 
 class ProductoDialog:
@@ -179,12 +187,18 @@ class ProductoDialog:
         
         # Categoría
         tk.Label(main_frame, text="Categoría:", bg='white', fg='black').grid(row=3, column=0, sticky=tk.W, pady=5)
-        self.categoria_combo = ttk.Combobox(main_frame, width=28, state='readonly')
-        self.categoria_combo.grid(row=3, column=1, pady=5, padx=5)
+        categoria_frame = tk.Frame(main_frame, bg='white')
+        categoria_frame.grid(row=3, column=1, pady=5, padx=5, sticky=tk.EW)
+        
+        self.categoria_combo = ttk.Combobox(categoria_frame, width=22, state='readonly')
+        self.categoria_combo.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        # Botón para agregar categoría rápidamente
+        tk.Button(categoria_frame, text="➕", font=('Arial', 8), bg='#10B981', fg='white', 
+                  width=3, command=self.agregar_categoria_rapido).pack(side=tk.LEFT, padx=2)
         
         # Cargar categorías
-        categorias = self.categoria_model.listar_categorias()
-        self.categoria_combo['values'] = [f"{cat[0]} - {cat[1]}" for cat in categorias]
+        self.actualizar_categorias_combo()
         
         # Precio
         tk.Label(main_frame, text="Precio:", bg='white', fg='black').grid(row=4, column=0, sticky=tk.W, pady=5)
@@ -283,3 +297,120 @@ class ProductoDialog:
             self.dialog.destroy()
         else:
             messagebox.showerror("Error", mensaje)
+    
+    def actualizar_categorias_combo(self):
+        """Actualizar el combo de categorías"""
+        categorias = self.categoria_model.listar_categorias()
+        self.categoria_combo['values'] = [f"{cat[0]} - {cat[1]}" for cat in categorias]
+    
+    def agregar_categoria_rapido(self):
+        """Abrir diálogo para agregar categoría y actualizar combo"""
+        # Crear diálogo simple para categoría
+        cat_dialog = tk.Toplevel(self.dialog)
+        cat_dialog.title("Nueva Categoría")
+        cat_dialog.geometry("300x150")
+        cat_dialog.transient(self.dialog)
+        cat_dialog.grab_set()
+        
+        # Centrar
+        cat_dialog.update_idletasks()
+        x = self.dialog.winfo_x() + (self.dialog.winfo_width() // 2) - 150
+        y = self.dialog.winfo_y() + (self.dialog.winfo_height() // 2) - 75
+        cat_dialog.geometry(f"300x150+{x}+{y}")
+        
+        frame = tk.Frame(cat_dialog, bg='white', padx=15, pady=15)
+        frame.pack(fill=tk.BOTH, expand=True)
+        
+        tk.Label(frame, text="Nombre de la Categoría:", bg='white', fg='black').pack(anchor=tk.W, pady=5)
+        nombre_entry = tk.Entry(frame, width=35)
+        nombre_entry.pack(anchor=tk.W, pady=5)
+        nombre_entry.focus()
+        
+        def guardar_categoria():
+            nombre = nombre_entry.get().strip()
+            
+            if not nombre:
+                messagebox.showerror("Error", "El nombre es obligatorio")
+                return
+            
+            success, msg = self.categoria_model.crear_categoria(nombre, '')
+            if success:
+                messagebox.showinfo("Éxito", "Categoría creada")
+                self.actualizar_categorias_combo()
+                # Seleccionar la nueva categoría
+                categorias = self.categoria_model.listar_categorias()
+                for i, val in enumerate(self.categoria_combo['values']):
+                    if nombre in val:
+                        self.categoria_combo.current(i)
+                        break
+                cat_dialog.destroy()
+            else:
+                messagebox.showerror("Error", msg)
+        
+        botones = tk.Frame(frame, bg='white')
+        botones.pack(pady=10)
+        
+        tk.Button(botones, text="Guardar", bg='#10B981', fg='white', 
+                  command=guardar_categoria).pack(side=tk.LEFT, padx=5)
+        tk.Button(botones, text="Cancelar", bg='#EF4444', fg='white', 
+                  command=cat_dialog.destroy).pack(side=tk.LEFT, padx=5)
+
+
+class CategoriaDialog:
+    """Diálogo para crear nueva categoría desde la vista de productos"""
+    def __init__(self, parent, db_manager):
+        self.db_manager = db_manager
+        self.categoria_model = Categoria(db_manager)
+        
+        self.dialog = tk.Toplevel(parent)
+        self.dialog.title("Nueva Categoría")
+        self.dialog.geometry("400x200")
+        self.dialog.transient(parent)
+        self.dialog.grab_set()
+        
+        # Centrar diálogo
+        self.dialog.update_idletasks()
+        x = parent.winfo_x() + (parent.winfo_width() // 2) - 200
+        y = parent.winfo_y() + (parent.winfo_height() // 2) - 100
+        self.dialog.geometry(f"400x200+{x}+{y}")
+        
+        self.create_widgets()
+    
+    def create_widgets(self):
+        """Crear widgets del diálogo"""
+        self.dialog.configure(bg='white')
+        main_frame = tk.Frame(self.dialog, bg='white', padx=20, pady=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Nombre
+        tk.Label(main_frame, text="Nombre de la Categoría:", bg='white', fg='black', 
+                 font=("Arial", 10)).pack(anchor=tk.W, pady=5)
+        self.nombre_entry = tk.Entry(main_frame, width=40, font=("Arial", 10))
+        self.nombre_entry.pack(anchor=tk.W, pady=5, fill=tk.X)
+        self.nombre_entry.focus()
+        
+        # Botones
+        buttons_frame = tk.Frame(main_frame, bg='white')
+        buttons_frame.pack(pady=20)
+        
+        tk.Button(buttons_frame, text="Guardar", font=('Arial', 10), bg='#10B981', fg='white', 
+                  width=12, command=self.guardar).pack(side=tk.LEFT, padx=5)
+        tk.Button(buttons_frame, text="Cancelar", font=('Arial', 10), bg='#EF4444', fg='white', 
+                  width=12, command=self.dialog.destroy).pack(side=tk.LEFT, padx=5)
+    
+    def guardar(self):
+        """Guardar nueva categoría"""
+        nombre = self.nombre_entry.get().strip()
+        
+        if not nombre:
+            messagebox.showerror("Error", "El nombre de la categoría es obligatorio")
+            return
+        
+        success, mensaje = self.categoria_model.crear_categoria(nombre, '')
+        
+        if success:
+            messagebox.showinfo("Éxito", "Categoría creada exitosamente")
+            self.dialog.destroy()
+        else:
+            messagebox.showerror("Error", mensaje)
+

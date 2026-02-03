@@ -717,7 +717,7 @@ class ReparacionView:
                 import shutil
                 numero_orden = self.reparacion_actual['numero_orden']
                 if hasattr(self, 'fotos_temporales') and self.fotos_temporales:
-                    carpeta_destino = os.path.join(os.getcwd(), 'fotos_reparaciones', f"ticket_{numero_orden}")
+                    carpeta_destino = os.path.join(self.db_manager.fotos_path, f"ticket_{numero_orden}")
                     os.makedirs(carpeta_destino, exist_ok=True)
                     for i, foto_temp in enumerate(self.fotos_temporales, 1):
                         ext = os.path.splitext(foto_temp)[1].lower()
@@ -762,7 +762,7 @@ class ReparacionView:
                         nueva_rep = rep
                         break
                 if nueva_rep and hasattr(self, 'fotos_temporales') and self.fotos_temporales:
-                    carpeta_destino = os.path.join(os.getcwd(), 'fotos_reparaciones', f"ticket_{numero_orden}")
+                    carpeta_destino = os.path.join(self.db_manager.fotos_path, f"ticket_{numero_orden}")
                     os.makedirs(carpeta_destino, exist_ok=True)
                     for i, foto_temp in enumerate(self.fotos_temporales, 1):
                         ext = os.path.splitext(foto_temp)[1].lower()
@@ -1224,6 +1224,11 @@ CUIT: {config.get('cuit', 'N/A')}</font>"""
         canvas.create_window((0, 0), window=interior, anchor=tk.NW)
         for i, foto_path in enumerate(fotos, 1):
             try:
+                # Validar que el archivo existe
+                if not os.path.exists(foto_path):
+                    tk.Label(interior, text=f"⚠️ Foto {i} no encontrada: {foto_path}", bg='white', fg='orange').pack()
+                    continue
+                    
                 img = Image.open(foto_path)
                 img.thumbnail((500, 400), Image.Resampling.LANCZOS)
                 photo = ImageTk.PhotoImage(img)
@@ -1303,7 +1308,9 @@ CUIT: {config.get('cuit', 'N/A')}</font>"""
     
     def cargar_fotos_reparacion(self, reparacion_id):
         """Cargar fotos de una reparación"""
-        self.fotos_actuales = self.reparacion_model.obtener_fotos(reparacion_id)
+        fotos = self.reparacion_model.obtener_fotos(reparacion_id)
+        # Validar que los archivos existan
+        self.fotos_actuales = [foto for foto in fotos if os.path.exists(foto)]
         self.actualizar_contador_fotos()
 
     def buscar_cliente(self):

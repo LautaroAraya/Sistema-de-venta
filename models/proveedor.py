@@ -1,4 +1,5 @@
 from database.db_manager import DatabaseManager
+from datetime import datetime
 
 class Proveedor:
     def __init__(self, db_manager):
@@ -10,10 +11,11 @@ class Proveedor:
         cursor = conn.cursor()
         
         try:
+            fecha_actual = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             cursor.execute('''
-                INSERT INTO proveedores (nombre, contacto, telefono, email, direccion)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (nombre, contacto, telefono, email, direccion))
+                INSERT INTO proveedores (nombre, contacto, telefono, email, direccion, fecha_registro)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (nombre, contacto, telefono, email, direccion, fecha_actual))
             conn.commit()
             return True, "Proveedor creado exitosamente"
         except Exception as e:

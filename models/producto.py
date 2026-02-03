@@ -1,4 +1,5 @@
 from database.db_manager import DatabaseManager
+from datetime import datetime
 
 class Producto:
     def __init__(self, db_manager):
@@ -10,10 +11,11 @@ class Producto:
         cursor = conn.cursor()
         
         try:
+            fecha_actual = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             cursor.execute('''
-                INSERT INTO productos (codigo, nombre, descripcion, categoria_id, precio, stock, proveedor_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (codigo, nombre, descripcion, categoria_id, precio, stock, proveedor_id))
+                INSERT INTO productos (codigo, nombre, descripcion, categoria_id, precio, stock, proveedor_id, fecha_creacion)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (codigo, nombre, descripcion, categoria_id, precio, stock, proveedor_id, fecha_actual))
             conn.commit()
             return True, "Producto creado exitosamente"
         except Exception as e:

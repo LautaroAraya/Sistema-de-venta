@@ -1,4 +1,5 @@
 from database.db_manager import DatabaseManager
+from datetime import datetime
 
 class Categoria:
     def __init__(self, db_manager):
@@ -10,10 +11,11 @@ class Categoria:
         cursor = conn.cursor()
         
         try:
+            fecha_actual = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             cursor.execute('''
-                INSERT INTO categorias (nombre, descripcion)
-                VALUES (?, ?)
-            ''', (nombre, descripcion))
+                INSERT INTO categorias (nombre, descripcion, fecha_creacion)
+                VALUES (?, ?, ?)
+            ''', (nombre, descripcion, fecha_actual))
             conn.commit()
             return True, "Categoría creada exitosamente"
         except Exception as e:

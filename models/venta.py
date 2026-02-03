@@ -41,13 +41,16 @@ class Venta:
             
             total = subtotal - descuento_total
             
+            # Fecha actual
+            fecha_actual = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
             # Insertar venta
             cursor.execute('''
                 INSERT INTO ventas (numero_factura, usuario_id, cliente_nombre, cliente_documento, 
-                                   subtotal, descuento_total, total, metodo_pago, recargo)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                   subtotal, descuento_total, total, metodo_pago, recargo, fecha_venta)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (numero_factura, usuario_id, cliente_nombre, cliente_documento, 
-                  subtotal, descuento_total, total, metodo_pago, recargo))
+                  subtotal, descuento_total, total, metodo_pago, recargo, fecha_actual))
             
             venta_id = cursor.lastrowid
             

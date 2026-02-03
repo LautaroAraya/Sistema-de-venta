@@ -30,11 +30,12 @@ class Configuracion:
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         
+        fecha_actual = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         cursor.execute('''
             UPDATE configuracion 
-            SET nombre_sistema = ?, fecha_actualizacion = CURRENT_TIMESTAMP
+            SET nombre_sistema = ?, fecha_actualizacion = ?
             WHERE id = 1
-        ''', (nombre,))
+        ''', (nombre, fecha_actual))
         
         conn.commit()
         return cursor.rowcount > 0
@@ -44,11 +45,12 @@ class Configuracion:
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         
+        fecha_actual = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         cursor.execute('''
             UPDATE configuracion 
-            SET logo_path = ?, fecha_actualizacion = CURRENT_TIMESTAMP
+            SET logo_path = ?, fecha_actualizacion = ?
             WHERE id = 1
-        ''', (logo_path,))
+        ''', (logo_path, fecha_actual))
         
         conn.commit()
         return cursor.rowcount > 0
@@ -58,11 +60,12 @@ class Configuracion:
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         
+        fecha_actual = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         cursor.execute('''
             UPDATE configuracion 
-            SET nombre_sistema = ?, logo_path = ?, telefono = ?, direccion = ?, cuit = ?, fecha_actualizacion = CURRENT_TIMESTAMP
+            SET nombre_sistema = ?, logo_path = ?, telefono = ?, direccion = ?, cuit = ?, fecha_actualizacion = ?
             WHERE id = 1
-        ''', (nombre, logo_path, telefono, direccion, cuit))
+        ''', (nombre, logo_path, telefono, direccion, cuit, fecha_actual))
         
         conn.commit()
         return cursor.rowcount > 0
