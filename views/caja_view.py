@@ -17,64 +17,143 @@ class CajaView:
         """Crear widgets"""
         self.parent.configure(bg='#F0F4F8')
         
-        # Título con color
-        title_frame = tk.Frame(self.parent, bg='#8B5CF6', height=60)
-        title_frame.pack(fill=tk.X, pady=(0, 15))
+        # Título con color (más compacto)
+        title_frame = tk.Frame(self.parent, bg='#8B5CF6', height=45)
+        title_frame.pack(fill=tk.X, pady=(0, 5))
         title_frame.pack_propagate(False)
         
         tk.Label(title_frame,
                 text="💰 GESTIÓN DE CAJA",
-                font=("Arial", 18, "bold"),
+                font=("Arial", 14, "bold"),
                 bg='#8B5CF6',
                 fg='white').pack(expand=True)
         
-        # Frame de estado de caja
-        self.estado_frame = tk.Frame(self.parent, bg='white', relief=tk.RIDGE, bd=2)
-        self.estado_frame.pack(fill=tk.X, padx=10, pady=10)
+        # Frame principal con scroll
+        main_container = tk.Frame(self.parent, bg='#F0F4F8')
+        main_container.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
+        
+        # Canvas con scrollbar
+        canvas = tk.Canvas(main_container, bg='#F0F4F8', highlightthickness=0)
+        scrollbar = ttk.Scrollbar(main_container, orient=tk.VERTICAL, command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg='#F0F4F8')
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw", width=canvas.winfo_width() or 1)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Actualizar ancho del canvas cuando cambia tamaño
+        def on_canvas_configure(event):
+            canvas.itemconfig(canvas.find_withtag("all")[0], width=event.width)
+        
+        canvas.bind("<Configure>", on_canvas_configure)
+        
+        # Frame de estado de caja (compacto)
+        self.estado_frame = tk.Frame(scrollable_frame, bg='white', relief=tk.RIDGE, bd=1)
+        self.estado_frame.pack(fill=tk.BOTH, expand=False, padx=5, pady=3)
         
         # Título del estado
-        tk.Label(self.estado_frame, text="Estado de la Caja", font=("Arial", 14, "bold"),
-                bg='white', fg='black').pack(pady=10)
+        tk.Label(self.estado_frame, text="Estado de la Caja", font=("Arial", 10, "bold"),
+                bg='white', fg='black').pack(pady=3)
         
         # Estado actual
         self.estado_label = tk.Label(self.estado_frame, text="Caja Cerrada", 
-                                     font=("Arial", 12, "bold"), bg='white', fg='red')
-        self.estado_label.pack(pady=5)
+                                     font=("Arial", 9, "bold"), bg='white', fg='red')
+        self.estado_label.pack(pady=1)
         
-        # Info de caja abierta
+        # Info de caja abierta (compacto)
         self.info_frame = tk.Frame(self.estado_frame, bg='white')
-        self.info_frame.pack(pady=10)
+        self.info_frame.pack(pady=3, fill=tk.X)
         
-        # Botones de acción
-        buttons_frame = tk.Frame(self.parent, bg='#F0F4F8')
-        buttons_frame.pack(pady=10)
+        # Botones de acción (más compactos)
+        buttons_frame = tk.Frame(scrollable_frame, bg='#F0F4F8')
+        buttons_frame.pack(pady=3, fill=tk.X, padx=5)
         
-        self.btn_abrir = tk.Button(buttons_frame, text="🔓 Abrir Caja", font=('Arial', 11, 'bold'),
-                                   bg='#10B981', fg='white', width=15, height=2,
+        # Frame interno para centrar botones
+        buttons_inner = tk.Frame(buttons_frame, bg='#F0F4F8')
+        buttons_inner.pack()
+        
+        self.btn_abrir = tk.Button(buttons_inner, text="🔓 Abrir", font=('Arial', 9, 'bold'),
+                                   bg='#10B981', fg='white', width=14, height=1,
                                    command=self.abrir_caja)
-        self.btn_abrir.pack(side=tk.LEFT, padx=10)
+        self.btn_abrir.pack(side=tk.LEFT, padx=3)
         
-        self.btn_cerrar = tk.Button(buttons_frame, text="🔒 Cerrar Caja", font=('Arial', 11, 'bold'),
-                                    bg='#EF4444', fg='white', width=15, height=2,
+        self.btn_cerrar = tk.Button(buttons_inner, text="🔒 Cerrar", font=('Arial', 9, 'bold'),
+                                    bg='#EF4444', fg='white', width=14, height=1,
                                     command=self.cerrar_caja, state=tk.DISABLED)
-        self.btn_cerrar.pack(side=tk.LEFT, padx=10)
+        self.btn_cerrar.pack(side=tk.LEFT, padx=3)
         
-        tk.Button(buttons_frame, text="📊 Ver Historial", font=('Arial', 11),
-                 bg='#3B82F6', fg='white', width=15, height=2,
-                 command=self.ver_historial).pack(side=tk.LEFT, padx=10)
+        tk.Button(buttons_inner, text="📊 Historial", font=('Arial', 9),
+                 bg='#3B82F6', fg='white', width=14, height=1,
+                 command=self.ver_historial).pack(side=tk.LEFT, padx=3)
         
         # Botón eliminar solo para admin
         if self.user_data['rol'] == 'admin':
-            tk.Button(buttons_frame, text="🗑️ Eliminar Caja", font=('Arial', 11),
-                     bg='#DC2626', fg='white', width=15, height=2,
-                     command=self.eliminar_caja).pack(side=tk.LEFT, padx=10)
+            tk.Button(buttons_inner, text="🗑️ Eliminar", font=('Arial', 9),
+                     bg='#DC2626', fg='white', width=14, height=1,
+                     command=self.eliminar_caja).pack(side=tk.LEFT, padx=3)
         
-        # Tabla de historial reciente
-        tk.Label(self.parent, text="Historial Reciente", font=("Arial", 12, "bold"),
-                bg='#F0F4F8', fg='black').pack(pady=(20, 5))
+        # Frame para agregar movimientos (compacto)
+        tk.Label(scrollable_frame, text="Agregar Movimiento", font=("Arial", 9, "bold"),
+                bg='#F0F4F8', fg='black').pack(pady=(8, 2), anchor=tk.W, padx=5)
+        
+        self.movimientos_frame = tk.Frame(scrollable_frame, bg='white', relief=tk.RIDGE, bd=1)
+        self.movimientos_frame.pack(fill=tk.X, padx=5, pady=2)
+        
+        movimientos_btn_frame = tk.Frame(self.movimientos_frame, bg='white', padx=3, pady=3)
+        movimientos_btn_frame.pack()
+        
+        self.btn_agregar_efectivo = tk.Button(movimientos_btn_frame, text="💵 Efectivo", 
+                                              font=('Arial', 9, 'bold'), bg='#10B981', fg='white',
+                                              width=15, height=1, command=self.agregar_movimiento_efectivo,
+                                              state=tk.DISABLED)
+        self.btn_agregar_efectivo.pack(side=tk.LEFT, padx=3)
+        
+        self.btn_agregar_transferencia = tk.Button(movimientos_btn_frame, text="🏦 Transfer.", 
+                                                   font=('Arial', 9, 'bold'), bg='#3B82F6', fg='white',
+                                                   width=15, height=1, command=self.agregar_movimiento_transferencia,
+                                                   state=tk.DISABLED)
+        self.btn_agregar_transferencia.pack(side=tk.LEFT, padx=3)
+        
+        self.btn_agregar_tarjeta = tk.Button(movimientos_btn_frame, text="💳 Tarjeta", 
+                                             font=('Arial', 9, 'bold'), bg='#8B5CF6', fg='white',
+                                             width=15, height=1, command=self.agregar_movimiento_tarjeta,
+                                             state=tk.DISABLED)
+        self.btn_agregar_tarjeta.pack(side=tk.LEFT, padx=3)
+        
+        # Tabla de movimientos (compacta)
+        tk.Label(scrollable_frame, text="Movimientos de Caja", font=("Arial", 9, "bold"),
+                bg='#F0F4F8', fg='black').pack(pady=(8, 2), anchor=tk.W, padx=5)
+        
+        mov_columns = ('id', 'tipo', 'monto', 'descripcion', 'fecha')
+        self.tree_movimientos = ttk.Treeview(scrollable_frame, columns=mov_columns, show='headings', height=5)
+        
+        self.tree_movimientos.heading('id', text='ID')
+        self.tree_movimientos.heading('tipo', text='Tipo')
+        self.tree_movimientos.heading('monto', text='Monto')
+        self.tree_movimientos.heading('descripcion', text='Descripción')
+        self.tree_movimientos.heading('fecha', text='Fecha')
+        
+        self.tree_movimientos.column('id', width=30)
+        self.tree_movimientos.column('tipo', width=70)
+        self.tree_movimientos.column('monto', width=75, anchor=tk.E)
+        self.tree_movimientos.column('descripcion', width=180)
+        self.tree_movimientos.column('fecha', width=90)
+        
+        self.tree_movimientos.pack(fill=tk.BOTH, expand=False, padx=5, pady=2)
+        
+        # Bind click derecho para eliminar
+        self.tree_movimientos.bind('<Button-3>', self.menu_eliminar_movimiento)
+        
+        # Tabla de historial reciente (compacta)
+        tk.Label(scrollable_frame, text="Historial Reciente", font=("Arial", 9, "bold"),
+                bg='#F0F4F8', fg='black').pack(pady=(8, 2), anchor=tk.W, padx=5)
         
         columns = ('id', 'usuario', 'fecha_apertura', 'fecha_cierre', 'monto_inicial', 'monto_final', 'estado')
-        self.tree = ttk.Treeview(self.parent, columns=columns, show='headings', height=10)
+        self.tree = ttk.Treeview(scrollable_frame, columns=columns, show='headings', height=6)
         
         self.tree.heading('id', text='ID')
         self.tree.heading('usuario', text='Usuario')
@@ -84,23 +163,22 @@ class CajaView:
         self.tree.heading('monto_final', text='Monto Final')
         self.tree.heading('estado', text='Estado')
         
-        self.tree.column('id', width=50)
-        self.tree.column('usuario', width=150)
-        self.tree.column('fecha_apertura', width=130)
-        self.tree.column('fecha_cierre', width=130)
-        self.tree.column('monto_inicial', width=100, anchor=tk.E)
-        self.tree.column('monto_final', width=100, anchor=tk.E)
-        self.tree.column('estado', width=80)
+        self.tree.column('id', width=35)
+        self.tree.column('usuario', width=90)
+        self.tree.column('fecha_apertura', width=95)
+        self.tree.column('fecha_cierre', width=95)
+        self.tree.column('monto_inicial', width=80, anchor=tk.E)
+        self.tree.column('monto_final', width=80, anchor=tk.E)
+        self.tree.column('estado', width=60)
         
-        # Scrollbars
-        scrollbar_v = ttk.Scrollbar(self.parent, orient=tk.VERTICAL, command=self.tree.yview)
-        self.tree.config(yscrollcommand=scrollbar_v.set)
-        
-        self.tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
-        scrollbar_v.pack(side=tk.RIGHT, fill=tk.Y)
+        self.tree.pack(fill=tk.BOTH, expand=True, padx=5, pady=2)
         
         # Bind doble click para ver detalles
         self.tree.bind('<Double-Button-1>', lambda e: self.ver_detalle_caja())
+        
+        # Scrollbars del canvas
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         # Cargar historial
         self.cargar_historial()
@@ -117,6 +195,9 @@ class CajaView:
             self.estado_label.config(text="✅ Caja Abierta", fg='#10B981')
             self.btn_abrir.config(state=tk.DISABLED)
             self.btn_cerrar.config(state=tk.NORMAL)
+            self.btn_agregar_efectivo.config(state=tk.NORMAL)
+            self.btn_agregar_transferencia.config(state=tk.NORMAL)
+            self.btn_agregar_tarjeta.config(state=tk.NORMAL)
             
             # Mostrar información
             tk.Label(self.info_frame, text=f"Abierta por: {caja_abierta['usuario']}", 
@@ -125,13 +206,23 @@ class CajaView:
                     bg='white', fg='black', font=("Arial", 10)).pack(anchor=tk.W, padx=20)
             tk.Label(self.info_frame, text=f"Monto Inicial: ${caja_abierta['monto_inicial']:.2f}", 
                     bg='white', fg='black', font=("Arial", 10, 'bold')).pack(anchor=tk.W, padx=20)
+            
+            # Cargar movimientos
+            self.cargar_movimientos(caja_abierta['id'])
         else:
             self.estado_label.config(text="❌ Caja Cerrada", fg='#EF4444')
             self.btn_abrir.config(state=tk.NORMAL)
             self.btn_cerrar.config(state=tk.DISABLED)
+            self.btn_agregar_efectivo.config(state=tk.DISABLED)
+            self.btn_agregar_transferencia.config(state=tk.DISABLED)
+            self.btn_agregar_tarjeta.config(state=tk.DISABLED)
             
             tk.Label(self.info_frame, text="No hay caja abierta actualmente", 
                     bg='white', fg='gray', font=("Arial", 10, 'italic')).pack(pady=10)
+            
+            # Limpiar movimientos
+            for item in self.tree_movimientos.get_children():
+                self.tree_movimientos.delete(item)
     
     def abrir_caja(self):
         """Abrir diálogo para abrir caja"""
@@ -183,7 +274,7 @@ class CajaView:
         
         caja = self.caja_model.obtener_caja_por_id(caja_id)
         if caja:
-            DetalleCajaDialog(self.parent, caja)
+            DetalleCajaDialog(self.parent, caja, self.db_manager)
     
     def cargar_historial(self):
         """Cargar historial reciente en la tabla"""
@@ -206,9 +297,274 @@ class CajaView:
         """Actualizar toda la vista"""
         self.actualizar_estado_caja()
         self.cargar_historial()
+    
+    def cargar_movimientos(self, caja_id):
+        """Cargar movimientos de la caja abierta"""
+        for item in self.tree_movimientos.get_children():
+            self.tree_movimientos.delete(item)
+        
+        movimientos = self.caja_model.obtener_movimientos(caja_id)
+        for mov in movimientos:
+            self.tree_movimientos.insert('', tk.END, values=(
+                mov['id'],
+                mov['tipo'].upper(),
+                f"${mov['monto']:.2f}",
+                mov['descripcion'] or '',
+                mov['fecha'][:16]
+            ))
+    
+    def agregar_movimiento_efectivo(self):
+        """Agregar movimiento de efectivo"""
+        caja = self.caja_model.obtener_caja_abierta()
+        if caja:
+            AgregarMovimientoDialog(self.parent, self.db_manager, caja['id'], 'efectivo', self.actualizar_estado_caja)
+    
+    def agregar_movimiento_transferencia(self):
+        """Agregar movimiento de transferencia"""
+        caja = self.caja_model.obtener_caja_abierta()
+        if caja:
+            AgregarMovimientoDialog(self.parent, self.db_manager, caja['id'], 'transferencia', self.actualizar_estado_caja)
+    
+    def agregar_movimiento_tarjeta(self):
+        """Agregar movimiento de tarjeta"""
+        caja = self.caja_model.obtener_caja_abierta()
+        if caja:
+            AgregarMovimientoDialog(self.parent, self.db_manager, caja['id'], 'tarjeta', self.actualizar_estado_caja)
+    
+    def menu_eliminar_movimiento(self, event):
+        """Menú para eliminar movimiento"""
+        selection = self.tree_movimientos.selection()
+        if not selection:
+            return
+        
+        # Crear menú contextual
+        menu = tk.Menu(self.parent, tearoff=0)
+        menu.add_command(label="Eliminar", command=lambda: self.eliminar_movimiento(selection[0]))
+        menu.post(event.x_root, event.y_root)
+    
+    def eliminar_movimiento(self, item):
+        """Eliminar un movimiento"""
+        valores = self.tree_movimientos.item(item, 'values')
+        mov_id = valores[0]
+        
+        if messagebox.askyesno("Confirmar", "¿Eliminar este movimiento?"):
+            success, msg = self.caja_model.eliminar_movimiento(mov_id)
+            if success:
+                messagebox.showinfo("Éxito", msg)
+                self.actualizar_estado_caja()
+            else:
+                messagebox.showerror("Error", msg)
 
 
 class AbrirCajaDialog:
+    def __init__(self, parent, db_manager, user_data, callback):
+        self.db_manager = db_manager
+        self.user_data = user_data
+        self.callback = callback
+        self.caja_model = Caja(db_manager)
+        
+        self.dialog = tk.Toplevel(parent)
+        self.dialog.title("Abrir Caja")
+        self.dialog.geometry("400x300")
+        self.dialog.transient(parent)
+        self.dialog.grab_set()
+        
+        # Centrar
+        self.dialog.update_idletasks()
+        x = parent.winfo_x() + (parent.winfo_width() // 2) - 200
+        y = parent.winfo_y() + (parent.winfo_height() // 2) - 150
+        self.dialog.geometry(f"400x300+{x}+{y}")
+        
+        self.create_widgets()
+    
+    def create_widgets(self):
+        """Crear widgets"""
+        self.dialog.configure(bg='white')
+        main_frame = tk.Frame(self.dialog, bg='white', padx=20, pady=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        tk.Label(main_frame, text="🔓 Abrir Caja", font=("Arial", 14, "bold"),
+                bg='white', fg='#10B981').pack(pady=10)
+        
+        # Usuario
+        tk.Label(main_frame, text=f"Usuario: {self.user_data['nombre_completo']}", 
+                bg='white', fg='black', font=("Arial", 10)).pack(anchor=tk.W, pady=5)
+        
+        # Monto inicial
+        tk.Label(main_frame, text="Monto Inicial:", bg='white', fg='black',
+                font=("Arial", 10, 'bold')).pack(anchor=tk.W, pady=5)
+        self.monto_entry = tk.Entry(main_frame, width=30, font=("Arial", 11))
+        self.monto_entry.pack(anchor=tk.W, pady=5)
+        self.monto_entry.focus()
+        
+        # Observaciones
+        tk.Label(main_frame, text="Observaciones (opcional):", bg='white', fg='black',
+                font=("Arial", 10)).pack(anchor=tk.W, pady=5)
+        self.obs_entry = tk.Entry(main_frame, width=30, font=("Arial", 10))
+        self.obs_entry.pack(anchor=tk.W, pady=5)
+        
+        # Botones
+        buttons_frame = tk.Frame(main_frame, bg='white')
+        buttons_frame.pack(pady=10)
+        
+        tk.Button(buttons_frame, text="Abrir Caja", font=('Arial', 10), bg='#10B981', fg='white',
+                 width=12, command=self.abrir).pack(side=tk.LEFT, padx=5)
+        tk.Button(buttons_frame, text="Cancelar", font=('Arial', 10), bg='#EF4444', fg='white',
+                 width=12, command=self.dialog.destroy).pack(side=tk.LEFT, padx=5)
+    
+    def abrir(self):
+        """Abrir la caja"""
+        try:
+            monto = float(self.monto_entry.get().strip())
+        except ValueError:
+            messagebox.showerror("Error", "El monto inicial debe ser un número válido")
+            return
+        
+        if monto < 0:
+            messagebox.showerror("Error", "El monto inicial no puede ser negativo")
+            return
+        
+        observaciones = self.obs_entry.get().strip()
+        
+        success, mensaje = self.caja_model.abrir_caja(self.user_data['id'], monto, observaciones)
+        
+        if success:
+            messagebox.showinfo("Éxito", mensaje)
+            self.callback()
+            self.dialog.destroy()
+        else:
+            messagebox.showerror("Error", mensaje)
+
+
+class AgregarMovimientoDialog:
+    def __init__(self, parent, db_manager, caja_id, tipo, callback):
+        self.db_manager = db_manager
+        self.caja_model = Caja(db_manager)
+        self.caja_id = caja_id
+        self.tipo = tipo
+        self.callback = callback
+        
+        tipo_titles = {
+            'efectivo': '💵 Agregar Efectivo',
+            'transferencia': '🏦 Agregar Transferencia',
+            'tarjeta': '💳 Agregar Tarjeta'
+        }
+        
+        self.dialog = tk.Toplevel(parent)
+        self.dialog.title(tipo_titles.get(tipo, 'Agregar Movimiento'))
+        self.dialog.geometry("500x400")
+        self.dialog.transient(parent)
+        self.dialog.grab_set()
+        
+        # Centrar
+        self.dialog.update_idletasks()
+        x = parent.winfo_x() + (parent.winfo_width() // 2) - 250
+        y = parent.winfo_y() + (parent.winfo_height() // 2) - 200
+        self.dialog.geometry(f"500x400+{x}+{y}")
+        
+        self.create_widgets()
+    
+    def create_widgets(self):
+        """Crear widgets"""
+        self.dialog.configure(bg='white')
+        main_frame = tk.Frame(self.dialog, bg='white', padx=20, pady=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        tipo_labels = {
+            'efectivo': ('💵 Agregar Efectivo', '#10B981'),
+            'transferencia': ('🏦 Agregar Transferencia', '#3B82F6'),
+            'tarjeta': ('💳 Agregar Tarjeta', '#8B5CF6')
+        }
+        
+        titulo, color = tipo_labels.get(self.tipo, ('Agregar Movimiento', '#6B7280'))
+        tk.Label(main_frame, text=titulo, font=("Arial", 14, "bold"),
+                bg='white', fg=color).pack(pady=10)
+        
+        # Tipo de transacción (ingreso o egreso)
+        tk.Label(main_frame, text="Tipo:", font=("Arial", 11, "bold"), bg='white').pack(anchor=tk.W, pady=10)
+        
+        self.tipo_var = tk.StringVar(value="ingreso")
+        ingreso_frame = tk.Frame(main_frame, bg='white')
+        ingreso_frame.pack(anchor=tk.W, pady=5)
+        tk.Radiobutton(ingreso_frame, text="Ingreso (+)", variable=self.tipo_var, value="ingreso",
+                      font=("Arial", 10), bg='white', fg='#10B981').pack(side=tk.LEFT)
+        
+        if self.tipo == 'efectivo':
+            tk.Radiobutton(ingreso_frame, text="Retiro (-)", variable=self.tipo_var, value="retiro",
+                          font=("Arial", 10), bg='white', fg='#EF4444').pack(side=tk.LEFT, padx=20)
+        
+        # Monto
+        tk.Label(main_frame, text="Monto ($):", font=("Arial", 11, "bold"), bg='white').pack(anchor=tk.W, pady=(10, 5))
+        self.monto_entry = tk.Entry(main_frame, width=40, font=("Arial", 11))
+        self.monto_entry.pack(anchor=tk.W, pady=5)
+        self.monto_entry.focus()
+        
+        # Descripción (solo para retiros de efectivo)
+        self.desc_frame = tk.Frame(main_frame, bg='white')
+        self.desc_frame.pack(anchor=tk.W, fill=tk.X, pady=5)
+        
+        self.desc_label = tk.Label(self.desc_frame, text="Descripción (para retiros):", 
+                                   font=("Arial", 10), bg='white')
+        self.desc_label.pack(anchor=tk.W, pady=(10, 5))
+        
+        self.desc_entry = tk.Entry(self.desc_frame, width=40, font=("Arial", 10))
+        self.desc_entry.pack(anchor=tk.W, pady=5)
+        
+        # Ocultar descripción si no es efectivo
+        if self.tipo != 'efectivo':
+            self.desc_frame.pack_forget()
+        
+        # Bind para mostrar/ocultar descripción
+        self.tipo_var.trace('w', self.actualizar_descripcion)
+        
+        # Botones
+        buttons_frame = tk.Frame(main_frame, bg='white')
+        buttons_frame.pack(pady=20)
+        
+        tk.Button(buttons_frame, text="✅ Agregar", font=('Arial', 10, 'bold'), 
+                 bg='#10B981', fg='white', width=12, command=self.agregar).pack(side=tk.LEFT, padx=5)
+        tk.Button(buttons_frame, text="❌ Cancelar", font=('Arial', 10, 'bold'), 
+                 bg='#EF4444', fg='white', width=12, command=self.dialog.destroy).pack(side=tk.LEFT, padx=5)
+    
+    def actualizar_descripcion(self, *args):
+        """Mostrar/ocultar descripción según tipo"""
+        if self.tipo == 'efectivo' and self.tipo_var.get() == 'retiro':
+            self.desc_frame.pack(anchor=tk.W, fill=tk.X, pady=5)
+        else:
+            self.desc_frame.pack_forget()
+    
+    def agregar(self):
+        """Agregar movimiento"""
+        try:
+            monto = float(self.monto_entry.get().strip())
+        except ValueError:
+            messagebox.showerror("Error", "El monto debe ser un número válido")
+            return
+        
+        if monto <= 0:
+            messagebox.showerror("Error", "El monto debe ser mayor a 0")
+            return
+        
+        # Si es retiro, negar el monto
+        if self.tipo_var.get() == 'retiro':
+            monto = -monto
+            descripcion = self.desc_entry.get().strip()
+            if not descripcion:
+                messagebox.showwarning("Advertencia", "Debes ingresar una descripción para el retiro")
+                return
+        else:
+            descripcion = self.desc_entry.get().strip() if self.tipo == 'efectivo' else ''
+        
+        success, msg = self.caja_model.agregar_movimiento(self.caja_id, self.tipo, monto, descripcion)
+        
+        if success:
+            messagebox.showinfo("Éxito", msg)
+            self.callback()
+            self.dialog.destroy()
+        else:
+            messagebox.showerror("Error", msg)
+
+class HistorialCajasDialog:
     def __init__(self, parent, db_manager, user_data, callback):
         self.db_manager = db_manager
         self.user_data = user_data
@@ -295,17 +651,22 @@ class CerrarCajaDialog:
         self.callback = callback
         self.caja_model = Caja(db_manager)
         
+        # Obtener movimientos para calcular total
+        self.movimientos = self.caja_model.obtener_movimientos(self.caja_data['id'])
+        self.total_movimientos = sum(mov['monto'] for mov in self.movimientos)
+        self.monto_final_calculado = self.caja_data['monto_inicial'] + self.total_movimientos
+        
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Cerrar Caja")
-        self.dialog.geometry("450x600")
+        self.dialog.geometry("550x550")
         self.dialog.transient(parent)
         self.dialog.grab_set()
         
         # Centrar
         self.dialog.update_idletasks()
-        x = parent.winfo_x() + (parent.winfo_width() // 2) - 225
-        y = parent.winfo_y() + (parent.winfo_height() // 2) - 300
-        self.dialog.geometry(f"450x600+{x}+{y}")
+        x = parent.winfo_x() + (parent.winfo_width() // 2) - 275
+        y = parent.winfo_y() + (parent.winfo_height() // 2) - 275
+        self.dialog.geometry(f"550x550+{x}+{y}")
         
         self.create_widgets()
     
@@ -327,90 +688,74 @@ class CerrarCajaDialog:
         tk.Label(info_frame, text=f"Abierta: {self.caja_data['fecha_apertura'][:16]}", 
                 bg='#F3F4F6', fg='black', font=("Arial", 9)).pack(anchor=tk.W, padx=10, pady=2)
         
-        # Frame para campos con scroll
-        campos_container = tk.Frame(main_frame, bg='white')
-        campos_container.pack(fill=tk.BOTH, expand=True, pady=5)
+        # Separador
+        tk.Frame(info_frame, bg='#E5E7EB', height=1).pack(fill=tk.X, pady=8)
         
-        # Crear frame con scroll para los campos
-        canvas = tk.Canvas(campos_container, bg='white', height=320)
-        scrollbar = ttk.Scrollbar(campos_container, orient=tk.VERTICAL, command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas, bg='white')
+        # Resumen de movimientos
+        tk.Label(info_frame, text="Resumen de Movimientos:", font=("Arial", 10, "bold"),
+                bg='#F3F4F6', fg='black').pack(anchor=tk.W, padx=10, pady=(5, 3))
         
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
+        if self.movimientos:
+            # Tabla con movimientos
+            mov_frame = tk.Frame(info_frame, bg='white')
+            mov_frame.pack(fill=tk.X, padx=10, pady=5)
+            
+            # Headers
+            header_frame = tk.Frame(mov_frame, bg='#E5E7EB')
+            header_frame.pack(fill=tk.X)
+            tk.Label(header_frame, text="Tipo", font=("Arial", 8, "bold"), bg='#E5E7EB', width=12).pack(side=tk.LEFT, padx=2, pady=2)
+            tk.Label(header_frame, text="Monto", font=("Arial", 8, "bold"), bg='#E5E7EB', width=12, justify=tk.RIGHT).pack(side=tk.LEFT, padx=2, pady=2)
+            
+            # Movimientos
+            for mov in self.movimientos:
+                row_frame = tk.Frame(mov_frame, bg='white')
+                row_frame.pack(fill=tk.X)
+                
+                color_monto = '#10B981' if mov['monto'] >= 0 else '#EF4444'
+                tk.Label(row_frame, text=mov['tipo'].capitalize(), font=("Arial", 8), bg='white', width=12).pack(side=tk.LEFT, padx=2, pady=1)
+                tk.Label(row_frame, text=f"${mov['monto']:+.2f}", font=("Arial", 8), bg='white', fg=color_monto, width=12, justify=tk.RIGHT).pack(side=tk.LEFT, padx=2, pady=1)
+        else:
+            tk.Label(info_frame, text="Sin movimientos registrados", font=("Arial", 9, "italic"),
+                    bg='#F3F4F6', fg='#6B7280').pack(anchor=tk.W, padx=10, pady=3)
         
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
+        # Separador
+        tk.Frame(info_frame, bg='#E5E7EB', height=1).pack(fill=tk.X, pady=8)
         
-        # Campos de entrada
-        fields = [
-            ("Ventas en Efectivo:", "ventas_efectivo"),
-            ("Ventas con Tarjeta:", "ventas_tarjeta"),
-            ("Reparaciones en Efectivo:", "reparaciones_efectivo"),
-            ("Reparaciones con Tarjeta:", "reparaciones_tarjeta"),
-            ("Otros Ingresos:", "otros_ingresos"),
-            ("Otros Egresos:", "otros_egresos"),
-        ]
-        
-        self.entries = {}
-        for label, key in fields:
-            tk.Label(scrollable_frame, text=label, bg='white', fg='black',
-                    font=("Arial", 9)).pack(anchor=tk.W, pady=3)
-            entry = tk.Entry(scrollable_frame, width=35, font=("Arial", 10))
-            entry.insert(0, "0")
-            entry.pack(anchor=tk.W, pady=3)
-            self.entries[key] = entry
-        
-        # Monto final
-        tk.Label(scrollable_frame, text="Monto Final en Caja:", bg='white', fg='black',
-                font=("Arial", 10, 'bold')).pack(anchor=tk.W, pady=5)
-        self.monto_final_entry = tk.Entry(scrollable_frame, width=35, font=("Arial", 11))
-        self.monto_final_entry.pack(anchor=tk.W, pady=3)
+        # Totales
+        tk.Label(info_frame, text=f"Total Movimientos: ${self.total_movimientos:+.2f}", 
+                bg='#F3F4F6', fg='#8B5CF6' if self.total_movimientos >= 0 else '#EF4444', 
+                font=("Arial", 10, 'bold')).pack(anchor=tk.W, padx=10, pady=2)
+        tk.Label(info_frame, text=f"Monto Final: ${self.monto_final_calculado:.2f}", 
+                bg='#F3F4F6', fg='#10B981', font=("Arial", 11, 'bold')).pack(anchor=tk.W, padx=10, pady=5)
         
         # Observaciones
-        tk.Label(scrollable_frame, text="Observaciones:", bg='white', fg='black',
-                font=("Arial", 9)).pack(anchor=tk.W, pady=3)
-        self.obs_entry = tk.Entry(scrollable_frame, width=35, font=("Arial", 10))
-        self.obs_entry.pack(anchor=tk.W, pady=3)
+        obs_frame = tk.Frame(main_frame, bg='white')
+        obs_frame.pack(fill=tk.X, pady=10)
         
-        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        tk.Label(obs_frame, text="Observaciones (opcional):", font=("Arial", 9),
+                bg='white', fg='black').pack(anchor=tk.W, pady=3)
+        self.obs_entry = tk.Entry(obs_frame, width=50, font=("Arial", 10))
+        self.obs_entry.pack(anchor=tk.W, pady=3, fill=tk.X)
         
-        # Botones (fuera del scroll, siempre visibles)
+        # Botones
         buttons_frame = tk.Frame(main_frame, bg='white')
-        buttons_frame.pack(pady=10)
+        buttons_frame.pack(pady=15)
         
-        tk.Button(buttons_frame, text="Cerrar Caja", font=('Arial', 10), bg='#EF4444', fg='white',
+        tk.Button(buttons_frame, text="✅ Cerrar Caja", font=('Arial', 10, 'bold'), bg='#10B981', fg='white',
                  width=12, command=self.cerrar).pack(side=tk.LEFT, padx=5)
-        tk.Button(buttons_frame, text="Cancelar", font=('Arial', 10), bg='#6B7280', fg='white',
+        tk.Button(buttons_frame, text="❌ Cancelar", font=('Arial', 10, 'bold'), bg='#EF4444', fg='white',
                  width=12, command=self.dialog.destroy).pack(side=tk.LEFT, padx=5)
     
     def cerrar(self):
         """Cerrar la caja"""
-        try:
-            monto_final = float(self.monto_final_entry.get().strip())
-            ventas_efectivo = float(self.entries['ventas_efectivo'].get().strip())
-            ventas_tarjeta = float(self.entries['ventas_tarjeta'].get().strip())
-            reparaciones_efectivo = float(self.entries['reparaciones_efectivo'].get().strip())
-            reparaciones_tarjeta = float(self.entries['reparaciones_tarjeta'].get().strip())
-            otros_ingresos = float(self.entries['otros_ingresos'].get().strip())
-            otros_egresos = float(self.entries['otros_egresos'].get().strip())
-        except ValueError:
-            messagebox.showerror("Error", "Todos los montos deben ser números válidos")
-            return
-        
         observaciones = self.obs_entry.get().strip()
         
         success, mensaje = self.caja_model.cerrar_caja(
-            self.caja_data['id'], monto_final, ventas_efectivo, ventas_tarjeta,
-            reparaciones_efectivo, reparaciones_tarjeta, otros_ingresos, otros_egresos,
-            observaciones
+            self.caja_data['id'], self.monto_final_calculado, 0, 0, 0, 0, 0, 0, observaciones
         )
         
         if success:
-            messagebox.showinfo("Éxito", mensaje)
+            messagebox.showinfo("Éxito", f"Caja cerrada correctamente\n\nMonto Final: ${self.monto_final_calculado:.2f}")
             self.callback()
             self.dialog.destroy()
         else:
@@ -418,19 +763,21 @@ class CerrarCajaDialog:
 
 
 class DetalleCajaDialog:
-    def __init__(self, parent, caja_data):
+    def __init__(self, parent, caja_data, db_manager):
         self.caja_data = caja_data
+        self.db_manager = db_manager
+        self.caja_model = Caja(db_manager)
         
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Detalle de Caja")
-        self.dialog.geometry("500x600")
+        self.dialog.geometry("600x700")
         self.dialog.transient(parent)
         
         # Centrar
         self.dialog.update_idletasks()
-        x = parent.winfo_x() + (parent.winfo_width() // 2) - 250
-        y = parent.winfo_y() + (parent.winfo_height() // 2) - 300
-        self.dialog.geometry(f"500x600+{x}+{y}")
+        x = parent.winfo_x() + (parent.winfo_width() // 2) - 300
+        y = parent.winfo_y() + (parent.winfo_height() // 2) - 350
+        self.dialog.geometry(f"600x700+{x}+{y}")
         
         self.create_widgets()
     
@@ -449,7 +796,7 @@ class DetalleCajaDialog:
         info_frame = tk.Frame(main_frame, bg='white')
         info_frame.pack(fill=tk.BOTH, expand=True)
         
-        # Datos
+        # Datos básicos
         datos = [
             ("Usuario:", self.caja_data['usuario']),
             ("Estado:", self.caja_data['estado'].capitalize()),
@@ -457,13 +804,6 @@ class DetalleCajaDialog:
             ("Fecha Cierre:", self.caja_data['fecha_cierre'][:16] if self.caja_data['fecha_cierre'] else 'No cerrada'),
             ("", ""),
             ("Monto Inicial:", f"${self.caja_data['monto_inicial']:.2f}"),
-            ("Ventas Efectivo:", f"${self.caja_data['ventas_efectivo']:.2f}"),
-            ("Ventas Tarjeta:", f"${self.caja_data['ventas_tarjeta']:.2f}"),
-            ("Reparaciones Efectivo:", f"${self.caja_data['reparaciones_efectivo']:.2f}"),
-            ("Reparaciones Tarjeta:", f"${self.caja_data['reparaciones_tarjeta']:.2f}"),
-            ("Otros Ingresos:", f"${self.caja_data['otros_ingresos']:.2f}"),
-            ("Otros Egresos:", f"${self.caja_data['otros_egresos']:.2f}"),
-            ("", ""),
         ]
         
         for label, value in datos:
@@ -477,9 +817,53 @@ class DetalleCajaDialog:
                 tk.Label(row_frame, text=value, bg='white', fg='black',
                         font=("Arial", 10), anchor=tk.W).pack(side=tk.LEFT)
         
+        # Movimientos
+        tk.Label(info_frame, text="Movimientos:", bg='white', fg='black',
+                font=("Arial", 10, 'bold')).pack(anchor=tk.W, pady=(10, 5))
+        
+        movimientos = self.caja_model.obtener_movimientos(self.caja_data['id'])
+        
+        if movimientos:
+            for mov in movimientos:
+                tipo = mov.get('tipo', '')
+                monto = mov.get('monto', 0)
+                descripcion = mov.get('descripcion', '')
+                
+                # Formatear tipo
+                iconos = {'efectivo': '💵', 'transferencia': '🏦', 'tarjeta': '💳'}
+                icono = iconos.get(tipo, '💰')
+                
+                # Color según monto
+                color = '#EF4444' if monto < 0 else '#10B981'
+                signo = '-' if monto < 0 else '+'
+                
+                row_frame = tk.Frame(info_frame, bg='white')
+                row_frame.pack(fill=tk.X, pady=2)
+                
+                # Tipo y monto
+                monto_text = f"{signo} ${abs(monto):.2f}"
+                texto_mov = f"{icono} {tipo.capitalize()}"
+                
+                tk.Label(row_frame, text=texto_mov, bg='white', fg='black',
+                        font=("Arial", 9), width=15, anchor=tk.W).pack(side=tk.LEFT)
+                tk.Label(row_frame, text=monto_text, bg='white', fg=color,
+                        font=("Arial", 9, 'bold'), anchor=tk.W).pack(side=tk.LEFT, padx=(10, 0))
+                
+                # Mostrar descripción si existe (para retiros)
+                if descripcion:
+                    desc_frame = tk.Frame(info_frame, bg='white')
+                    desc_frame.pack(fill=tk.X, pady=(0, 5), padx=(20, 0))
+                    tk.Label(desc_frame, text=f"└─ {descripcion}", bg='white', fg='#6B7280',
+                            font=("Arial", 8, 'italic')).pack(anchor=tk.W)
+        else:
+            tk.Label(info_frame, text="Sin movimientos", bg='white', fg='#9CA3AF',
+                    font=("Arial", 9)).pack(anchor=tk.W, pady=5)
+        
+        # Separador
+        tk.Frame(info_frame, bg='#E5E7EB', height=2).pack(fill=tk.X, pady=10)
+        
         # Monto final
         if self.caja_data['monto_final'] is not None:
-            tk.Frame(info_frame, bg='#E5E7EB', height=2).pack(fill=tk.X, pady=10)
             row_frame = tk.Frame(info_frame, bg='white')
             row_frame.pack(fill=tk.X, pady=5)
             tk.Label(row_frame, text="Monto Final:", bg='white', fg='black',
@@ -502,7 +886,7 @@ class DetalleCajaDialog:
             tk.Label(info_frame, text="Observaciones:", bg='white', fg='black',
                     font=("Arial", 10, 'bold')).pack(anchor=tk.W, pady=(10, 5))
             tk.Label(info_frame, text=self.caja_data['observaciones'], bg='white', fg='black',
-                    font=("Arial", 9), wraplength=400, justify=tk.LEFT).pack(anchor=tk.W)
+                    font=("Arial", 9), wraplength=500, justify=tk.LEFT).pack(anchor=tk.W)
         
         # Botón cerrar
         tk.Button(main_frame, text="Cerrar", font=('Arial', 10), bg='#6B7280', fg='white',
@@ -632,4 +1016,4 @@ class HistorialCajasDialog:
         
         caja = self.caja_model.obtener_caja_por_id(caja_id)
         if caja:
-            DetalleCajaDialog(self.dialog, caja)
+            DetalleCajaDialog(self.dialog, caja, self.db_manager)

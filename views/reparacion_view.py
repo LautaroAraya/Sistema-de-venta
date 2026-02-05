@@ -69,22 +69,20 @@ class ReparacionView:
     def estado_ui_to_db(self, estado_ui):
         """Convierte el estado mostrado en la UI al valor de la base de datos"""
         mapa = {
-            'Pendiente': 'pendiente',
             'En Proceso': 'en_proceso',
-            'Completada': 'completada',
-            'Cancelada': 'cancelada',
+            'En Espera de Retiro': 'en_espera_retiro',
+            'Retirado': 'retirado',
         }
-        return mapa.get(estado_ui, 'pendiente')
+        return mapa.get(estado_ui, 'en_proceso')
 
     def estado_db_to_ui(self, estado_db):
         """Convierte el estado de la base de datos al mostrado en la UI"""
         mapa = {
-            'pendiente': 'Pendiente',
             'en_proceso': 'En Proceso',
-            'completada': 'Completada',
-            'cancelada': 'Cancelada',
+            'en_espera_retiro': 'En Espera de Retiro',
+            'retirado': 'Retirado',
         }
-        return mapa.get(estado_db, 'Pendiente')
+        return mapa.get(estado_db, 'En Proceso')
 
     def __init__(self, parent, db_manager, user_data):
         self.parent = parent
@@ -102,7 +100,7 @@ class ReparacionView:
         self.problema_var = tk.StringVar()
         self.sena_var = tk.StringVar()
         self.total_var = tk.StringVar()
-        self.estado_var = tk.StringVar(value='Pendiente')
+        self.estado_var = tk.StringVar(value='En Proceso')
         self.observaciones_var = tk.StringVar()
         self.buscar_cliente_var = tk.StringVar()
         # Variables de estado inicial
@@ -292,7 +290,7 @@ class ReparacionView:
            # Fila 9: Estado
         tk.Label(form_frame, text="Estado:", font=("Arial", 10, "bold"), bg='white').grid(row=9, column=0, sticky=tk.W, pady=10, padx=5)
         estado_combo = ttk.Combobox(form_frame, textvariable=self.estado_var, 
-                       values=['Pendiente', 'En Proceso', 'Completada', 'Cancelada'],
+                       values=['En Proceso', 'En Espera de Retiro', 'Retirado'],
                        font=("Arial", 10), width=18)
         estado_combo.grid(row=9, column=1, sticky=tk.EW, pady=10, padx=5)
 

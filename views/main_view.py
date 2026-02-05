@@ -9,6 +9,7 @@ from views.configuracion_view import ConfiguracionView
 from views.errores_view import ErroresView
 from views.reparacion_view import ReparacionView
 from views.caja_view import CajaView
+from views.celulares_view import CelularesView
 
 class MainView:
     def __init__(self, root, db_manager, user_data, logout_callback=None):
@@ -102,8 +103,7 @@ class MainView:
         
         # Botones del menú con iconos
         menu_buttons = [
-            ("💰 Nueva Venta", self.mostrar_ventas, '#10B981'),
-            ("� Reparaciones", self.mostrar_reparaciones, '#8B5CF6'),            ("💵 Caja", self.mostrar_caja, '#F59E0B'),            ("�📦 Productos", self.mostrar_productos, '#3B82F6'),
+            ("💰 Nueva Venta", self.mostrar_ventas, '#10B981'),            ("📱 Venta de Celulares", self.mostrar_celulares, '#8B5CF6'),            ("� Reparaciones", self.mostrar_reparaciones, '#8B5CF6'),            ("💵 Caja", self.mostrar_caja, '#F59E0B'),            ("�📦 Productos", self.mostrar_productos, '#3B82F6'),
             ("🏢 Proveedores", self.mostrar_proveedores, '#8B5CF6'),
             ("📊 Reportes", self.mostrar_reportes, '#F59E0B'),
         ]
@@ -179,6 +179,11 @@ class MainView:
         """Mostrar vista de ventas"""
         self.limpiar_contenido()
         VentasView(self.content_frame, self.db_manager, self.user_data)
+    
+    def mostrar_celulares(self):
+        """Mostrar vista de venta de celulares"""
+        self.limpiar_contenido()
+        CelularesView(self.content_frame, self.db_manager, self.user_data)
     
     def mostrar_productos(self):
         """Mostrar vista de productos"""

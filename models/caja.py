@@ -29,6 +29,19 @@ class Caja:
                 FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
             )
         ''')
+        
+        # Crear tabla de movimientos de caja
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS movimientos_caja (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                caja_id INTEGER NOT NULL,
+                tipo TEXT NOT NULL CHECK(tipo IN ('efectivo', 'transferencia', 'tarjeta')),
+                monto REAL NOT NULL,
+                descripcion TEXT,
+                fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (caja_id) REFERENCES cajas (id)
+            )
+        ''')
         conn.commit()
     
     def abrir_caja(self, usuario_id, monto_inicial, observaciones=''):
@@ -164,3 +177,44 @@ class Caja:
             return True, "Caja eliminada exitosamente"
         except Exception as e:
             return False, f"Error al eliminar caja: {str(e)}"
+    
+    def agregar_movimiento(self, caja_id, tipo, monto, descripcion=''):
+        """Agregar un movimiento a la caja abierta"""
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute('''
+                INSERT INTO movimientos_caja (caja_id, tipo, monto, descripcion)
+                VALUES (?, ?, ?, ?)
+            ''', (caja_id, tipo, monto, descripcion))
+            conn.commit()
+            return True, "Movimiento agregado"
+        except Exception as e:
+            return False, f"Error: {str(e)}"
+    
+    def obtener_movimientos(self, caja_id):
+        """Obtener movimientos de una caja"""
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, tipo, monto, descripcion, fecha
+            FROM movimientos_caja
+            WHERE caja_id = ?
+            ORDER BY fecha ASC
+        ''', (caja_id,))
+        
+        return [dict(row) for row in cursor.fetchall()]
+    
+    def eliminar_movimiento(self, movimiento_id):
+        """Eliminar un movimiento"""
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute('DELETE FROM movimientos_caja WHERE id = ?', (movimiento_id,))
+            conn.commit()
+            return True, "Movimiento eliminado"
+        except Exception as e:
+            return False, f"Error: {str(e)}"

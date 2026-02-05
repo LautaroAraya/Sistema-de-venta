@@ -174,10 +174,32 @@ class DatabaseManager:
                 patron TEXT,
                 sena REAL DEFAULT 0,
                 total REAL NOT NULL,
-                estado TEXT NOT NULL CHECK(estado IN ('pendiente', 'en_proceso', 'completada', 'cancelada')),
+                estado TEXT NOT NULL CHECK(estado IN ('en_proceso', 'en_espera_retiro', 'retirado')),
                 fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 fecha_entrega TIMESTAMP,
                 observaciones TEXT,
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+            )
+        ''')
+        
+        # Tabla de ventas de celulares
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS ventas_celulares (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                numero_venta TEXT UNIQUE NOT NULL,
+                usuario_id INTEGER NOT NULL,
+                cliente_nombre TEXT NOT NULL,
+                cliente_documento TEXT,
+                cliente_telefono TEXT,
+                cliente_email TEXT,
+                telefono_marca TEXT,
+                telefono_modelo TEXT,
+                descripcion TEXT,
+                subtotal REAL DEFAULT 0,
+                descuento REAL DEFAULT 0,
+                total REAL NOT NULL,
+                sena REAL DEFAULT 0,
+                fecha_venta TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
             )
         ''')
@@ -197,6 +219,92 @@ class DatabaseManager:
         """Actualizar estructura de tablas existentes agregando columnas nuevas"""
         conn = self.get_connection()
         cursor = conn.cursor()
+        
+        try:
+            # Agregar tabla de movimientos de caja si no existe
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='movimientos_caja'")
+            if not cursor.fetchone():
+                cursor.execute('''
+                    CREATE TABLE movimientos_caja (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        caja_id INTEGER NOT NULL,
+                        tipo TEXT NOT NULL CHECK(tipo IN ('efectivo', 'transferencia', 'tarjeta')),
+                        monto REAL NOT NULL,
+                        descripcion TEXT,
+                        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (caja_id) REFERENCES cajas (id)
+                    )
+                ''')
+                conn.commit()
+            
+            # Agregar columna descripcion en ventas_celulares si no existe
+            cursor.execute("PRAGMA table_info(ventas_celulares)")
+            columnas = [info[1] for info in cursor.fetchall()]
+            if 'descripcion' not in columnas:
+                cursor.execute("ALTER TABLE ventas_celulares ADD COLUMN descripcion TEXT")
+                conn.commit()
+
+            # Verificar si la tabla reparaciones existe y hacer migración si es necesario
+            cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='reparaciones'")
+            table_def = cursor.fetchone()
+            
+            if table_def and 'pendiente' in table_def[0]:
+                # La tabla tiene la restricción antigua, necesita migración
+                # Crear tabla temporal con nueva estructura
+                cursor.execute('''
+                    CREATE TABLE reparaciones_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        numero_orden TEXT UNIQUE NOT NULL,
+                        usuario_id INTEGER NOT NULL,
+                        cliente_nombre TEXT NOT NULL,
+                        cliente_telefono TEXT,
+                        cliente_email TEXT,
+                        dispositivo TEXT NOT NULL,
+                        modelo TEXT,
+                        numero_serie TEXT,
+                        problema TEXT NOT NULL,
+                        sin_bateria INTEGER DEFAULT 0,
+                        rajado INTEGER DEFAULT 0,
+                        mojado INTEGER DEFAULT 0,
+                        contrasena TEXT,
+                        patron TEXT,
+                        sena REAL DEFAULT 0,
+                        total REAL NOT NULL,
+                        estado TEXT NOT NULL CHECK(estado IN ('en_proceso', 'en_espera_retiro', 'retirado')),
+                        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        fecha_entrega TIMESTAMP,
+                        observaciones TEXT,
+                        FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+                    )
+                ''')
+                
+                # Copiar datos migrando estados
+                cursor.execute('''
+                    INSERT INTO reparaciones_new
+                    SELECT id, numero_orden, usuario_id, cliente_nombre, cliente_telefono, cliente_email,
+                           dispositivo, modelo, numero_serie, problema, sin_bateria, rajado, mojado,
+                           contrasena, patron, sena, total,
+                           CASE 
+                               WHEN estado = 'pendiente' THEN 'en_proceso'
+                               WHEN estado = 'completada' THEN 'en_espera_retiro'
+                               WHEN estado = 'cancelada' THEN 'retirado'
+                               ELSE 'en_proceso'
+                           END as estado,
+                           fecha_creacion, fecha_entrega, observaciones
+                    FROM reparaciones
+                ''')
+                
+                # Eliminar tabla antigua
+                cursor.execute('DROP TABLE reparaciones')
+                
+                # Renombrar tabla nueva
+                cursor.execute('ALTER TABLE reparaciones_new RENAME TO reparaciones')
+                
+                conn.commit()
+                print("Migración de estados de reparaciones completada exitosamente")
+        except Exception as e:
+            print(f"Error en migración de estructura: {str(e)}")
+            conn.rollback()
         
         # Verificar y agregar columnas a la tabla reparaciones si no existen
         cursor.execute("PRAGMA table_info(reparaciones)")

@@ -11,11 +11,10 @@ class Categoria:
         cursor = conn.cursor()
         
         try:
-            fecha_actual = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             cursor.execute('''
-                INSERT INTO categorias (nombre, descripcion, fecha_creacion)
-                VALUES (?, ?, ?)
-            ''', (nombre, descripcion, fecha_actual))
+                INSERT INTO categorias (nombre, descripcion)
+                VALUES (?, ?)
+            ''', (nombre, descripcion))
             conn.commit()
             return True, "Categoría creada exitosamente"
         except Exception as e:
