@@ -489,7 +489,7 @@ class AgregarMovimientoDialog:
         tk.Radiobutton(ingreso_frame, text="Ingreso (+)", variable=self.tipo_var, value="ingreso",
                       font=("Arial", 10), bg='white', fg='#10B981').pack(side=tk.LEFT)
         
-        if self.tipo == 'efectivo':
+        if self.tipo in ('efectivo', 'transferencia'):
             tk.Radiobutton(ingreso_frame, text="Retiro (-)", variable=self.tipo_var, value="retiro",
                           font=("Arial", 10), bg='white', fg='#EF4444').pack(side=tk.LEFT, padx=20)
         
@@ -510,8 +510,8 @@ class AgregarMovimientoDialog:
         self.desc_entry = tk.Entry(self.desc_frame, width=40, font=("Arial", 10))
         self.desc_entry.pack(anchor=tk.W, pady=5)
         
-        # Ocultar descripción si no es efectivo
-        if self.tipo != 'efectivo':
+        # Ocultar descripcion si no es retiro
+        if self.tipo_var.get() != 'retiro':
             self.desc_frame.pack_forget()
         
         # Bind para mostrar/ocultar descripción
@@ -528,7 +528,7 @@ class AgregarMovimientoDialog:
     
     def actualizar_descripcion(self, *args):
         """Mostrar/ocultar descripción según tipo"""
-        if self.tipo == 'efectivo' and self.tipo_var.get() == 'retiro':
+        if self.tipo in ('efectivo', 'transferencia') and self.tipo_var.get() == 'retiro':
             self.desc_frame.pack(anchor=tk.W, fill=tk.X, pady=5)
         else:
             self.desc_frame.pack_forget()
