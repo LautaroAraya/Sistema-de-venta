@@ -180,8 +180,8 @@ class ReparacionView:
         btn_eliminar = tk.Button(actions_frame, text="🗑️ Eliminar", font=('Arial', 11, 'bold'), bg='#EF4444', fg='white', activebackground='#B91C1C', bd=0, pady=10, cursor='hand2', command=self.eliminar_reparacion)
         btn_eliminar.pack(side=tk.LEFT, padx=5, ipadx=10)
 
-        btn_finalizar_pago = tk.Button(actions_frame, text="✅ Finalizar pago", font=('Arial', 11, 'bold'), bg='#10B981', fg='white', activebackground='#059669', bd=0, pady=10, cursor='hand2', command=self.abrir_finalizar_pago)
-        btn_finalizar_pago.pack(side=tk.LEFT, padx=5, ipadx=10)
+        self.btn_finalizar_pago = tk.Button(actions_frame, text="✅ Finalizar pago", font=('Arial', 11, 'bold'), bg='#10B981', fg='white', activebackground='#059669', bd=0, pady=10, cursor='hand2', command=self.abrir_finalizar_pago, state=tk.DISABLED)
+        self.btn_finalizar_pago.pack(side=tk.LEFT, padx=5, ipadx=10)
 
         # Botón para abrir el formulario completo
         btn_formulario = tk.Button(actions_frame,
@@ -196,6 +196,9 @@ class ReparacionView:
             command=self.abrir_formulario_completo)
         btn_formulario.pack(side=tk.LEFT, padx=5, ipadx=10)
 
+
+        self.tree.bind('<<TreeviewSelect>>', self.on_reparacion_select)
+        self.actualizar_estado_finalizar_pago()
 
         # (El botón para abrir el formulario completo ya está en la botonera de acciones)
 
@@ -552,6 +555,13 @@ class ReparacionView:
             messagebox.showerror("Error", "No se encontró la reparación seleccionada")
             return
 
+        pago_final = float(reparacion.get('monto_pago_final') or 0)
+        fecha_pago = reparacion.get('fecha_pago_final')
+        if pago_final > 0 or fecha_pago or reparacion.get('estado') == 'retirado':
+            messagebox.showinfo("Información", "El pago final ya fue registrado para esta reparación")
+            self.actualizar_estado_finalizar_pago()
+            return
+
         sena = float(reparacion.get('sena') or 0)
         total = float(reparacion.get('total') or 0)
         saldo = total - sena
@@ -640,6 +650,7 @@ class ReparacionView:
                 messagebox.showinfo("Éxito", "Pago final registrado correctamente")
                 top.destroy()
                 self.cargar_reparaciones()
+                self.actualizar_estado_finalizar_pago()
             else:
                 messagebox.showerror("Error", msg)
 
@@ -647,6 +658,39 @@ class ReparacionView:
         botones.grid(row=7, column=0, columnspan=2, pady=15)
         tk.Button(botones, text="Guardar", font=("Arial", 10, "bold"), bg='#10B981', fg='white', bd=0, padx=15, pady=6, command=_guardar_pago).pack(side=tk.LEFT, padx=5)
         tk.Button(botones, text="Cancelar", font=("Arial", 10, "bold"), bg='#9CA3AF', fg='white', bd=0, padx=15, pady=6, command=top.destroy).pack(side=tk.LEFT, padx=5)
+
+    def on_reparacion_select(self, _event=None):
+        self.actualizar_estado_finalizar_pago()
+
+    def actualizar_estado_finalizar_pago(self):
+        if not hasattr(self, 'btn_finalizar_pago'):
+            return
+
+        seleccion = self.tree.selection()
+        if not seleccion:
+            self.btn_finalizar_pago.config(state=tk.DISABLED)
+            return
+
+        item = self.tree.item(seleccion[0])
+        numero_orden = item['values'][0]
+        reparaciones = self.reparacion_model.obtener_reparaciones()
+        reparacion = None
+        for rep in reparaciones:
+            if rep['numero_orden'] == numero_orden:
+                reparacion = rep
+                break
+
+        if not reparacion:
+            self.btn_finalizar_pago.config(state=tk.DISABLED)
+            return
+
+        pago_final = float(reparacion.get('monto_pago_final') or 0)
+        fecha_pago = reparacion.get('fecha_pago_final')
+        estado = reparacion.get('estado')
+        if pago_final > 0 or fecha_pago or estado == 'retirado':
+            self.btn_finalizar_pago.config(state=tk.DISABLED)
+        else:
+            self.btn_finalizar_pago.config(state=tk.NORMAL)
     
     def ver_fotos(self):
         """Abrir la galería de fotos de la reparación seleccionada"""
@@ -971,6 +1015,8 @@ class ReparacionView:
                     break
         
         if not rep:
+
+            self.actualizar_estado_finalizar_pago()
             messagebox.showerror("Error", "No se encontró la reparación seleccionada")
             return
         
