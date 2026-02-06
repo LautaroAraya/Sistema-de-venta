@@ -88,7 +88,7 @@ def main():
     try:
         crear_zip = Path("crear_zip_release.py")
         if crear_zip.exists():
-            if run_command(f"{sys.executable} crear_zip_release.py", "Creación del ZIP"):
+            if run_command(f"{sys.executable} crear_zip_release.py --no-pause", "Creación del ZIP"):
                 print("✅ ZIP de release creado")
         else:
             print("⚠️ Archivo crear_zip_release.py no encontrado - saltando...")

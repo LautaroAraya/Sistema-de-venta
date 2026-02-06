@@ -9,8 +9,9 @@ import os
 import zipfile
 import sys
 from datetime import datetime
+import argparse
 
-def create_release_zip():
+def create_release_zip(no_pause=False):
     """Crear archivo ZIP para el release"""
     
     # Leer versión
@@ -28,22 +29,27 @@ def create_release_zip():
     # Nombre del archivo ZIP
     zip_filename = f"Sistema_de_Venta_v{version}.zip"
     
-    # Archivos y carpetas a EXCLUIR
-    exclude_patterns = [
+    # Directorios a EXCLUIR (por nombre exacto)
+    exclude_dirs = {
         '.git',
         '.venv',
         'venv',
         '__pycache__',
+        'build',
+        'dist',
+        '.vs',
+        '.vscode',
+        'actualizaciones',
+        'fotos_reparaciones',
+        'fotos_temporales',
+    }
+
+    # Patrones o archivos a EXCLUIR
+    exclude_patterns = [
         '.pyc',
         '.pyo',
         '.pyd',
-        'build',
-        'dist',
-        '*.spec',
-        '.vs',
-        '.vscode',
-        'logs/errors',  # No incluir logs existentes
-        'actualizaciones',  # No incluir descargas
+        '.spec',
         '.update_config.json',
         zip_filename,  # No incluirse a sí mismo
     ]
@@ -67,9 +73,16 @@ def create_release_zip():
     
     def should_exclude(path):
         """Verificar si un archivo/carpeta debe excluirse"""
+        parts = set(os.path.normpath(path).split(os.sep))
+        if parts.intersection(exclude_dirs):
+            return True
+
         for pattern in exclude_patterns:
-            if pattern in path or path.endswith(pattern.replace('*', '')):
+            if path.endswith(pattern):
                 return True
+            if pattern in path:
+                return True
+
         return False
     
     print(f"\n📝 Creando: {zip_filename}")
@@ -135,9 +148,14 @@ def create_release_zip():
         traceback.print_exc()
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Crear ZIP de distribucion")
+    parser.add_argument("--no-pause", action="store_true", help="No esperar Enter al finalizar")
+    args = parser.parse_args()
+
     try:
-        create_release_zip()
+        create_release_zip(no_pause=args.no_pause)
     except Exception as e:
         print(f"❌ Error: {e}")
-    
-    input("\n\nPresiona Enter para salir...")
+
+    if not args.no_pause and sys.stdin.isatty():
+        input("\n\nPresiona Enter para salir...")
