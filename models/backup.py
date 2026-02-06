@@ -74,6 +74,8 @@ class Backup:
                 
                 # Reconectar
                 self.db_manager.get_connection()
+                # Asegurar estructura actualizada en backups antiguos
+                self.db_manager.init_database()
                 
                 return True, "Base de datos restaurada correctamente"
             except Exception as e:
