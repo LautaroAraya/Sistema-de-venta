@@ -177,6 +177,10 @@ class DatabaseManager:
                 estado TEXT NOT NULL CHECK(estado IN ('en_proceso', 'en_espera_retiro', 'retirado')),
                 fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 fecha_entrega TIMESTAMP,
+                fecha_pago_final TIMESTAMP,
+                medio_pago_final TEXT,
+                monto_pago_final REAL DEFAULT 0,
+                recargo_tarjeta REAL DEFAULT 0,
                 observaciones TEXT,
                 FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
             )
@@ -199,6 +203,10 @@ class DatabaseManager:
                 descuento REAL DEFAULT 0,
                 total REAL NOT NULL,
                 sena REAL DEFAULT 0,
+                fecha_pago_final TIMESTAMP,
+                medio_pago_final TEXT,
+                monto_pago_final REAL DEFAULT 0,
+                recargo_tarjeta REAL DEFAULT 0,
                 fecha_venta TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
             )
@@ -242,6 +250,18 @@ class DatabaseManager:
             columnas = [info[1] for info in cursor.fetchall()]
             if 'descripcion' not in columnas:
                 cursor.execute("ALTER TABLE ventas_celulares ADD COLUMN descripcion TEXT")
+                conn.commit()
+            if 'fecha_pago_final' not in columnas:
+                cursor.execute("ALTER TABLE ventas_celulares ADD COLUMN fecha_pago_final TIMESTAMP")
+                conn.commit()
+            if 'medio_pago_final' not in columnas:
+                cursor.execute("ALTER TABLE ventas_celulares ADD COLUMN medio_pago_final TEXT")
+                conn.commit()
+            if 'monto_pago_final' not in columnas:
+                cursor.execute("ALTER TABLE ventas_celulares ADD COLUMN monto_pago_final REAL DEFAULT 0")
+                conn.commit()
+            if 'recargo_tarjeta' not in columnas:
+                cursor.execute("ALTER TABLE ventas_celulares ADD COLUMN recargo_tarjeta REAL DEFAULT 0")
                 conn.commit()
 
             # Verificar si la tabla reparaciones existe y hacer migración si es necesario
@@ -316,7 +336,11 @@ class DatabaseManager:
             'mojado': 'INTEGER DEFAULT 0',
             'contrasena': 'TEXT',
             'patron': 'TEXT',
-            'fotos_reparacion_id': 'INTEGER'
+            'fotos_reparacion_id': 'INTEGER',
+            'fecha_pago_final': 'TIMESTAMP',
+            'medio_pago_final': 'TEXT',
+            'monto_pago_final': 'REAL DEFAULT 0',
+            'recargo_tarjeta': 'REAL DEFAULT 0'
         }
         
         for columna, tipo in columnas_nuevas.items():

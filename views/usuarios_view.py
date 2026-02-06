@@ -371,32 +371,29 @@ class EditUsuarioDialog:
         else:
             messagebox.showerror("Error", msg)
     
-    def create_widgets(self):
-        """Crear widgets"""
+    def create_widgets_password(self):
+        """Crear widgets para cambio de contraseña (no usado en este dialogo)"""
         self.dialog.configure(bg='white')
         main_frame = tk.Frame(self.dialog, bg='white', padx=20, pady=20)
         main_frame.pack(fill=tk.BOTH, expand=True)
         
-        # Nueva contraseña
         tk.Label(main_frame, text="Nueva Contraseña:", bg='white', fg='black').grid(row=0, column=0, sticky=tk.W, pady=5)
         self.password_entry = tk.Entry(main_frame, width=25, show="*")
         self.password_entry.grid(row=0, column=1, pady=5, padx=5)
         
-        # Confirmar
         tk.Label(main_frame, text="Confirmar:", bg='white', fg='black').grid(row=1, column=0, sticky=tk.W, pady=5)
         self.confirm_entry = tk.Entry(main_frame, width=25, show="*")
         self.confirm_entry.grid(row=1, column=1, pady=5, padx=5)
         
-        # Botones
         buttons_frame = tk.Frame(main_frame, bg='white')
         buttons_frame.grid(row=2, column=0, columnspan=2, pady=20)
         
         tk.Button(buttons_frame, text="Guardar", font=('Arial', 10), bg='#10B981', fg='white', relief=tk.RAISED,
-                  command=self.guardar).pack(side=tk.LEFT, padx=5)
+                  command=self.guardar_password).pack(side=tk.LEFT, padx=5)
         tk.Button(buttons_frame, text="Cancelar", font=('Arial', 10), bg='#EF4444', fg='white', relief=tk.RAISED,
                   command=self.dialog.destroy).pack(side=tk.LEFT, padx=5)
     
-    def guardar(self):
+    def guardar_password(self):
         """Guardar nueva contraseña"""
         password = self.password_entry.get()
         confirm = self.confirm_entry.get()

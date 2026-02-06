@@ -203,7 +203,7 @@ class ReportesView:
         self.promedio_rep_label.grid(row=1, column=7, sticky=tk.W, padx=5)
         
         # Tabla de reparaciones
-        columns = ('numero', 'cliente', 'dispositivo', 'estado', 'sena', 'total', 'fecha')
+        columns = ('numero', 'cliente', 'dispositivo', 'estado', 'sena', 'total', 'fecha', 'estado_pago', 'fecha_pago', 'medio_pago', 'recargo_pct')
         self.tree_reparaciones = ttk.Treeview(parent, columns=columns, show='headings', height=15)
         
         self.tree_reparaciones.heading('numero', text='N° Orden')
@@ -213,6 +213,10 @@ class ReportesView:
         self.tree_reparaciones.heading('sena', text='Seña')
         self.tree_reparaciones.heading('total', text='Total')
         self.tree_reparaciones.heading('fecha', text='Fecha')
+        self.tree_reparaciones.heading('estado_pago', text='Estado')
+        self.tree_reparaciones.heading('fecha_pago', text='Fecha Pago')
+        self.tree_reparaciones.heading('medio_pago', text='Medio Pago')
+        self.tree_reparaciones.heading('recargo_pct', text='Recargo %')
         
         self.tree_reparaciones.column('numero', width=120)
         self.tree_reparaciones.column('cliente', width=180)
@@ -221,6 +225,13 @@ class ReportesView:
         self.tree_reparaciones.column('sena', width=100, anchor=tk.E)
         self.tree_reparaciones.column('total', width=100, anchor=tk.E)
         self.tree_reparaciones.column('fecha', width=130)
+        self.tree_reparaciones.column('estado_pago', width=160)
+        self.tree_reparaciones.column('fecha_pago', width=110)
+        self.tree_reparaciones.column('medio_pago', width=120)
+        self.tree_reparaciones.column('recargo_pct', width=90, anchor=tk.E)
+
+        self.tree_reparaciones.tag_configure('pago_ok', foreground='#10B981')
+        self.tree_reparaciones.tag_configure('pago_debe', foreground='#EF4444')
         
         # Scrollbars
         scrollbar_v = ttk.Scrollbar(parent, orient=tk.VERTICAL, command=self.tree_reparaciones.yview)
@@ -413,15 +424,39 @@ class ReportesView:
         # Insertar en tabla
         for rep in reparaciones_filtradas:
             estado_ui = self._estado_db_to_ui(rep['estado'])
+            total = float(rep.get('total') or 0)
+            sena = float(rep.get('sena') or 0)
+            monto_final = float(rep.get('monto_pago_final') or 0)
+            pagado_total = sena + monto_final
+            saldo = total - pagado_total
+            if saldo <= 0:
+                estado_pago_texto = f"Pagado: ${monto_final:.2f}"
+                tag = 'pago_ok'
+            else:
+                estado_pago_texto = f"Debe ${saldo:.2f}"
+                tag = 'pago_debe'
+
+            fecha_pago = rep.get('fecha_pago_final')
+            fecha_pago = fecha_pago[:10] if fecha_pago else 'Pendiente'
+            medio_pago = rep.get('medio_pago_final') or 'Pendiente'
+            medio_pago = medio_pago.capitalize() if medio_pago != 'Pendiente' else medio_pago
+            recargo_monto = float(rep.get('recargo_tarjeta') or 0)
+            base_tarjeta = max(monto_final - recargo_monto, 0)
+            recargo_pct = (recargo_monto / base_tarjeta * 100) if base_tarjeta > 0 else 0
+            recargo_texto = f"{recargo_pct:.2f}%"
             self.tree_reparaciones.insert('', tk.END, values=(
                 rep['numero_orden'],
                 rep['cliente_nombre'],
                 rep['dispositivo'],
                 estado_ui,
-                f"${rep['sena']:.2f}" if rep['sena'] else '$0.00',
-                f"${rep['total']:.2f}",
-                rep['fecha_creacion'][:10]
-            ))
+                f"${sena:.2f}" if sena else '$0.00',
+                f"${total:.2f}",
+                rep['fecha_creacion'][:10],
+                estado_pago_texto,
+                fecha_pago,
+                medio_pago,
+                recargo_texto
+            ), tags=(tag,))
         
         # Actualizar estadísticas
         self._actualizar_stats_reparaciones(reparaciones_filtradas)
@@ -463,8 +498,9 @@ class ReportesView:
     def _actualizar_stats_reparaciones(self, reparaciones):
         """Actualizar estadísticas de reparaciones"""
         total_reparaciones = len(reparaciones)
-        total_ingresos = sum(float(rep['total']) for rep in reparaciones if rep['total'])
-        total_sena = sum(float(rep['sena']) for rep in reparaciones if rep['sena'])
+        total_sena = sum(float(rep.get('sena') or 0) for rep in reparaciones)
+        total_pago_final = sum(float(rep.get('monto_pago_final') or 0) for rep in reparaciones)
+        total_ingresos = total_sena + total_pago_final
         
         self.total_reparaciones_label.config(text=str(total_reparaciones))
         self.total_ingresos_rep_label.config(text=f"${total_ingresos:.2f}")
@@ -525,10 +561,10 @@ class ReportesView:
         self.total_sena_cel_label.grid(row=1, column=5, sticky=tk.W, padx=5)
         
         # Tabla de ventas de celulares
-        columns = ('numero', 'cliente', 'telefono', 'marca', 'modelo', 'sena', 'total', 'fecha')
+        columns = ('numero', 'cliente', 'telefono', 'marca', 'modelo', 'sena', 'total', 'fecha', 'estado_pago', 'fecha_pago', 'medio_pago', 'recargo_pct')
         self.tree_ventas_cel = ttk.Treeview(parent, columns=columns, show='headings', height=15)
         
-        headings = ['N° Venta', 'Cliente', 'Teléfono', 'Marca', 'Modelo', 'Seña', 'Total', 'Fecha']
+        headings = ['N° Venta', 'Cliente', 'Teléfono', 'Marca', 'Modelo', 'Seña', 'Total', 'Fecha', 'Estado', 'Fecha Pago', 'Medio Pago', 'Recargo %']
         for col, head in zip(columns, headings):
             self.tree_ventas_cel.heading(col, text=head)
         
@@ -540,15 +576,24 @@ class ReportesView:
         self.tree_ventas_cel.column('sena', width=90, anchor=tk.E)
         self.tree_ventas_cel.column('total', width=90, anchor=tk.E)
         self.tree_ventas_cel.column('fecha', width=100)
+        self.tree_ventas_cel.column('estado_pago', width=150)
+        self.tree_ventas_cel.column('fecha_pago', width=100)
+        self.tree_ventas_cel.column('medio_pago', width=110)
+        self.tree_ventas_cel.column('recargo_pct', width=90, anchor=tk.E)
+
+        self.tree_ventas_cel.tag_configure('pago_ok', foreground='#10B981')
+        self.tree_ventas_cel.tag_configure('pago_debe', foreground='#EF4444')
         
         scrollbar = ttk.Scrollbar(parent, orient=tk.VERTICAL, command=self.tree_ventas_cel.yview)
-        self.tree_ventas_cel.config(yscrollcommand=scrollbar.set)
+        scrollbar_h = ttk.Scrollbar(parent, orient=tk.HORIZONTAL, command=self.tree_ventas_cel.xview)
+        self.tree_ventas_cel.config(yscrollcommand=scrollbar.set, xscrollcommand=scrollbar_h.set)
         
         # Evento doble clic para ver detalle
         self.tree_ventas_cel.bind('<Double-Button-1>', lambda e: self.ver_detalle_venta_celular())
         
         self.tree_ventas_cel.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        scrollbar_h.pack(fill=tk.X)
     
     def cargar_ventas_celulares(self):
         """Cargar ventas de celulares con filtros"""
@@ -564,7 +609,8 @@ class ReportesView:
         try:
             cursor.execute('''
                 SELECT numero_venta, cliente_nombre, cliente_telefono, telefono_marca, 
-                       telefono_modelo, sena, total, fecha_venta
+                       telefono_modelo, sena, total, fecha_venta,
+                       fecha_pago_final, medio_pago_final, monto_pago_final, recargo_tarjeta
                 FROM ventas_celulares
                 ORDER BY fecha_venta DESC
                 LIMIT 100
@@ -585,21 +631,45 @@ class ReportesView:
             # Insertar en tabla
             for venta in ventas_filtradas:
                 fecha = venta[7][:10] if venta[7] else 'N/A'
+                sena = float(venta[5] or 0)
+                total = float(venta[6] or 0)
+                fecha_pago = venta[8][:10] if venta[8] else 'Pendiente'
+                medio_pago = venta[9] or 'Pendiente'
+                medio_pago = medio_pago.capitalize() if medio_pago != 'Pendiente' else medio_pago
+                monto_pago_final = float(venta[10] or 0)
+                recargo_monto = float(venta[11] or 0)
+                base_tarjeta = max(monto_pago_final - recargo_monto, 0)
+                recargo_pct = (recargo_monto / base_tarjeta * 100) if base_tarjeta > 0 else 0
+                recargo_texto = f"{recargo_pct:.2f}%"
+
+                saldo = total - (sena + monto_pago_final)
+                if saldo <= 0:
+                    estado_pago_texto = f"Pagado: ${monto_pago_final:.2f}"
+                    tag = 'pago_ok'
+                else:
+                    estado_pago_texto = f"Debe ${saldo:.2f}"
+                    tag = 'pago_debe'
+
                 self.tree_ventas_cel.insert('', 'end', values=(
                     venta[0],  # numero_venta
                     venta[1],  # cliente_nombre
                     venta[2] or '',  # cliente_telefono
                     venta[3] or '',  # telefono_marca
                     venta[4] or '',  # telefono_modelo
-                    f"${venta[5]:.2f}" if venta[5] else '$0.00',  # sena
-                    f"${venta[6]:.2f}",  # total
-                    fecha
-                ))
+                    f"${sena:.2f}" if sena else '$0.00',  # sena
+                    f"${total:.2f}",  # total
+                    fecha,
+                    estado_pago_texto,
+                    fecha_pago,
+                    medio_pago,
+                    recargo_texto
+                ), tags=(tag,))
             
             # Actualizar estadísticas
             total_ventas = len(ventas_filtradas)
-            total_ingresos = sum(float(v[6]) for v in ventas_filtradas if v[6])
-            total_sena = sum(float(v[5]) for v in ventas_filtradas if v[5])
+            total_sena = sum(float(v[5] or 0) for v in ventas_filtradas)
+            total_pago_final = sum(float(v[10] or 0) for v in ventas_filtradas)
+            total_ingresos = total_sena + total_pago_final
             
             self.total_ventas_cel_label.config(text=str(total_ventas))
             self.total_ingresos_cel_label.config(text=f"${total_ingresos:.2f}")
@@ -821,11 +891,15 @@ class DetalleReparacionDialog:
         prices_frame = tk.Frame(main_frame, bg='white')
         prices_frame.pack(fill=tk.X, pady=10)
         
+        recargo_monto = float(self.rep_data.get('recargo_tarjeta') or 0)
+        total_base = float(self.rep_data.get('total') or 0)
+        total_con_recargo = total_base + recargo_monto
+
         tk.Label(prices_frame, text="Seña:", font=("Arial", 11, "bold"), bg='white').grid(row=0, column=0, sticky=tk.E, padx=5)
         tk.Label(prices_frame, text=f"${self.rep_data['sena']:.2f}" if self.rep_data['sena'] else "$0.00", font=("Arial", 11), bg='white').grid(row=0, column=1, sticky=tk.W, padx=5)
-        
+
         tk.Label(prices_frame, text="Total:", font=("Arial", 11, "bold"), bg='white').grid(row=0, column=2, sticky=tk.E, padx=20)
-        tk.Label(prices_frame, text=f"${self.rep_data['total']:.2f}", font=("Arial", 11, "bold"), fg="green", bg='white').grid(row=0, column=3, sticky=tk.W, padx=5)
+        tk.Label(prices_frame, text=f"${total_con_recargo:.2f}", font=("Arial", 11, "bold"), fg="green", bg='white').grid(row=0, column=3, sticky=tk.W, padx=5)
         
         estado_ui = self.reportes_view._estado_db_to_ui(self.rep_data['estado'])
         tk.Label(prices_frame, text="Estado:", font=("Arial", 11, "bold"), bg='white').grid(row=1, column=0, sticky=tk.E, padx=5)
@@ -833,6 +907,26 @@ class DetalleReparacionDialog:
         
         tk.Label(prices_frame, text="Fecha:", font=("Arial", 11, "bold"), bg='white').grid(row=1, column=2, sticky=tk.E, padx=20)
         tk.Label(prices_frame, text=self.rep_data['fecha_creacion'][:10], font=("Arial", 11), bg='white').grid(row=1, column=3, sticky=tk.W, padx=5)
+
+        fecha_pago = self.rep_data.get('fecha_pago_final')
+        fecha_pago = fecha_pago[:10] if fecha_pago else 'Pendiente'
+        medio_pago = self.rep_data.get('medio_pago_final') or 'Pendiente'
+        medio_pago = medio_pago.capitalize() if medio_pago != 'Pendiente' else medio_pago
+        monto_pago_final = float(self.rep_data.get('monto_pago_final') or 0)
+        base_tarjeta = max(monto_pago_final - recargo_monto, 0)
+        recargo_pct = (recargo_monto / base_tarjeta * 100) if base_tarjeta > 0 else 0
+
+        tk.Label(prices_frame, text="Pago Final:", font=("Arial", 11, "bold"), bg='white').grid(row=2, column=0, sticky=tk.E, padx=5)
+        tk.Label(prices_frame, text=f"${monto_pago_final:.2f}", font=("Arial", 11), bg='white').grid(row=2, column=1, sticky=tk.W, padx=5)
+
+        tk.Label(prices_frame, text="Fecha Pago:", font=("Arial", 11, "bold"), bg='white').grid(row=2, column=2, sticky=tk.E, padx=20)
+        tk.Label(prices_frame, text=fecha_pago, font=("Arial", 11), bg='white').grid(row=2, column=3, sticky=tk.W, padx=5)
+
+        tk.Label(prices_frame, text="Medio Pago:", font=("Arial", 11, "bold"), bg='white').grid(row=3, column=0, sticky=tk.E, padx=5)
+        tk.Label(prices_frame, text=medio_pago, font=("Arial", 11), bg='white').grid(row=3, column=1, sticky=tk.W, padx=5)
+
+        tk.Label(prices_frame, text="Recargo %:", font=("Arial", 11, "bold"), bg='white').grid(row=3, column=2, sticky=tk.E, padx=20)
+        tk.Label(prices_frame, text=f"{recargo_pct:.2f}%", font=("Arial", 11), bg='white').grid(row=3, column=3, sticky=tk.W, padx=5)
         
         # Botón cerrar
         btn_frame = tk.Frame(main_frame, bg='white')
@@ -925,8 +1019,32 @@ class DetalleVentaCelularDialog:
         tk.Label(prices_frame, text="Seña:", font=("Arial", 11, "bold"), bg='white').grid(row=0, column=0, sticky=tk.E, padx=5)
         tk.Label(prices_frame, text=f"${self.venta_data.get('sena', 0):.2f}", font=("Arial", 11), bg='white').grid(row=0, column=1, sticky=tk.W, padx=5)
         
+        recargo_monto = float(self.venta_data.get('recargo_tarjeta') or 0)
+        total_base = float(self.venta_data.get('total') or 0)
+        total_con_recargo = total_base + recargo_monto
+
         tk.Label(prices_frame, text="Total:", font=("Arial", 11, "bold"), bg='white').grid(row=0, column=2, sticky=tk.E, padx=20)
-        tk.Label(prices_frame, text=f"${self.venta_data.get('total', 0):.2f}", font=("Arial", 11, "bold"), fg="#10B981", bg='white').grid(row=0, column=3, sticky=tk.W, padx=5)
+        tk.Label(prices_frame, text=f"${total_con_recargo:.2f}", font=("Arial", 11, "bold"), fg="#10B981", bg='white').grid(row=0, column=3, sticky=tk.W, padx=5)
+
+        fecha_pago = self.venta_data.get('fecha_pago_final')
+        fecha_pago = fecha_pago[:10] if fecha_pago else 'Pendiente'
+        medio_pago = self.venta_data.get('medio_pago_final') or 'Pendiente'
+        medio_pago = medio_pago.capitalize() if medio_pago != 'Pendiente' else medio_pago
+        monto_pago_final = float(self.venta_data.get('monto_pago_final') or 0)
+        base_tarjeta = max(monto_pago_final - recargo_monto, 0)
+        recargo_pct = (recargo_monto / base_tarjeta * 100) if base_tarjeta > 0 else 0
+
+        tk.Label(prices_frame, text="Pago Final:", font=("Arial", 11, "bold"), bg='white').grid(row=1, column=0, sticky=tk.E, padx=5)
+        tk.Label(prices_frame, text=f"${monto_pago_final:.2f}", font=("Arial", 11), bg='white').grid(row=1, column=1, sticky=tk.W, padx=5)
+
+        tk.Label(prices_frame, text="Fecha Pago:", font=("Arial", 11, "bold"), bg='white').grid(row=1, column=2, sticky=tk.E, padx=20)
+        tk.Label(prices_frame, text=fecha_pago, font=("Arial", 11), bg='white').grid(row=1, column=3, sticky=tk.W, padx=5)
+
+        tk.Label(prices_frame, text="Medio Pago:", font=("Arial", 11, "bold"), bg='white').grid(row=2, column=0, sticky=tk.E, padx=5)
+        tk.Label(prices_frame, text=medio_pago, font=("Arial", 11), bg='white').grid(row=2, column=1, sticky=tk.W, padx=5)
+
+        tk.Label(prices_frame, text="Recargo %:", font=("Arial", 11, "bold"), bg='white').grid(row=2, column=2, sticky=tk.E, padx=20)
+        tk.Label(prices_frame, text=f"{recargo_pct:.2f}%", font=("Arial", 11), bg='white').grid(row=2, column=3, sticky=tk.W, padx=5)
         
         # Botón cerrar
         btn_frame = tk.Frame(main_frame, bg='white')

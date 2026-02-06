@@ -85,7 +85,8 @@ class Reparacion:
                              cliente_email=None, dispositivo=None, modelo=None, numero_serie=None,
                              problema=None, sena=None, total=None, sin_bateria=None, rajado=None,
                              mojado=None, contrasena=None, patron=None, estado=None, 
-                             observaciones=None):
+                             observaciones=None, fecha_pago_final=None, medio_pago_final=None,
+                             monto_pago_final=None, recargo_tarjeta=None):
         """Actualizar reparación"""
         conn = self.db_manager.get_connection()
         cursor = conn.cursor()
@@ -151,6 +152,18 @@ class Reparacion:
         if observaciones is not None:
             updates.append("observaciones = ?")
             values.append(observaciones)
+        if fecha_pago_final is not None:
+            updates.append("fecha_pago_final = ?")
+            values.append(fecha_pago_final)
+        if medio_pago_final is not None:
+            updates.append("medio_pago_final = ?")
+            values.append(medio_pago_final)
+        if monto_pago_final is not None:
+            updates.append("monto_pago_final = ?")
+            values.append(monto_pago_final)
+        if recargo_tarjeta is not None:
+            updates.append("recargo_tarjeta = ?")
+            values.append(recargo_tarjeta)
         
         if not updates:
             return False, "No hay campos para actualizar"

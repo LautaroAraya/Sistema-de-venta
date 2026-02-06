@@ -180,6 +180,9 @@ class ReparacionView:
         btn_eliminar = tk.Button(actions_frame, text="🗑️ Eliminar", font=('Arial', 11, 'bold'), bg='#EF4444', fg='white', activebackground='#B91C1C', bd=0, pady=10, cursor='hand2', command=self.eliminar_reparacion)
         btn_eliminar.pack(side=tk.LEFT, padx=5, ipadx=10)
 
+        btn_finalizar_pago = tk.Button(actions_frame, text="✅ Finalizar pago", font=('Arial', 11, 'bold'), bg='#10B981', fg='white', activebackground='#059669', bd=0, pady=10, cursor='hand2', command=self.abrir_finalizar_pago)
+        btn_finalizar_pago.pack(side=tk.LEFT, padx=5, ipadx=10)
+
         # Botón para abrir el formulario completo
         btn_formulario = tk.Button(actions_frame,
             text="📝 Formulario Completo",
@@ -528,6 +531,122 @@ class ReparacionView:
             if rep['numero_orden'] == numero_orden:
                 self.mostrar_detalles(rep)
                 break
+
+    def abrir_finalizar_pago(self):
+        """Abrir formulario para finalizar el pago de una reparación"""
+        seleccion = self.tree.selection()
+        if not seleccion:
+            messagebox.showwarning("Advertencia", "Por favor selecciona una reparación")
+            return
+
+        item = self.tree.item(seleccion[0])
+        numero_orden = item['values'][0]
+        reparaciones = self.reparacion_model.obtener_reparaciones()
+        reparacion = None
+        for rep in reparaciones:
+            if rep['numero_orden'] == numero_orden:
+                reparacion = rep
+                break
+
+        if not reparacion:
+            messagebox.showerror("Error", "No se encontró la reparación seleccionada")
+            return
+
+        sena = float(reparacion.get('sena') or 0)
+        total = float(reparacion.get('total') or 0)
+        saldo = total - sena
+
+        top = tk.Toplevel(self.parent)
+        top.title("Finalizar pago")
+        top.grab_set()
+        top.geometry("420x360")
+        top.configure(bg='white')
+
+        contenido = tk.Frame(top, bg='white')
+        contenido.pack(fill=tk.BOTH, expand=True, padx=15, pady=15)
+
+        tk.Label(contenido, text="Seña:", font=("Arial", 10, "bold"), bg='white').grid(row=0, column=0, sticky=tk.W, pady=6)
+        tk.Label(contenido, text=f"${sena:.2f}", font=("Arial", 10), bg='white').grid(row=0, column=1, sticky=tk.W, pady=6)
+
+        tk.Label(contenido, text="Total:", font=("Arial", 10, "bold"), bg='white').grid(row=1, column=0, sticky=tk.W, pady=6)
+        tk.Label(contenido, text=f"${total:.2f}", font=("Arial", 10), bg='white').grid(row=1, column=1, sticky=tk.W, pady=6)
+
+        tk.Label(contenido, text="Saldo:", font=("Arial", 10, "bold"), bg='white').grid(row=2, column=0, sticky=tk.W, pady=6)
+        tk.Label(contenido, text=f"${saldo:.2f}", font=("Arial", 10), bg='white').grid(row=2, column=1, sticky=tk.W, pady=6)
+
+        fecha_var = tk.StringVar(value=datetime.now().strftime('%Y-%m-%d'))
+        monto_var = tk.StringVar(value=f"{saldo:.2f}")
+        medio_var = tk.StringVar(value='Efectivo')
+        recargo_var = tk.StringVar(value='0')
+
+        tk.Label(contenido, text="Fecha fin de pago:", font=("Arial", 10, "bold"), bg='white').grid(row=3, column=0, sticky=tk.W, pady=6)
+        ttk.Entry(contenido, textvariable=fecha_var, font=("Arial", 10), width=18).grid(row=3, column=1, sticky=tk.W, pady=6)
+
+        tk.Label(contenido, text="Monto pagado:", font=("Arial", 10, "bold"), bg='white').grid(row=4, column=0, sticky=tk.W, pady=6)
+        ttk.Entry(contenido, textvariable=monto_var, font=("Arial", 10), width=18).grid(row=4, column=1, sticky=tk.W, pady=6)
+
+        tk.Label(contenido, text="Medio:", font=("Arial", 10, "bold"), bg='white').grid(row=5, column=0, sticky=tk.W, pady=6)
+        medio_combo = ttk.Combobox(contenido, textvariable=medio_var, values=['Efectivo', 'Transferencia', 'Tarjeta'], state='readonly', width=16)
+        medio_combo.grid(row=5, column=1, sticky=tk.W, pady=6)
+
+        recargo_label = tk.Label(contenido, text="Recargo %:", font=("Arial", 10, "bold"), bg='white')
+        recargo_entry = ttk.Entry(contenido, textvariable=recargo_var, font=("Arial", 10), width=18)
+
+        def _actualizar_recargo(*_):
+            if medio_var.get() == 'Tarjeta':
+                recargo_label.grid(row=6, column=0, sticky=tk.W, pady=6)
+                recargo_entry.grid(row=6, column=1, sticky=tk.W, pady=6)
+            else:
+                recargo_label.grid_remove()
+                recargo_entry.grid_remove()
+                recargo_var.set('0')
+
+        medio_combo.bind('<<ComboboxSelected>>', _actualizar_recargo)
+        _actualizar_recargo()
+
+        def _guardar_pago():
+            fecha_txt = fecha_var.get().strip()
+            if not fecha_txt:
+                messagebox.showwarning("Validación", "La fecha de pago es obligatoria")
+                return
+            try:
+                datetime.strptime(fecha_txt, '%Y-%m-%d')
+            except Exception:
+                messagebox.showwarning("Validación", "La fecha debe tener formato YYYY-MM-DD")
+                return
+            try:
+                monto = float(monto_var.get() or 0)
+                recargo_pct = float(recargo_var.get() or 0)
+            except Exception:
+                messagebox.showwarning("Validación", "El monto y recargo deben ser números")
+                return
+            if monto < 0 or recargo_pct < 0:
+                messagebox.showwarning("Validación", "El monto y recargo no pueden ser negativos")
+                return
+
+            recargo_monto = (monto * recargo_pct / 100) if medio_var.get() == 'Tarjeta' else 0
+            total_pagado = monto + recargo_monto if medio_var.get() == 'Tarjeta' else monto
+            medio_db = medio_var.get().lower()
+
+            success, msg = self.reparacion_model.actualizar_reparacion(
+                reparacion['id'],
+                fecha_pago_final=fecha_txt,
+                medio_pago_final=medio_db,
+                monto_pago_final=total_pagado,
+                recargo_tarjeta=recargo_monto,
+                estado='retirado'
+            )
+            if success:
+                messagebox.showinfo("Éxito", "Pago final registrado correctamente")
+                top.destroy()
+                self.cargar_reparaciones()
+            else:
+                messagebox.showerror("Error", msg)
+
+        botones = tk.Frame(contenido, bg='white')
+        botones.grid(row=7, column=0, columnspan=2, pady=15)
+        tk.Button(botones, text="Guardar", font=("Arial", 10, "bold"), bg='#10B981', fg='white', bd=0, padx=15, pady=6, command=_guardar_pago).pack(side=tk.LEFT, padx=5)
+        tk.Button(botones, text="Cancelar", font=("Arial", 10, "bold"), bg='#9CA3AF', fg='white', bd=0, padx=15, pady=6, command=top.destroy).pack(side=tk.LEFT, padx=5)
     
     def ver_fotos(self):
         """Abrir la galería de fotos de la reparación seleccionada"""

@@ -60,9 +60,9 @@ class CelularesView:
         list_frame = tk.Frame(parent, bg='white', bd=1, relief=tk.RIDGE, padx=10, pady=10)
         list_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=5)
 
-        columns = ('numero', 'cliente', 'telefono', 'sena', 'total', 'fecha')
+        columns = ('numero', 'cliente', 'telefono', 'sena', 'total', 'fecha', 'fecha_pago')
         self.tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=15)
-        headings = ['N° Venta', 'Cliente', 'Teléfono', 'Seña', 'Total', 'Fecha']
+        headings = ['N° Venta', 'Cliente', 'Teléfono', 'Seña', 'Total', 'Fecha', 'Fecha Pago']
         for col, head in zip(columns, headings):
             self.tree.heading(col, text=head)
         
@@ -72,6 +72,7 @@ class CelularesView:
         self.tree.column('sena', width=100)
         self.tree.column('total', width=100)
         self.tree.column('fecha', width=100)
+        self.tree.column('fecha_pago', width=110)
 
         yscroll = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.tree.yview)
         self.tree.configure(yscrollcommand=yscroll.set)
@@ -96,11 +97,145 @@ class CelularesView:
                                 bg='#EF4444', fg='white', activebackground='#B91C1C', bd=0, 
                                 pady=10, cursor='hand2', command=self.eliminar_venta)
         btn_eliminar.pack(side=tk.LEFT, padx=5, ipadx=10)
+
+        self.btn_finalizar_pago = tk.Button(actions_frame, text="✅ Finalizar pago", font=('Arial', 11, 'bold'),
+                bg='#10B981', fg='white', activebackground='#059669', bd=0,
+                pady=10, cursor='hand2', command=self.abrir_finalizar_pago)
+        self.btn_finalizar_pago.pack(side=tk.LEFT, padx=5, ipadx=10)
         
         btn_imprimir = tk.Button(actions_frame, text="🖨️ Imprimir", font=('Arial', 11, 'bold'), 
                                 bg='#3B82F6', fg='white', activebackground='#1D4ED8', bd=0, 
                                 pady=10, cursor='hand2', command=self.imprimir_comprobante)
         btn_imprimir.pack(side=tk.LEFT, padx=5, ipadx=10)
+
+        self.tree.bind('<<TreeviewSelect>>', self._actualizar_estado_finalizar_pago)
+
+    def abrir_finalizar_pago(self):
+        """Abrir formulario para finalizar el pago de una venta de celular"""
+        seleccion = self.tree.selection()
+        if not seleccion:
+            messagebox.showwarning("Advertencia", "Por favor selecciona una venta")
+            return
+
+        item = self.tree.item(seleccion[0])
+        numero_venta = item['values'][0]
+
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, sena, total, monto_pago_final, fecha_pago_final
+            FROM ventas_celulares
+            WHERE numero_venta = ?
+        ''', (numero_venta,))
+        venta = cursor.fetchone()
+
+        if not venta:
+            messagebox.showerror("Error", "No se encontró la venta seleccionada")
+            return
+
+        venta_id = venta[0]
+        sena = float(venta[1] or 0)
+        total = float(venta[2] or 0)
+        monto_guardado = float(venta[3] or 0)
+        fecha_pago_final = venta[4]
+        if fecha_pago_final or monto_guardado > 0:
+            messagebox.showinfo("Pago finalizado", "Esta venta ya tiene el pago final registrado")
+            self._actualizar_estado_finalizar_pago()
+            return
+        saldo = total - sena
+        monto_sugerido = monto_guardado if monto_guardado > 0 else saldo
+
+        top = tk.Toplevel(self.parent)
+        top.title("Finalizar pago")
+        top.grab_set()
+        top.geometry("420x360")
+        top.configure(bg='white')
+
+        contenido = tk.Frame(top, bg='white')
+        contenido.pack(fill=tk.BOTH, expand=True, padx=15, pady=15)
+
+        tk.Label(contenido, text="Seña:", font=("Arial", 10, "bold"), bg='white').grid(row=0, column=0, sticky=tk.W, pady=6)
+        tk.Label(contenido, text=f"${sena:.2f}", font=("Arial", 10), bg='white').grid(row=0, column=1, sticky=tk.W, pady=6)
+
+        tk.Label(contenido, text="Total:", font=("Arial", 10, "bold"), bg='white').grid(row=1, column=0, sticky=tk.W, pady=6)
+        tk.Label(contenido, text=f"${total:.2f}", font=("Arial", 10), bg='white').grid(row=1, column=1, sticky=tk.W, pady=6)
+
+        tk.Label(contenido, text="Saldo:", font=("Arial", 10, "bold"), bg='white').grid(row=2, column=0, sticky=tk.W, pady=6)
+        tk.Label(contenido, text=f"${saldo:.2f}", font=("Arial", 10), bg='white').grid(row=2, column=1, sticky=tk.W, pady=6)
+
+        fecha_var = tk.StringVar(value=datetime.now().strftime('%Y-%m-%d'))
+        monto_var = tk.StringVar(value=f"{monto_sugerido:.2f}")
+        medio_var = tk.StringVar(value='Efectivo')
+        recargo_var = tk.StringVar(value='0')
+
+        tk.Label(contenido, text="Fecha fin de pago:", font=("Arial", 10, "bold"), bg='white').grid(row=3, column=0, sticky=tk.W, pady=6)
+        ttk.Entry(contenido, textvariable=fecha_var, font=("Arial", 10), width=18).grid(row=3, column=1, sticky=tk.W, pady=6)
+
+        tk.Label(contenido, text="Monto pagado:", font=("Arial", 10, "bold"), bg='white').grid(row=4, column=0, sticky=tk.W, pady=6)
+        ttk.Entry(contenido, textvariable=monto_var, font=("Arial", 10), width=18).grid(row=4, column=1, sticky=tk.W, pady=6)
+
+        tk.Label(contenido, text="Medio:", font=("Arial", 10, "bold"), bg='white').grid(row=5, column=0, sticky=tk.W, pady=6)
+        medio_combo = ttk.Combobox(contenido, textvariable=medio_var, values=['Efectivo', 'Transferencia', 'Tarjeta'], state='readonly', width=16)
+        medio_combo.grid(row=5, column=1, sticky=tk.W, pady=6)
+
+        recargo_label = tk.Label(contenido, text="Recargo %:", font=("Arial", 10, "bold"), bg='white')
+        recargo_entry = ttk.Entry(contenido, textvariable=recargo_var, font=("Arial", 10), width=18)
+
+        def _actualizar_recargo(*_):
+            if medio_var.get() == 'Tarjeta':
+                recargo_label.grid(row=6, column=0, sticky=tk.W, pady=6)
+                recargo_entry.grid(row=6, column=1, sticky=tk.W, pady=6)
+            else:
+                recargo_label.grid_remove()
+                recargo_entry.grid_remove()
+                recargo_var.set('0')
+
+        medio_combo.bind('<<ComboboxSelected>>', _actualizar_recargo)
+        _actualizar_recargo()
+
+        def _guardar_pago():
+            fecha_txt = fecha_var.get().strip()
+            if not fecha_txt:
+                messagebox.showwarning("Validación", "La fecha de pago es obligatoria")
+                return
+            try:
+                datetime.strptime(fecha_txt, '%Y-%m-%d')
+            except Exception:
+                messagebox.showwarning("Validación", "La fecha debe tener formato YYYY-MM-DD")
+                return
+            try:
+                monto = float(monto_var.get() or 0)
+                recargo_pct = float(recargo_var.get() or 0)
+            except Exception:
+                messagebox.showwarning("Validación", "El monto y recargo deben ser números")
+                return
+            if monto < 0 or recargo_pct < 0:
+                messagebox.showwarning("Validación", "El monto y recargo no pueden ser negativos")
+                return
+
+            recargo_monto = (monto * recargo_pct / 100) if medio_var.get() == 'Tarjeta' else 0
+            total_pagado = monto + recargo_monto if medio_var.get() == 'Tarjeta' else monto
+            medio_db = medio_var.get().lower()
+
+            try:
+                cursor.execute('''
+                    UPDATE ventas_celulares
+                    SET fecha_pago_final = ?, medio_pago_final = ?, monto_pago_final = ?, recargo_tarjeta = ?
+                    WHERE id = ?
+                ''', (fecha_txt, medio_db, total_pagado, recargo_monto, venta_id))
+                conn.commit()
+                messagebox.showinfo("Éxito", "Pago final registrado correctamente")
+                top.destroy()
+                self.cargar_ventas()
+                self._actualizar_estado_finalizar_pago()
+            except Exception as e:
+                conn.rollback()
+                messagebox.showerror("Error", f"Error al actualizar: {str(e)}")
+
+        botones = tk.Frame(contenido, bg='white')
+        botones.grid(row=7, column=0, columnspan=2, pady=15)
+        tk.Button(botones, text="Guardar", font=("Arial", 10, "bold"), bg='#10B981', fg='white', bd=0, padx=15, pady=6, command=_guardar_pago).pack(side=tk.LEFT, padx=5)
+        tk.Button(botones, text="Cancelar", font=("Arial", 10, "bold"), bg='#9CA3AF', fg='white', bd=0, padx=15, pady=6, command=top.destroy).pack(side=tk.LEFT, padx=5)
 
     def cargar_ventas(self):
         """Cargar lista de ventas desde la base de datos"""
@@ -113,7 +248,8 @@ class CelularesView:
         
         try:
             cursor.execute('''
-                SELECT numero_venta, cliente_nombre, cliente_telefono, sena, total, fecha_venta
+                SELECT numero_venta, cliente_nombre, cliente_telefono, sena, total, fecha_venta,
+                       fecha_pago_final
                 FROM ventas_celulares
                 ORDER BY fecha_venta DESC
                 LIMIT 100
@@ -122,16 +258,52 @@ class CelularesView:
             ventas = cursor.fetchall()
             for venta in ventas:
                 fecha = venta[5].split(' ')[0] if venta[5] else 'N/A'
+                fecha_pago = venta[6].split(' ')[0] if venta[6] else 'Pendiente'
                 self.tree.insert('', 'end', values=(
                     venta[0],  # numero_venta
                     venta[1],  # cliente_nombre
                     venta[2] or '',  # cliente_telefono
                     f"${venta[3]:.2f}",  # sena
                     f"${venta[4]:.2f}",  # total
-                    fecha
+                    fecha,
+                    fecha_pago
                 ))
         except Exception as e:
             print(f"Error al cargar ventas: {str(e)}")
+        self._actualizar_estado_finalizar_pago()
+
+    def _actualizar_estado_finalizar_pago(self, _event=None):
+        """Habilitar o deshabilitar el boton Finalizar pago segun la venta seleccionada"""
+        if not hasattr(self, 'btn_finalizar_pago'):
+            return
+
+        seleccion = self.tree.selection()
+        if not seleccion:
+            self.btn_finalizar_pago.config(state=tk.DISABLED)
+            return
+
+        item = self.tree.item(seleccion[0])
+        numero_venta = item['values'][0]
+
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT fecha_pago_final, monto_pago_final
+            FROM ventas_celulares
+            WHERE numero_venta = ?
+        ''', (numero_venta,))
+        venta = cursor.fetchone()
+
+        if not venta:
+            self.btn_finalizar_pago.config(state=tk.DISABLED)
+            return
+
+        fecha_pago_final = venta[0]
+        monto_pago_final = float(venta[1] or 0)
+        if fecha_pago_final or monto_pago_final > 0:
+            self.btn_finalizar_pago.config(state=tk.DISABLED)
+        else:
+            self.btn_finalizar_pago.config(state=tk.NORMAL)
 
     def abrir_formulario_venta(self):
         """Abrir formulario para crear nueva venta"""
@@ -508,7 +680,8 @@ class CelularesView:
         try:
             cursor.execute('''
                   SELECT numero_venta, cliente_nombre, cliente_documento, cliente_telefono, cliente_email,
-                      telefono_marca, telefono_modelo, descripcion, total, sena, fecha_venta
+                      telefono_marca, telefono_modelo, descripcion, total, sena, fecha_venta,
+                      monto_pago_final, recargo_tarjeta
                 FROM ventas_celulares
                 WHERE numero_venta = ?
             ''', (numero_venta,))
@@ -545,7 +718,12 @@ class CelularesView:
         total = float(venta[8])
         sena = float(venta[9])
         fecha = venta[10]
-        saldo = total - sena
+        monto_pago_final = float(venta[11] or 0)
+        recargo_monto = float(venta[12] or 0)
+        total_con_recargo = total + recargo_monto
+        saldo = total_con_recargo - (sena + monto_pago_final)
+        if saldo < 0:
+            saldo = 0
         
         # Datos de configuración
         nombre_sistema = config[0] if config and config[0] else "SISTEMA DE VENTAS"
@@ -764,7 +942,8 @@ class CelularesView:
         
         # Crear tabla con mejor formato
         totales_data = [
-            ["Precio Total:", f"${total:,.2f}"],
+            ["Precio Total:", f"${total_con_recargo:,.2f}"],
+            ["Recargo:", f"${recargo_monto:,.2f}"],
             ["Seña Pagada:", f"${sena:,.2f}"],
             ["SALDO A PAGAR:", f"${saldo:,.2f}"],
             ["Fecha:", fecha[:10]],
@@ -776,19 +955,19 @@ class CelularesView:
             ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-            ('FONTNAME', (0, 2), (1, 2), 'Helvetica-Bold'),
+            ('FONTNAME', (0, 3), (1, 3), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('FONTSIZE', (0, 2), (1, 2), 10),
+            ('FONTSIZE', (0, 3), (1, 3), 10),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
             ('TOPPADDING', (0, 0), (-1, -1), 6),
             ('LEFTPADDING', (0, 0), (-1, -1), 8),
             ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-            ('BACKGROUND', (0, 2), (1, 2), colors.HexColor('#FFE8E8')),
-            ('TEXTCOLOR', (0, 2), (1, 2), colors.HexColor('#D32F2F')),
+            ('BACKGROUND', (0, 3), (1, 3), colors.HexColor('#FFE8E8')),
+            ('TEXTCOLOR', (0, 3), (1, 3), colors.HexColor('#D32F2F')),
             ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#333333')),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CCCCCC')),
-            ('LINEABOVE', (0, 2), (1, 2), 2, colors.HexColor('#8B5CF6')),
-            ('LINEBELOW', (0, 2), (1, 2), 2, colors.HexColor('#8B5CF6')),
+            ('LINEABOVE', (0, 3), (1, 3), 2, colors.HexColor('#8B5CF6')),
+            ('LINEBELOW', (0, 3), (1, 3), 2, colors.HexColor('#8B5CF6')),
             ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#F5F5F5')),
         ]))
         
