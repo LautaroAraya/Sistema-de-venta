@@ -3,6 +3,8 @@ from tkinter import ttk, messagebox
 from models.venta import Venta
 from models.reparacion import Reparacion
 from datetime import datetime, timedelta
+import calendar
+import math
 
 class ReportesView:
     def __init__(self, parent, db_manager, user_data):
@@ -11,6 +13,8 @@ class ReportesView:
         self.user_data = user_data
         self.venta_model = Venta(db_manager)
         self.reparacion_model = Reparacion(db_manager)
+        self.reporte_final_interval_ms = 15 * 60 * 1000
+        self._reporte_final_job = None
         
         self.create_widgets()
         self.cargar_ventas()
@@ -48,10 +52,16 @@ class ReportesView:
         celulares_frame = ttk.Frame(notebook)
         notebook.add(celulares_frame, text="📱 Ventas Celulares")
         self.crear_tab_ventas_celulares(celulares_frame)
+
+        # Pestaña de Reporte Final
+        reporte_final_frame = ttk.Frame(notebook)
+        notebook.add(reporte_final_frame, text="📈 Reporte Final")
+        self.crear_tab_reporte_final(reporte_final_frame)
         
         # Cargar reparaciones automáticamente
         self.cargar_reparaciones()
         self.cargar_ventas_celulares()
+        self.actualizar_reporte_final()
     
     def crear_tab_ventas(self, parent):
         """Crear la pestaña de ventas"""
@@ -594,6 +604,220 @@ class ReportesView:
         self.tree_ventas_cel.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         scrollbar_h.pack(fill=tk.X)
+
+    def crear_tab_reporte_final(self, parent):
+        """Crear la pestaña de reporte final"""
+        header_frame = tk.Frame(parent, bg='white')
+        header_frame.pack(fill=tk.X, padx=10, pady=5)
+
+        tk.Label(
+            header_frame,
+            text="Reporte Final - Totales por Mes",
+            font=("Arial", 12, "bold"),
+            bg='white',
+            fg='black'
+        ).pack(anchor=tk.W)
+
+        tk.Label(
+            header_frame,
+            text="Selecciona un mes para ver la distribucion por tipo",
+            font=("Arial", 9),
+            bg='white',
+            fg='gray'
+        ).pack(anchor=tk.W)
+
+        selector_frame = tk.Frame(parent, bg='white')
+        selector_frame.pack(fill=tk.X, padx=10, pady=(0, 5))
+
+        tk.Label(selector_frame, text="Mes:", bg='white', fg='black').pack(side=tk.LEFT)
+
+        meses = [
+            "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+            "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+        ]
+        self.reporte_final_mes_var = tk.StringVar(value=meses[datetime.now().month - 1])
+        self.reporte_final_mes_combo = ttk.Combobox(
+            selector_frame,
+            values=meses,
+            textvariable=self.reporte_final_mes_var,
+            state="readonly",
+            width=14
+        )
+        self.reporte_final_mes_combo.pack(side=tk.LEFT, padx=6)
+        self.reporte_final_mes_combo.bind("<<ComboboxSelected>>", lambda e: self.actualizar_reporte_final())
+
+        content_frame = tk.Frame(parent, bg='white')
+        content_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        self.reporte_final_canvas = tk.Canvas(content_frame, width=360, height=260, bg='white', highlightthickness=0)
+        self.reporte_final_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(0, 20))
+        self.reporte_final_canvas.bind("<Motion>", self._on_reporte_final_motion)
+        self.reporte_final_canvas.bind("<Leave>", self._on_reporte_final_leave)
+
+        legend_frame = tk.Frame(content_frame, bg='white')
+        legend_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        self.reporte_final_labels = {}
+        for label_text in ["Ventas", "Reparaciones", "Ventas Celulares"]:
+            row = tk.Frame(legend_frame, bg='white')
+            row.pack(anchor=tk.W, pady=4)
+
+            color_box = tk.Canvas(row, width=14, height=14, bg='white', highlightthickness=0)
+            color_box.pack(side=tk.LEFT, padx=(0, 6))
+
+            text_label = tk.Label(row, text=f"{label_text}: $0.00", bg='white', fg='black', font=("Arial", 10, "bold"))
+            text_label.pack(side=tk.LEFT)
+
+            self.reporte_final_labels[label_text] = (color_box, text_label)
+
+        self.reporte_final_tooltip = tk.Label(
+            content_frame,
+            text="",
+            bg="#111827",
+            fg="white",
+            font=("Arial", 9),
+            padx=6,
+            pady=3
+        )
+        self.reporte_final_tooltip.place_forget()
+
+    def actualizar_reporte_final(self):
+        """Actualizar datos y grafico del reporte final"""
+        totales = self._obtener_totales_mes()
+        self._dibujar_grafico_torta(totales)
+        self._programar_actualizacion_reporte_final()
+
+    def _programar_actualizacion_reporte_final(self):
+        """Reprogramar la actualizacion automatica"""
+        if self._reporte_final_job is not None:
+            self.parent.after_cancel(self._reporte_final_job)
+        self._reporte_final_job = self.parent.after(
+            self.reporte_final_interval_ms,
+            self.actualizar_reporte_final
+        )
+
+    def _obtener_totales_mes(self):
+        """Calcular totales del mes seleccionado (anio actual) para cada tipo"""
+        meses = {
+            "Enero": 1, "Febrero": 2, "Marzo": 3, "Abril": 4, "Mayo": 5, "Junio": 6,
+            "Julio": 7, "Agosto": 8, "Septiembre": 9, "Octubre": 10, "Noviembre": 11, "Diciembre": 12
+        }
+        hoy = datetime.now()
+        mes_nombre = self.reporte_final_mes_var.get()
+        mes_num = meses.get(mes_nombre, hoy.month)
+        anio = hoy.year
+        ultimo_dia = calendar.monthrange(anio, mes_num)[1]
+        inicio_mes = f"{anio:04d}-{mes_num:02d}-01"
+        fin_mes = f"{anio:04d}-{mes_num:02d}-{ultimo_dia:02d}"
+
+        stats_ventas = self.venta_model.obtener_estadisticas(inicio_mes, fin_mes)
+        total_ventas = float(stats_ventas[1] or 0) if stats_ventas else 0.0
+
+        reparaciones = self.reparacion_model.obtener_reparaciones(filtro_estado=None)
+        total_reparaciones = 0.0
+        for rep in reparaciones:
+            if not (rep.get('sena') and rep.get('sena') > 0 or rep.get('estado') == 'retirado'):
+                continue
+            fecha_rep = (rep.get('fecha_creacion') or '')[:10]
+            if fecha_rep < inicio_mes or fecha_rep > fin_mes:
+                continue
+            total_reparaciones += float(rep.get('sena') or 0) + float(rep.get('monto_pago_final') or 0)
+
+        total_celulares = 0.0
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute('''
+                SELECT
+                    COALESCE(SUM(sena), 0) + COALESCE(SUM(monto_pago_final), 0)
+                FROM ventas_celulares
+                WHERE DATE(fecha_venta) >= ? AND DATE(fecha_venta) <= ?
+            ''', (inicio_mes, fin_mes))
+            result = cursor.fetchone()
+            if result:
+                total_celulares = float(result[0] or 0)
+        except Exception:
+            total_celulares = 0.0
+
+        return {
+            "Ventas": total_ventas,
+            "Reparaciones": total_reparaciones,
+            "Ventas Celulares": total_celulares
+        }
+
+    def _dibujar_grafico_torta(self, totales):
+        """Dibujar grafico de torta con totales"""
+        self.reporte_final_canvas.delete("all")
+        colores = {
+            "Ventas": "#10B981",
+            "Reparaciones": "#F59E0B",
+            "Ventas Celulares": "#3B82F6"
+        }
+
+        total = sum(totales.values())
+        self._reporte_final_slices = []
+        if total <= 0:
+            self.reporte_final_canvas.create_text(
+                180, 130,
+                text="Sin datos para el mes",
+                fill="gray",
+                font=("Arial", 11, "bold")
+            )
+        else:
+            start_angle = 0
+            box = (20, 20, 240, 240)
+            for key, value in totales.items():
+                extent = (value / total) * 360
+                self.reporte_final_canvas.create_arc(
+                    box,
+                    start=start_angle,
+                    extent=extent,
+                    fill=colores.get(key, "#9CA3AF"),
+                    outline="white"
+                )
+                self._reporte_final_slices.append({
+                    "label": key,
+                    "value": value,
+                    "start": start_angle,
+                    "extent": extent,
+                    "color": colores.get(key, "#9CA3AF")
+                })
+                start_angle += extent
+
+        for key, value in totales.items():
+            color_box, text_label = self.reporte_final_labels.get(key, (None, None))
+            if color_box is not None:
+                color_box.delete("all")
+                color_box.create_rectangle(0, 0, 14, 14, fill=colores.get(key, "#9CA3AF"), outline='')
+            if text_label is not None:
+                text_label.config(text=f"{key}: ${value:.2f}")
+
+    def _on_reporte_final_motion(self, event):
+        """Mostrar tooltip al pasar sobre una porcion"""
+        if not hasattr(self, "_reporte_final_slices"):
+            return
+        cx, cy = 130, 130
+        dx = event.x - cx
+        dy = event.y - cy
+        distancia = (dx ** 2 + dy ** 2) ** 0.5
+        if distancia > 110 or distancia < 5:
+            self.reporte_final_tooltip.place_forget()
+            return
+
+        angulo = (360 - (math.degrees(math.atan2(dy, dx)) % 360)) % 360
+        for slice_info in self._reporte_final_slices:
+            start = slice_info["start"]
+            end = start + slice_info["extent"]
+            if start <= angulo < end:
+                texto = f"{slice_info['label']}: ${slice_info['value']:.2f}"
+                self.reporte_final_tooltip.config(text=texto)
+                self.reporte_final_tooltip.place(x=event.x + 10, y=event.y + 10)
+                return
+        self.reporte_final_tooltip.place_forget()
+
+    def _on_reporte_final_leave(self, _event):
+        """Ocultar tooltip al salir"""
+        self.reporte_final_tooltip.place_forget()
     
     def cargar_ventas_celulares(self):
         """Cargar ventas de celulares con filtros"""
