@@ -180,18 +180,8 @@ class CelularesView:
 
         recargo_label = tk.Label(contenido, text="Recargo %:", font=("Arial", 10, "bold"), bg='white')
         recargo_entry = ttk.Entry(contenido, textvariable=recargo_var, font=("Arial", 10), width=18)
-
-        def _actualizar_recargo(*_):
-            if medio_var.get() == 'Tarjeta':
-                recargo_label.grid(row=6, column=0, sticky=tk.W, pady=6)
-                recargo_entry.grid(row=6, column=1, sticky=tk.W, pady=6)
-            else:
-                recargo_label.grid_remove()
-                recargo_entry.grid_remove()
-                recargo_var.set('0')
-
-        medio_combo.bind('<<ComboboxSelected>>', _actualizar_recargo)
-        _actualizar_recargo()
+        recargo_label.grid(row=6, column=0, sticky=tk.W, pady=6)
+        recargo_entry.grid(row=6, column=1, sticky=tk.W, pady=6)
 
         def _guardar_pago():
             fecha_txt = fecha_var.get().strip()
@@ -213,8 +203,8 @@ class CelularesView:
                 messagebox.showwarning("Validación", "El monto y recargo no pueden ser negativos")
                 return
 
-            recargo_monto = (monto * recargo_pct / 100) if medio_var.get() == 'Tarjeta' else 0
-            total_pagado = monto + recargo_monto if medio_var.get() == 'Tarjeta' else monto
+            recargo_monto = (monto * recargo_pct / 100)
+            total_pagado = monto + recargo_monto
             medio_db = medio_var.get().lower()
 
             try:

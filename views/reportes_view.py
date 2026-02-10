@@ -610,13 +610,25 @@ class ReportesView:
         header_frame = tk.Frame(parent, bg='white')
         header_frame.pack(fill=tk.X, padx=10, pady=5)
 
+        header_frame.columnconfigure(0, weight=1)
+        header_frame.columnconfigure(1, weight=0)
+
         tk.Label(
             header_frame,
             text="Reporte Final - Totales por Mes",
             font=("Arial", 12, "bold"),
             bg='white',
             fg='black'
-        ).pack(anchor=tk.W)
+        ).grid(row=0, column=0, sticky=tk.W)
+
+        self.reporte_final_total_label = tk.Label(
+            header_frame,
+            text="Suma total: $0.00",
+            font=("Arial", 11, "bold"),
+            bg='white',
+            fg='#111827'
+        )
+        self.reporte_final_total_label.grid(row=0, column=1, sticky=tk.E)
 
         tk.Label(
             header_frame,
@@ -624,7 +636,7 @@ class ReportesView:
             font=("Arial", 9),
             bg='white',
             fg='gray'
-        ).pack(anchor=tk.W)
+        ).grid(row=1, column=0, sticky=tk.W, pady=(2, 0))
 
         selector_frame = tk.Frame(parent, bg='white')
         selector_frame.pack(fill=tk.X, padx=10, pady=(0, 5))
@@ -646,10 +658,20 @@ class ReportesView:
         self.reporte_final_mes_combo.pack(side=tk.LEFT, padx=6)
         self.reporte_final_mes_combo.bind("<<ComboboxSelected>>", lambda e: self.actualizar_reporte_final())
 
+        tk.Button(
+            selector_frame,
+            text="Actualizar",
+            font=("Arial", 9),
+            bg='white',
+            fg='black',
+            relief=tk.RAISED,
+            command=self.actualizar_reporte_final
+        ).pack(side=tk.LEFT, padx=6)
+
         content_frame = tk.Frame(parent, bg='white')
         content_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        self.reporte_final_canvas = tk.Canvas(content_frame, width=360, height=260, bg='white', highlightthickness=0)
+        self.reporte_final_canvas = tk.Canvas(content_frame, width=430, height=330, bg='white', highlightthickness=0)
         self.reporte_final_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(0, 20))
         self.reporte_final_canvas.bind("<Motion>", self._on_reporte_final_motion)
         self.reporte_final_canvas.bind("<Leave>", self._on_reporte_final_leave)
@@ -658,9 +680,20 @@ class ReportesView:
         legend_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         self.reporte_final_labels = {}
+        self.reporte_final_checks = {}
         for label_text in ["Ventas", "Reparaciones", "Ventas Celulares"]:
             row = tk.Frame(legend_frame, bg='white')
             row.pack(anchor=tk.W, pady=4)
+
+            var = tk.BooleanVar(value=True)
+            chk = tk.Checkbutton(
+                row,
+                variable=var,
+                bg='white',
+                activebackground='white',
+                command=self.actualizar_reporte_final
+            )
+            chk.pack(side=tk.LEFT, padx=(0, 4))
 
             color_box = tk.Canvas(row, width=14, height=14, bg='white', highlightthickness=0)
             color_box.pack(side=tk.LEFT, padx=(0, 6))
@@ -669,6 +702,8 @@ class ReportesView:
             text_label.pack(side=tk.LEFT)
 
             self.reporte_final_labels[label_text] = (color_box, text_label)
+            self.reporte_final_checks[label_text] = var
+
 
         self.reporte_final_tooltip = tk.Label(
             content_frame,
@@ -684,8 +719,12 @@ class ReportesView:
     def actualizar_reporte_final(self):
         """Actualizar datos y grafico del reporte final"""
         totales = self._obtener_totales_mes()
+        total_general = sum(totales.values())
+        if hasattr(self, "reporte_final_total_label"):
+            self.reporte_final_total_label.config(text=f"Suma total: ${total_general:.2f}")
         self._dibujar_grafico_torta(totales)
         self._programar_actualizacion_reporte_final()
+
 
     def _programar_actualizacion_reporte_final(self):
         """Reprogramar la actualizacion automatica"""
@@ -754,20 +793,35 @@ class ReportesView:
             "Ventas Celulares": "#3B82F6"
         }
 
-        total = sum(totales.values())
+        seleccionados = [k for k, v in self.reporte_final_checks.items() if v.get()]
+        totales_filtrados = {k: v for k, v in totales.items() if k in seleccionados}
+
+        total = sum(totales_filtrados.values())
         self._reporte_final_slices = []
-        if total <= 0:
+        box = (20, 20, 320, 320)
+        self._reporte_final_pie_box = box
+
+        cx = (box[0] + box[2]) / 2
+        cy = (box[1] + box[3]) / 2
+        if not seleccionados:
             self.reporte_final_canvas.create_text(
-                180, 130,
+                cx, cy,
+                text="Selecciona al menos un tipo",
+                fill="gray",
+                font=("Arial", 11, "bold")
+            )
+        elif total <= 0:
+            self.reporte_final_canvas.create_text(
+                cx, cy,
                 text="Sin datos para el mes",
                 fill="gray",
                 font=("Arial", 11, "bold")
             )
         else:
             start_angle = 0
-            box = (20, 20, 240, 240)
-            for key, value in totales.items():
-                extent = (value / total) * 360
+            solo_uno = len(totales_filtrados) == 1
+            for key, value in totales_filtrados.items():
+                extent = 359.9 if solo_uno else (value / total) * 360
                 self.reporte_final_canvas.create_arc(
                     box,
                     start=start_angle,
@@ -786,21 +840,27 @@ class ReportesView:
 
         for key, value in totales.items():
             color_box, text_label = self.reporte_final_labels.get(key, (None, None))
+            is_checked = self.reporte_final_checks.get(key).get()
             if color_box is not None:
                 color_box.delete("all")
-                color_box.create_rectangle(0, 0, 14, 14, fill=colores.get(key, "#9CA3AF"), outline='')
+                fill_color = colores.get(key, "#9CA3AF") if is_checked else "#E5E7EB"
+                color_box.create_rectangle(0, 0, 14, 14, fill=fill_color, outline='')
             if text_label is not None:
-                text_label.config(text=f"{key}: ${value:.2f}")
+                fg = 'black' if is_checked else '#9CA3AF'
+                text_label.config(text=f"{key}: ${value:.2f}", fg=fg)
 
     def _on_reporte_final_motion(self, event):
         """Mostrar tooltip al pasar sobre una porcion"""
         if not hasattr(self, "_reporte_final_slices"):
             return
-        cx, cy = 130, 130
+        box = getattr(self, "_reporte_final_pie_box", (20, 20, 320, 320))
+        cx = (box[0] + box[2]) / 2
+        cy = (box[1] + box[3]) / 2
+        radio = (box[2] - box[0]) / 2
         dx = event.x - cx
         dy = event.y - cy
         distancia = (dx ** 2 + dy ** 2) ** 0.5
-        if distancia > 110 or distancia < 5:
+        if distancia > radio or distancia < 5:
             self.reporte_final_tooltip.place_forget()
             return
 
