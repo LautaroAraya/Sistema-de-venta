@@ -209,6 +209,17 @@ class ReparacionView:
         top.grab_set()
         top.geometry("900x700")
         top.configure(bg='#F0F4F8')
+        self.form_window = top
+
+        def _cerrar_formulario():
+            try:
+                top.grab_release()
+            except tk.TclError:
+                pass
+            self.form_window = None
+            top.destroy()
+
+        top.protocol("WM_DELETE_WINDOW", _cerrar_formulario)
 
         # Canvas con scrollbar para el formulario
         canvas = tk.Canvas(top, bg='#F0F4F8')
@@ -1352,9 +1363,26 @@ CUIT: {config.get('cuit', 'N/A')}</font>"""
             messagebox.showinfo("Información", "No hay fotos para mostrar")
             return
         from PIL import Image, ImageTk
-        galeria_window = tk.Toplevel(self.parent)
+        parent_window = None
+        if hasattr(self, 'form_window') and self.form_window and self.form_window.winfo_exists():
+            parent_window = self.form_window
+        else:
+            parent_window = self.parent
+
+        try:
+            if parent_window.grab_current() == parent_window:
+                parent_window.grab_release()
+        except tk.TclError:
+            pass
+
+        galeria_window = tk.Toplevel(parent_window)
         galeria_window.title("Galería de Fotos")
         galeria_window.geometry("600x500")
+        try:
+            galeria_window.transient(parent_window)
+        except tk.TclError:
+            pass
+        galeria_window.grab_set()
         fotos_frame = ttk.Frame(galeria_window)
         fotos_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         canvas = tk.Canvas(fotos_frame, bg='white')
@@ -1388,6 +1416,20 @@ CUIT: {config.get('cuit', 'N/A')}</font>"""
         def on_frame_configure(event=None):
             canvas.configure(scrollregion=canvas.bbox('all'))
         interior.bind('<Configure>', on_frame_configure)
+
+        def _cerrar_galeria():
+            try:
+                galeria_window.grab_release()
+            except tk.TclError:
+                pass
+            if hasattr(self, 'form_window') and self.form_window and self.form_window.winfo_exists():
+                try:
+                    self.form_window.grab_set()
+                except tk.TclError:
+                    pass
+            galeria_window.destroy()
+
+        galeria_window.protocol("WM_DELETE_WINDOW", _cerrar_galeria)
 
     def eliminar_foto_temporal(self, idx, galeria_window=None):
         """Eliminar una foto temporal antes de guardar la reparación"""
