@@ -671,7 +671,7 @@ class ReportesView:
         content_frame = tk.Frame(parent, bg='white')
         content_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        self.reporte_final_canvas = tk.Canvas(content_frame, width=430, height=330, bg='white', highlightthickness=0)
+        self.reporte_final_canvas = tk.Canvas(content_frame, width=480, height=380, bg='white', highlightthickness=0)
         self.reporte_final_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(0, 20))
         self.reporte_final_canvas.bind("<Motion>", self._on_reporte_final_motion)
         self.reporte_final_canvas.bind("<Leave>", self._on_reporte_final_leave)
@@ -719,7 +719,9 @@ class ReportesView:
     def actualizar_reporte_final(self):
         """Actualizar datos y grafico del reporte final"""
         totales = self._obtener_totales_mes()
-        total_general = sum(totales.values())
+        # Solo sumar los valores de las casillas seleccionadas
+        seleccionados = [k for k, v in self.reporte_final_checks.items() if v.get()]
+        total_general = sum(totales[k] for k in seleccionados if k in totales)
         if hasattr(self, "reporte_final_total_label"):
             self.reporte_final_total_label.config(text=f"Suma total: ${total_general:.2f}")
         self._dibujar_grafico_torta(totales)
@@ -798,7 +800,7 @@ class ReportesView:
 
         total = sum(totales_filtrados.values())
         self._reporte_final_slices = []
-        box = (20, 20, 320, 320)
+        box = (30, 30, 370, 370)
         self._reporte_final_pie_box = box
 
         cx = (box[0] + box[2]) / 2
@@ -818,16 +820,33 @@ class ReportesView:
                 font=("Arial", 11, "bold")
             )
         else:
+            # Dibujar sombra
+            shadow_box = (box[0] + 4, box[1] + 4, box[2] + 4, box[3] + 4)
             start_angle = 0
             solo_uno = len(totales_filtrados) == 1
             for key, value in totales_filtrados.items():
                 extent = 359.9 if solo_uno else (value / total) * 360
                 self.reporte_final_canvas.create_arc(
+                    shadow_box,
+                    start=start_angle,
+                    extent=extent,
+                    fill="#E0E0E0",
+                    outline=""
+                )
+                start_angle += extent
+            
+            # Dibujar gráfico principal
+            start_angle = 0
+            for key, value in totales_filtrados.items():
+                extent = 359.9 if solo_uno else (value / total) * 360
+                # Arco principal
+                self.reporte_final_canvas.create_arc(
                     box,
                     start=start_angle,
                     extent=extent,
                     fill=colores.get(key, "#9CA3AF"),
-                    outline="white"
+                    outline="white",
+                    width=3
                 )
                 self._reporte_final_slices.append({
                     "label": key,
@@ -853,7 +872,7 @@ class ReportesView:
         """Mostrar tooltip al pasar sobre una porcion"""
         if not hasattr(self, "_reporte_final_slices"):
             return
-        box = getattr(self, "_reporte_final_pie_box", (20, 20, 320, 320))
+        box = getattr(self, "_reporte_final_pie_box", (30, 30, 370, 370))
         cx = (box[0] + box[2]) / 2
         cy = (box[1] + box[3]) / 2
         radio = (box[2] - box[0]) / 2
