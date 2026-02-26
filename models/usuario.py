@@ -1,6 +1,5 @@
 import hashlib
 from database.db_manager import DatabaseManager
-from datetime import datetime
 import sqlite3
 
 class Usuario:
@@ -36,13 +35,12 @@ class Usuario:
         cursor = conn.cursor()
         
         password_hash = hashlib.sha256(password.encode()).hexdigest()
-        fecha_actual = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
         try:
             cursor.execute('''
-                INSERT INTO usuarios (username, password, nombre_completo, rol, fecha_registro)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (username, password_hash, nombre_completo, rol, fecha_actual))
+                INSERT INTO usuarios (username, password, nombre_completo, rol)
+                VALUES (?, ?, ?, ?)
+            ''', (username, password_hash, nombre_completo, rol))
             conn.commit()
             return True, "Usuario creado exitosamente"
         except sqlite3.IntegrityError:

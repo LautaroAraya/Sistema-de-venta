@@ -57,7 +57,18 @@ class ProductosView:
         
         # Tabla de productos
         columns = ('id', 'codigo', 'nombre', 'categoria', 'precio', 'stock', 'proveedor')
-        self.tree = ttk.Treeview(self.parent, columns=columns, show='headings', height=20)
+
+        style = ttk.Style()
+        style.configure('Productos.Treeview', font=('Arial', 11), rowheight=24)
+        style.configure('Productos.Treeview.Heading', font=('Arial', 11, 'bold'))
+
+        self.tree = ttk.Treeview(
+            self.parent,
+            columns=columns,
+            show='headings',
+            height=20,
+            style='Productos.Treeview'
+        )
         
         self.tree.heading('id', text='ID')
         self.tree.heading('codigo', text='Código')

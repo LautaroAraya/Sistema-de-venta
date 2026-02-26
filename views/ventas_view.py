@@ -145,11 +145,25 @@ class VentasView:
         self.search_entry = tk.Entry(search_frame, width=30, font=("Arial", 10))
         self.search_entry.grid(row=1, column=1, pady=5, padx=5, sticky=tk.EW)
         self.search_entry.bind('<KeyRelease>', self.on_search_change)
+        self.search_entry.bind('<Down>', self.on_search_arrow_down)
+        self.search_entry.bind('<Up>', self.on_search_arrow_up)
+        self.search_entry.bind('<Return>', self.on_search_enter)
+        self.search_entry.bind('<KP_Enter>', self.on_search_enter)
         
         # Lista de productos
-        self.productos_listbox = tk.Listbox(search_frame, height=8, font=("Arial", 9))
+        self.productos_listbox = tk.Listbox(
+            search_frame,
+            height=8,
+            font=("Arial", 9),
+            selectbackground='#2563EB',
+            selectforeground='white',
+            exportselection=False,
+            activestyle='none'
+        )
         self.productos_listbox.grid(row=2, column=0, columnspan=2, pady=5, padx=5, sticky=tk.NSEW)
         self.productos_listbox.bind('<<ListboxSelect>>', self.on_producto_selected)
+        self.productos_listbox.bind('<Return>', self.on_search_enter)
+        self.productos_listbox.bind('<KP_Enter>', self.on_search_enter)
         
         scrollbar = ttk.Scrollbar(search_frame, orient=tk.VERTICAL, command=self.productos_listbox.yview)
         scrollbar.grid(row=2, column=2, sticky='ns', pady=5)
@@ -354,6 +368,9 @@ class VentasView:
     
     def on_search_change(self, event):
         """Buscar productos mientras se escribe"""
+        if event and event.keysym in ("Up", "Down"):
+            return
+
         termino = self.search_entry.get().strip()
         
         self.productos_listbox.delete(0, tk.END)
@@ -366,6 +383,50 @@ class VentasView:
                 self.productos_listbox.insert(tk.END, display_text)
                 # Guardar datos del producto en el diccionario
                 self.productos_cache[idx] = prod
+
+    def _mover_seleccion_producto(self, paso):
+        """Mover selección en la lista de productos con teclado"""
+        total_items = self.productos_listbox.size()
+        if total_items == 0:
+            return "break"
+
+        seleccion = self.productos_listbox.curselection()
+        if seleccion:
+            nuevo_indice = max(0, min(total_items - 1, seleccion[0] + paso))
+        else:
+            nuevo_indice = 0 if paso >= 0 else total_items - 1
+
+        self.productos_listbox.selection_clear(0, tk.END)
+        self.productos_listbox.selection_set(nuevo_indice)
+        self.productos_listbox.activate(nuevo_indice)
+        self.productos_listbox.see(nuevo_indice)
+        self.on_producto_selected(None)
+        return "break"
+
+    def on_search_arrow_down(self, event):
+        """Navegar resultados hacia abajo desde el buscador"""
+        return self._mover_seleccion_producto(1)
+
+    def on_search_arrow_up(self, event):
+        """Navegar resultados hacia arriba desde el buscador"""
+        return self._mover_seleccion_producto(-1)
+
+    def on_search_enter(self, event):
+        """Confirmar producto seleccionado y pasar a cantidad"""
+        total_items = self.productos_listbox.size()
+        if total_items == 0:
+            return "break"
+
+        seleccion = self.productos_listbox.curselection()
+        if not seleccion:
+            self.productos_listbox.selection_set(0)
+            self.productos_listbox.activate(0)
+            self.productos_listbox.see(0)
+            self.on_producto_selected(None)
+
+        self.cantidad_entry.focus()
+        self.cantidad_entry.select_range(0, tk.END)
+        return "break"
     
     def on_producto_selected(self, event):
         """Cuando se selecciona un producto de la lista"""
@@ -380,10 +441,6 @@ class VentasView:
                 self.producto_label.config(text=prod[2])
                 self.precio_label.config(text=f"${prod[5]:.2f}")
                 self.stock_label.config(text=str(prod[6]))
-                
-                # Focus en cantidad
-                self.cantidad_entry.focus()
-                self.cantidad_entry.select_range(0, tk.END)
     
     def agregar_item(self):
         """Agregar producto a la venta"""

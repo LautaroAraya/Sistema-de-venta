@@ -624,7 +624,7 @@ class ReportesView:
         self.reporte_final_total_label = tk.Label(
             header_frame,
             text="Suma total: $0.00",
-            font=("Arial", 11, "bold"),
+            font=("Arial", 14, "bold"),
             bg='white',
             fg='#111827'
         )
@@ -800,7 +800,7 @@ class ReportesView:
 
         total = sum(totales_filtrados.values())
         self._reporte_final_slices = []
-        box = (30, 30, 370, 370)
+        box = (35, 40, 375, 330)
         self._reporte_final_pie_box = box
 
         cx = (box[0] + box[2]) / 2
@@ -820,40 +820,66 @@ class ReportesView:
                 font=("Arial", 11, "bold")
             )
         else:
-            # Dibujar sombra
-            shadow_box = (box[0] + 4, box[1] + 4, box[2] + 4, box[3] + 4)
+            depth = 18
+            shadow_box = (box[0] + 8, box[1] + depth + 6, box[2] + 8, box[3] + depth + 6)
+            self.reporte_final_canvas.create_oval(
+                shadow_box,
+                fill="#D1D5DB",
+                outline=""
+            )
+
             start_angle = 0
             solo_uno = len(totales_filtrados) == 1
-            for key, value in totales_filtrados.items():
-                extent = 359.9 if solo_uno else (value / total) * 360
-                self.reporte_final_canvas.create_arc(
-                    shadow_box,
-                    start=start_angle,
-                    extent=extent,
-                    fill="#E0E0E0",
-                    outline=""
-                )
-                start_angle += extent
-            
-            # Dibujar gráfico principal
+
+            # Capas inferiores (efecto profundidad 3D)
+            for y_offset in range(depth, 0, -1):
+                start_angle = 0
+                for key, value in totales_filtrados.items():
+                    extent = 359.9 if solo_uno else (value / total) * 360
+                    side_color = self._ajustar_color(colores.get(key, "#9CA3AF"), -0.35)
+                    self.reporte_final_canvas.create_arc(
+                        (box[0], box[1] + y_offset, box[2], box[3] + y_offset),
+                        start=start_angle,
+                        extent=extent,
+                        fill=side_color,
+                        outline="",
+                        style=tk.PIESLICE
+                    )
+                    start_angle += extent
+
+            # Capa superior
             start_angle = 0
             for key, value in totales_filtrados.items():
                 extent = 359.9 if solo_uno else (value / total) * 360
-                # Arco principal
+                arc_box = box
+
                 self.reporte_final_canvas.create_arc(
-                    box,
+                    arc_box,
                     start=start_angle,
                     extent=extent,
                     fill=colores.get(key, "#9CA3AF"),
                     outline="white",
-                    width=3
+                    width=2,
+                    style=tk.PIESLICE
                 )
+
+                # Brillo sutil superior
+                self.reporte_final_canvas.create_arc(
+                    (arc_box[0], arc_box[1] + 4, arc_box[2], arc_box[3] - 8),
+                    start=start_angle,
+                    extent=extent,
+                    fill=self._ajustar_color(colores.get(key, "#9CA3AF"), 0.2),
+                    outline="",
+                    style=tk.PIESLICE
+                )
+
                 self._reporte_final_slices.append({
                     "label": key,
                     "value": value,
                     "start": start_angle,
                     "extent": extent,
-                    "color": colores.get(key, "#9CA3AF")
+                    "color": colores.get(key, "#9CA3AF"),
+                    "box": arc_box
                 })
                 start_angle += extent
 
@@ -868,26 +894,54 @@ class ReportesView:
                 fg = 'black' if is_checked else '#9CA3AF'
                 text_label.config(text=f"{key}: ${value:.2f}", fg=fg)
 
+    def _ajustar_color(self, color_hex, factor):
+        """Aclarar u oscurecer un color hexadecimal."""
+        color_hex = color_hex.lstrip('#')
+        r = int(color_hex[0:2], 16)
+        g = int(color_hex[2:4], 16)
+        b = int(color_hex[4:6], 16)
+
+        if factor >= 0:
+            r = int(r + (255 - r) * factor)
+            g = int(g + (255 - g) * factor)
+            b = int(b + (255 - b) * factor)
+        else:
+            r = int(r * (1 + factor))
+            g = int(g * (1 + factor))
+            b = int(b * (1 + factor))
+
+        r = max(0, min(255, r))
+        g = max(0, min(255, g))
+        b = max(0, min(255, b))
+        return f"#{r:02X}{g:02X}{b:02X}"
+
     def _on_reporte_final_motion(self, event):
         """Mostrar tooltip al pasar sobre una porcion"""
         if not hasattr(self, "_reporte_final_slices"):
             return
-        box = getattr(self, "_reporte_final_pie_box", (30, 30, 370, 370))
-        cx = (box[0] + box[2]) / 2
-        cy = (box[1] + box[3]) / 2
-        radio = (box[2] - box[0]) / 2
-        dx = event.x - cx
-        dy = event.y - cy
-        distancia = (dx ** 2 + dy ** 2) ** 0.5
-        if distancia > radio or distancia < 5:
-            self.reporte_final_tooltip.place_forget()
-            return
 
-        angulo = (360 - (math.degrees(math.atan2(dy, dx)) % 360)) % 360
         for slice_info in self._reporte_final_slices:
             start = slice_info["start"]
             end = start + slice_info["extent"]
-            if start <= angulo < end:
+            box = slice_info.get("box", (30, 30, 370, 370))
+            cx = (box[0] + box[2]) / 2
+            cy = (box[1] + box[3]) / 2
+            rx = max((box[2] - box[0]) / 2, 1)
+            ry = max((box[3] - box[1]) / 2, 1)
+
+            dx = event.x - cx
+            dy = event.y - cy
+            normalized = (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry)
+            if normalized > 1.0 or normalized < 0.03:
+                continue
+
+            angulo = (math.degrees(math.atan2(-dy, dx)) + 360) % 360
+            if end <= 360:
+                in_sector = start <= angulo < end
+            else:
+                in_sector = angulo >= start or angulo < (end - 360)
+
+            if in_sector:
                 texto = f"{slice_info['label']}: ${slice_info['value']:.2f}"
                 self.reporte_final_tooltip.config(text=texto)
                 self.reporte_final_tooltip.place(x=event.x + 10, y=event.y + 10)
