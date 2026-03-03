@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox
 from models.producto import Producto
 from models.categoria import Categoria
 from models.proveedor import Proveedor
+from utils.moneda import formatear_moneda, parsear_monto
 
 class ProductosView:
     def __init__(self, parent, db_manager, user_data):
@@ -109,7 +110,7 @@ class ProductosView:
         for prod in productos:
             self.tree.insert('', tk.END, values=(
                 prod[0], prod[1], prod[2], prod[4] or '-', 
-                f"${prod[5]:.2f}", prod[6], prod[7] or '-'
+                formatear_moneda(prod[5]), prod[6], prod[7] or '-'
             ))
     
     def nuevo_producto(self):
@@ -215,6 +216,7 @@ class ProductoDialog:
         tk.Label(main_frame, text="Precio:", bg='white', fg='black').grid(row=4, column=0, sticky=tk.W, pady=5)
         self.precio_entry = tk.Entry(main_frame, width=30)
         self.precio_entry.grid(row=4, column=1, pady=5, padx=5)
+        self.precio_entry.bind('<FocusOut>', self.normalizar_precio_entry)
         
         # Stock
         tk.Label(main_frame, text="Stock:", bg='white', fg='black').grid(row=5, column=0, sticky=tk.W, pady=5)
@@ -246,7 +248,7 @@ class ProductoDialog:
             self.codigo_entry.insert(0, producto[1])
             self.nombre_entry.insert(0, producto[2])
             self.descripcion_entry.insert(0, producto[3] or '')
-            self.precio_entry.insert(0, str(producto[5]))
+            self.precio_entry.insert(0, formatear_moneda(producto[5]).replace('$', ''))
             self.stock_entry.insert(0, str(producto[6]))
             
             # Seleccionar categoría
@@ -276,7 +278,7 @@ class ProductoDialog:
             return
         
         try:
-            precio = float(precio)
+            precio = parsear_monto(precio)
             stock = int(stock)
         except ValueError:
             messagebox.showerror("Error", "Precio o stock inválido")
@@ -308,6 +310,19 @@ class ProductoDialog:
             self.dialog.destroy()
         else:
             messagebox.showerror("Error", mensaje)
+
+    def normalizar_precio_entry(self, _event=None):
+        texto = self.precio_entry.get().strip()
+        if not texto:
+            return
+
+        try:
+            monto = parsear_monto(texto)
+        except ValueError:
+            return
+
+        self.precio_entry.delete(0, tk.END)
+        self.precio_entry.insert(0, formatear_moneda(monto).replace('$', ''))
     
     def actualizar_categorias_combo(self):
         """Actualizar el combo de categorías"""

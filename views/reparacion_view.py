@@ -8,11 +8,12 @@ import os
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as RLImage
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as RLImage, PageBreak
 from reportlab.lib.units import inch
 from reportlab.graphics.shapes import Drawing, Circle, Line
 from reportlab.graphics import renderPDF
 import io
+from utils.moneda import formatear_moneda, parsear_monto
 
 
 class ReparacionView:
@@ -83,6 +84,25 @@ class ReparacionView:
             'retirado': 'Retirado',
         }
         return mapa.get(estado_db, 'En Proceso')
+
+    def _texto_monto_normalizado(self, valor):
+        try:
+            return formatear_moneda(parsear_monto(valor)).replace('$', '')
+        except Exception:
+            return str(valor or '')
+
+    def _normalizar_entry_monto(self, entry_widget):
+        texto = entry_widget.get().strip()
+        if not texto:
+            return
+        entry_widget.delete(0, tk.END)
+        entry_widget.insert(0, self._texto_monto_normalizado(texto))
+
+    def _normalizar_var_monto(self, string_var):
+        texto = (string_var.get() or '').strip()
+        if not texto:
+            return
+        string_var.set(self._texto_monto_normalizado(texto))
 
     def __init__(self, parent, db_manager, user_data):
         self.parent = parent
@@ -299,10 +319,14 @@ class ReparacionView:
 
            # Fila 7 col 2-3: Seña y Total
         tk.Label(form_frame, text="Seña ($):", font=("Arial", 10, "bold"), bg='white').grid(row=8, column=2, sticky=tk.W, pady=10, padx=5)
-        ttk.Entry(form_frame, textvariable=self.sena_var, font=("Arial", 10), width=20).grid(row=8, column=3, sticky=tk.EW, pady=10, padx=5)
+        self.sena_entry = ttk.Entry(form_frame, textvariable=self.sena_var, font=("Arial", 10), width=20)
+        self.sena_entry.grid(row=8, column=3, sticky=tk.EW, pady=10, padx=5)
+        self.sena_entry.bind('<FocusOut>', lambda _e: self._normalizar_entry_monto(self.sena_entry))
 
         tk.Label(form_frame, text="Total ($):", font=("Arial", 10, "bold"), bg='white').grid(row=9, column=2, sticky=tk.W, pady=10, padx=5)
-        ttk.Entry(form_frame, textvariable=self.total_var, font=("Arial", 10), width=20).grid(row=9, column=3, sticky=tk.EW, pady=10, padx=5)
+        self.total_entry = ttk.Entry(form_frame, textvariable=self.total_var, font=("Arial", 10), width=20)
+        self.total_entry.grid(row=9, column=3, sticky=tk.EW, pady=10, padx=5)
+        self.total_entry.bind('<FocusOut>', lambda _e: self._normalizar_entry_monto(self.total_entry))
 
            # Fila 9: Estado
         tk.Label(form_frame, text="Estado:", font=("Arial", 10, "bold"), bg='white').grid(row=9, column=0, sticky=tk.W, pady=10, padx=5)
@@ -497,8 +521,8 @@ class ReparacionView:
         # Agregar filas
         for rep in reparaciones:
             fecha = rep['fecha_creacion'].split(' ')[0] if rep['fecha_creacion'] else 'N/A'
-            sena = f"${int(rep['sena'])}" if rep['sena'] else "$0"
-            total = f"${int(rep['total'])}" if rep['total'] else "$0"
+            sena = formatear_moneda(rep['sena'])
+            total = formatear_moneda(rep['total'])
             self.tree.insert('', 'end', 
                            values=(rep['numero_orden'], rep['cliente_nombre'], 
                                   rep['dispositivo'], rep['estado'],
@@ -520,8 +544,8 @@ class ReparacionView:
         # Agregar filas
         for rep in reparaciones:
             fecha = rep['fecha_creacion'].split(' ')[0] if rep['fecha_creacion'] else 'N/A'
-            sena = f"${rep['sena']:.2f}" if rep['sena'] else "$0.00"
-            total = f"${rep['total']:.2f}" if rep['total'] else "$0.00"
+            sena = formatear_moneda(rep['sena'])
+            total = formatear_moneda(rep['total'])
             
             self.tree.insert('', 'end', 
                            values=(rep['numero_orden'], rep['cliente_nombre'], 
@@ -587,16 +611,16 @@ class ReparacionView:
         contenido.pack(fill=tk.BOTH, expand=True, padx=15, pady=15)
 
         tk.Label(contenido, text="Seña:", font=("Arial", 10, "bold"), bg='white').grid(row=0, column=0, sticky=tk.W, pady=6)
-        tk.Label(contenido, text=f"${sena:.2f}", font=("Arial", 10), bg='white').grid(row=0, column=1, sticky=tk.W, pady=6)
+        tk.Label(contenido, text=formatear_moneda(sena), font=("Arial", 10), bg='white').grid(row=0, column=1, sticky=tk.W, pady=6)
 
         tk.Label(contenido, text="Total:", font=("Arial", 10, "bold"), bg='white').grid(row=1, column=0, sticky=tk.W, pady=6)
-        tk.Label(contenido, text=f"${total:.2f}", font=("Arial", 10), bg='white').grid(row=1, column=1, sticky=tk.W, pady=6)
+        tk.Label(contenido, text=formatear_moneda(total), font=("Arial", 10), bg='white').grid(row=1, column=1, sticky=tk.W, pady=6)
 
         tk.Label(contenido, text="Saldo:", font=("Arial", 10, "bold"), bg='white').grid(row=2, column=0, sticky=tk.W, pady=6)
-        tk.Label(contenido, text=f"${saldo:.2f}", font=("Arial", 10), bg='white').grid(row=2, column=1, sticky=tk.W, pady=6)
+        tk.Label(contenido, text=formatear_moneda(saldo), font=("Arial", 10), bg='white').grid(row=2, column=1, sticky=tk.W, pady=6)
 
         fecha_var = tk.StringVar(value=datetime.now().strftime('%Y-%m-%d'))
-        monto_var = tk.StringVar(value=f"{saldo:.2f}")
+        monto_var = tk.StringVar(value=str(int(round(saldo))))
         medio_var = tk.StringVar(value='Efectivo')
         recargo_var = tk.StringVar(value='0')
 
@@ -604,7 +628,9 @@ class ReparacionView:
         ttk.Entry(contenido, textvariable=fecha_var, font=("Arial", 10), width=18).grid(row=3, column=1, sticky=tk.W, pady=6)
 
         tk.Label(contenido, text="Monto pagado:", font=("Arial", 10, "bold"), bg='white').grid(row=4, column=0, sticky=tk.W, pady=6)
-        ttk.Entry(contenido, textvariable=monto_var, font=("Arial", 10), width=18).grid(row=4, column=1, sticky=tk.W, pady=6)
+        monto_entry = ttk.Entry(contenido, textvariable=monto_var, font=("Arial", 10), width=18)
+        monto_entry.grid(row=4, column=1, sticky=tk.W, pady=6)
+        monto_entry.bind('<FocusOut>', lambda _e: self._normalizar_var_monto(monto_var))
 
         tk.Label(contenido, text="Medio:", font=("Arial", 10, "bold"), bg='white').grid(row=5, column=0, sticky=tk.W, pady=6)
         medio_combo = ttk.Combobox(contenido, textvariable=medio_var, values=['Efectivo', 'Transferencia', 'Tarjeta'], state='readonly', width=16)
@@ -626,7 +652,7 @@ class ReparacionView:
                 messagebox.showwarning("Validación", "La fecha debe tener formato YYYY-MM-DD")
                 return
             try:
-                monto = float(monto_var.get() or 0)
+                monto = parsear_monto(monto_var.get() or 0)
                 recargo_pct = float(recargo_var.get() or 0)
             except Exception:
                 messagebox.showwarning("Validación", "El monto y recargo deben ser números")
@@ -731,8 +757,8 @@ class ReparacionView:
             ("Modelo:", reparacion['modelo'] or 'N/A'),
             ("Nº Serie:", reparacion['numero_serie'] or 'N/A'),
             ("Estado:", reparacion['estado'].replace('_', ' ').title()),
-            ("Seña:", f"${reparacion['sena']:.2f}"),
-            ("Total:", f"${reparacion['total']:.2f}"),
+            ("Seña:", formatear_moneda(reparacion['sena'])),
+            ("Total:", formatear_moneda(reparacion['total'])),
             ("Fecha Creación:", reparacion['fecha_creacion'] or 'N/A'),
             ("Fecha Entrega:", reparacion['fecha_entrega'] or 'Pendiente'),
         ]
@@ -791,8 +817,8 @@ class ReparacionView:
         self.dispositivo_var.set(reparacion['dispositivo'])
         self.modelo_var.set(reparacion['modelo'] or '')
         self.numero_serie_var.set(reparacion['numero_serie'] or '')
-        self.sena_var.set(str(reparacion['sena']) if reparacion['sena'] else '0')
-        self.total_var.set(str(reparacion['total']))
+        self.sena_var.set(self._texto_monto_normalizado(reparacion['sena']))
+        self.total_var.set(self._texto_monto_normalizado(reparacion['total']))
         self.estado_var.set(self.estado_db_to_ui(reparacion['estado']))
         
         # Estado inicial
@@ -842,8 +868,8 @@ class ReparacionView:
             return
 
         try:
-            sena = float(self.sena_var.get() or 0)
-            total = float(self.total_var.get() or 0)
+            sena = parsear_monto(self.sena_var.get() or 0)
+            total = parsear_monto(self.total_var.get() or 0)
         except:
             messagebox.showwarning("Validación", "La seña y total deben ser números")
             return
@@ -1080,275 +1106,221 @@ class ReparacionView:
         
         return d
     
-    def generar_boleta_pdf(self, reparacion, auto_print=False):
-        """Generar PDF de la boleta; si auto_print es True, envía a impresión."""
-        # Seleccionar carpeta para guardar
-        folder = filedialog.askdirectory(title="Seleccionar carpeta para guardar la boleta")
-        if not folder:
-            return
-        
-        try:
-            # Obtener configuración de la empresa
-            config = self.config_model.obtener_configuracion()
-            
-            # Crear PDF en formato A5
-            pdf_path = os.path.join(folder, f"Presupuesto_{reparacion['numero_orden']}.pdf")
-            from reportlab.lib.pagesizes import A4
-            doc = SimpleDocTemplate(pdf_path, pagesize=A4, topMargin=0.2*inch, bottomMargin=0.2*inch, 
-                                   leftMargin=0.3*inch, rightMargin=0.3*inch)
-            
-            story = []
-            styles = getSampleStyleSheet()
-            
-            # Estilo personalizado para el encabezado
-            header_style = ParagraphStyle('header', parent=styles['Normal'], fontSize=16, textColor=colors.black, 
-                                         alignment=1, spaceAfter=6)
-            small_style = ParagraphStyle('small', parent=styles['Normal'], fontSize=7, alignment=1)
-            
-            # ENCABEZADO - Tabla con logo, nombre empresa, número y fecha manual
-            header_data = []
-            logo_cell = ''
-            if config.get('logo_path') and os.path.exists(config['logo_path']):
-                try:
-                    logo_cell = RLImage(config['logo_path'], width=1.3*inch, height=1.3*inch)
-                except:
-                    logo_cell = ''
+    def _construir_boleta_story(self, reparacion, config, tipo_copia):
+        styles = getSampleStyleSheet()
+        small_style = ParagraphStyle('small', parent=styles['Normal'], fontSize=7, alignment=1)
+        story = []
 
-            empresa_info = f"""<b style="font-size: 16">{config.get('nombre_sistema', 'EMPRESA')}</b><br/>
+        header_data = []
+        logo_cell = ''
+        if config.get('logo_path') and os.path.exists(config['logo_path']):
+            try:
+                logo_cell = RLImage(config['logo_path'], width=1.3*inch, height=1.3*inch)
+            except Exception:
+                logo_cell = ''
+
+        empresa_info = f"""<b style="font-size: 16">{config.get('nombre_sistema', 'EMPRESA')}</b><br/>
 <font size="8">☎ {config.get('telefono', 'N/A')}<br/>
 {config.get('direccion', 'N/A')}<br/>
 CUIT: {config.get('cuit', 'N/A')}</font>"""
 
-            numero_info = f"""<b style="font-size: 18">PRESUPUESTO</b><br/>
-<font size="9">N° {reparacion['numero_orden']}</font>"""
+        numero_info = f"""<b style="font-size: 18">PRESUPUESTO</b><br/>
+<font size="9">N° {reparacion['numero_orden']}</font><br/>
+<font size="9"><b>{tipo_copia}</b></font>"""
 
-            # Celdas para completar manualmente día/mes/año (dentro del cuadro de la derecha)
-            fecha_data = [
-                ['Día', 'Mes', 'Año'],
-                ['', '', '']
-            ]
-            fecha_table = Table(fecha_data, colWidths=[0.6*inch, 0.6*inch, 0.6*inch])
-            fecha_table.setStyle(TableStyle([
-                ('FONTSIZE', (0, 0), (-1, -1), 7),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('BOX', (0, 0), (-1, -1), 1, colors.black),
-                ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.grey),
-                ('TOPPADDING', (0, 0), (-1, -1), 2),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-            ]))
+        fecha_data = [['Día', 'Mes', 'Año'], ['', '', '']]
+        fecha_table = Table(fecha_data, colWidths=[0.6*inch, 0.6*inch, 0.6*inch])
+        fecha_table.setStyle(TableStyle([
+            ('FONTSIZE', (0, 0), (-1, -1), 7),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('BOX', (0, 0), (-1, -1), 1, colors.black),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('TOPPADDING', (0, 0), (-1, -1), 2),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        ]))
 
-            right_cell = Table(
-                [
-                    [Paragraph(numero_info, small_style)],
-                    [fecha_table]
-                ],
-                colWidths=[2*inch]
-            )
-            right_cell.setStyle(TableStyle([
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('TOPPADDING', (0, 0), (-1, -1), 2),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-            ]))
+        right_cell = Table([[Paragraph(numero_info, small_style)], [fecha_table]], colWidths=[2*inch])
+        right_cell.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (-1, -1), 2),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        ]))
 
-            header_data.append([logo_cell, Paragraph(empresa_info, small_style), right_cell])
+        header_data.append([logo_cell, Paragraph(empresa_info, small_style), right_cell])
+        header_table = Table(header_data, colWidths=[1.6*inch, 3.2*inch, 2.4*inch])
+        header_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+            ('ALIGN', (1, 0), (1, 0), 'CENTER'),
+            ('ALIGN', (2, 0), (2, 0), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('BOX', (0, 0), (-1, -1), 1.5, colors.black),
+        ]))
+        story.append(header_table)
+        story.append(Spacer(1, 0.1*inch))
 
-            header_table = Table(header_data, colWidths=[1.6*inch, 3.2*inch, 2.4*inch])
-            header_table.setStyle(TableStyle([
-                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
-                ('ALIGN', (1, 0), (1, 0), 'CENTER'),
-                ('ALIGN', (2, 0), (2, 0), 'CENTER'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('BOX', (0, 0), (-1, -1), 1.5, colors.black),
-            ]))
-            story.append(header_table)
-            
-            story.append(Spacer(1, 0.1*inch))
-            
-            # DATOS DEL CLIENTE
-            cliente_data = [
-                ['Señor/es:', reparacion['cliente_nombre'], 'D.N.I.:', reparacion.get('numero_serie', ''), 'Tel:', reparacion['cliente_telefono'] or ''],
-            ]
-            
-            cliente_table = Table(cliente_data, colWidths=[0.7*inch, 2.5*inch, 0.6*inch, 1.2*inch, 0.5*inch, 1*inch])
-            cliente_table.setStyle(TableStyle([
-                ('FONTSIZE', (0, 0), (-1, -1), 8),
-                ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
-                ('FONTNAME', (2, 0), (2, 0), 'Helvetica-Bold'),
-                ('FONTNAME', (4, 0), (4, 0), 'Helvetica-Bold'),
-                ('BOX', (0, 0), (-1, -1), 1, colors.black),
-                ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.grey),
-                ('TOPPADDING', (0, 0), (-1, -1), 2),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-            ]))
-            story.append(cliente_table)
-            story.append(Spacer(1, 0.05*inch))
-            
-            # MARCA Y MODELO
-            marca_data = [
-                ['Marca y Modelo:', reparacion['dispositivo'] + ' - ' + (reparacion['modelo'] or 'N/A')],
-            ]
-            marca_table = Table(marca_data, colWidths=[1.5*inch, 5*inch])
-            marca_table.setStyle(TableStyle([
-                ('FONTSIZE', (0, 0), (-1, -1), 9),
-                ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
-                ('BOX', (0, 0), (-1, -1), 1, colors.black),
-                ('TOPPADDING', (0, 0), (-1, -1), 3),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-            ]))
-            story.append(marca_table)
+        cliente_data = [['Señor/es:', reparacion['cliente_nombre'], 'D.N.I.:', reparacion.get('numero_serie', ''), 'Tel:', reparacion['cliente_telefono'] or '']]
+        cliente_table = Table(cliente_data, colWidths=[0.7*inch, 2.5*inch, 0.6*inch, 1.2*inch, 0.5*inch, 1*inch])
+        cliente_table.setStyle(TableStyle([
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
+            ('FONTNAME', (2, 0), (2, 0), 'Helvetica-Bold'),
+            ('FONTNAME', (4, 0), (4, 0), 'Helvetica-Bold'),
+            ('BOX', (0, 0), (-1, -1), 1, colors.black),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('TOPPADDING', (0, 0), (-1, -1), 2),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        ]))
+        story.append(cliente_table)
+        story.append(Spacer(1, 0.05*inch))
+
+        marca_data = [['Marca y Modelo:', reparacion['dispositivo'] + ' - ' + (reparacion['modelo'] or 'N/A')]]
+        marca_table = Table(marca_data, colWidths=[1.5*inch, 5*inch])
+        marca_table.setStyle(TableStyle([
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
+            ('BOX', (0, 0), (-1, -1), 1, colors.black),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ]))
+        story.append(marca_table)
+        story.append(Spacer(1, 0.03*inch))
+
+        check_si = '[X]' if reparacion.get('sin_bateria') == 1 else '[ ]'
+        check_rajado = '[X]' if reparacion.get('rajado') == 1 else '[ ]'
+        check_mojado = '[X]' if reparacion.get('mojado') == 1 else '[ ]'
+        estado_data = [['Estado Inicial:', f'{check_si} Sin Batería    {check_rajado} Rajado    {check_mojado} Mojado']]
+        if reparacion.get('contrasena'):
+            estado_data.append(['Contraseña:', reparacion.get('contrasena', '')])
+
+        estado_table = Table(estado_data, colWidths=[1.5*inch, 5*inch])
+        estado_table.setStyle(TableStyle([
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('BOX', (0, 0), (-1, -1), 1, colors.black),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ]))
+        story.append(estado_table)
+
+        if reparacion.get('patron'):
             story.append(Spacer(1, 0.03*inch))
-            
-            # ESTADO INICIAL Y SEGURIDAD
-            check_si = '[X]' if reparacion.get('sin_bateria') == 1 else '[ ]'
-            check_rajado = '[X]' if reparacion.get('rajado') == 1 else '[ ]'
-            check_mojado = '[X]' if reparacion.get('mojado') == 1 else '[ ]'
-            
-            estado_data = [
-                ['Estado Inicial:', f'{check_si} Sin Batería    {check_rajado} Rajado    {check_mojado} Mojado'],
-            ]
-            
-            # Si hay contraseña, agregar
-            if reparacion.get('contrasena'):
-                estado_data.append(['Contraseña:', reparacion.get('contrasena', '')])
-            
-            estado_table = Table(estado_data, colWidths=[1.5*inch, 5*inch])
-            estado_table.setStyle(TableStyle([
-                ('FONTSIZE', (0, 0), (-1, -1), 9),
-                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-                ('BOX', (0, 0), (-1, -1), 1, colors.black),
-                ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.grey),
-                ('TOPPADDING', (0, 0), (-1, -1), 3),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-            ]))
-            story.append(estado_table)
-            
-            # Si hay patrón, mostrar cuadrícula visual con secuencia
-            if reparacion.get('patron'):
-                story.append(Spacer(1, 0.03*inch))
-                patron_grid = self.crear_patron_grid(reparacion.get('patron', ''))
-                
-                # Generar secuencia legible
-                patron_str = reparacion.get('patron', '')
-                try:
-                    patron_numeros = [int(n.strip()) for n in patron_str.replace(',', '-').split('-') if n.strip().isdigit()]
-                    secuencia_texto = ' → '.join(map(str, patron_numeros))
-                except:
-                    secuencia_texto = patron_str
-                
-                # Tabla con patrón y secuencia
-                patron_info = f"Secuencia: {secuencia_texto}"
-                patron_data = [
-                    ['Patrón:', patron_grid, '', patron_info],
-                ]
-                patron_table = Table(patron_data, colWidths=[1*inch, 1.2*inch, 0.4*inch, 3.9*inch])
-                patron_table.setStyle(TableStyle([
-                    ('FONTSIZE', (0, 0), (-1, -1), 8),
-                    ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
-                    ('BOX', (0, 0), (-1, -1), 1, colors.black),
-                    ('TOPPADDING', (0, 0), (-1, -1), 5),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ]))
-                story.append(patron_table)
-            
-            story.append(Spacer(1, 0.03*inch))
-            
-            # FALLA DETECTADA
-            falla_data = [
-                ['Falla detectada:', reparacion['problema'][:200] + ('...' if len(reparacion['problema']) > 200 else '')],
-            ]
-            falla_table = Table(falla_data, colWidths=[1.5*inch, 5*inch])
-            falla_table.setStyle(TableStyle([
-                ('FONTSIZE', (0, 0), (-1, -1), 9),
-                ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
-                ('BOX', (0, 0), (-1, -1), 1, colors.black),
-                ('TOPPADDING', (0, 0), (-1, -1), 3),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ]))
-            story.append(falla_table)
-            story.append(Spacer(1, 0.05*inch))
-            
-            # PRECIOS - Seña, Total y Saldo
-            saldo = reparacion['total'] - reparacion['sena']
-            precios_data = [
-                ['Precio $', 'Seña $', 'Saldo $'],
-                [f"${int(reparacion['total'])}", f"${int(reparacion['sena'])}", f"${int(saldo)}"],
-            ]
-            precios_table = Table(precios_data, colWidths=[2.17*inch, 2.17*inch, 2.16*inch])
-            precios_table.setStyle(TableStyle([
-                ('FONTSIZE', (0, 0), (-1, -1), 10),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('BOX', (0, 0), (-1, -1), 1.5, colors.black),
-                ('INNERGRID', (0, 0), (-1, -1), 1, colors.black),
-                ('TOPPADDING', (0, 0), (-1, -1), 8),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-                ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-            ]))
-            story.append(precios_table)
-            story.append(Spacer(1, 0.05*inch))
-            
-            # OBSERVACIONES CON LÍNEAS EN BLANCO
-            obs_text = reparacion['observaciones'] if reparacion['observaciones'] else ''
-            obs_data = [
-                ['OBSERVACIONES:'],
-                [obs_text if obs_text else ''],
-            ]
-            obs_table = Table(obs_data, colWidths=[6.5*inch])
-            obs_table.setStyle(TableStyle([
+            patron_grid = self.crear_patron_grid(reparacion.get('patron', ''))
+            patron_str = reparacion.get('patron', '')
+            try:
+                patron_numeros = [int(n.strip()) for n in patron_str.replace(',', '-').split('-') if n.strip().isdigit()]
+                secuencia_texto = ' → '.join(map(str, patron_numeros))
+            except Exception:
+                secuencia_texto = patron_str
+
+            patron_data = [['Patrón:', patron_grid, '', f"Secuencia: {secuencia_texto}"]]
+            patron_table = Table(patron_data, colWidths=[1*inch, 1.2*inch, 0.4*inch, 3.9*inch])
+            patron_table.setStyle(TableStyle([
                 ('FONTSIZE', (0, 0), (-1, -1), 8),
                 ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
                 ('BOX', (0, 0), (-1, -1), 1, colors.black),
-                ('TOPPADDING', (0, 0), (-1, -1), 3),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 25),  # Espacio moderado para escribir
-                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ]))
-            story.append(obs_table)
-            story.append(Spacer(1, 0.1*inch))
-            
-            # CONDICIONES (PIE DE PÁGINA)
-            condiciones = """<font size=8><b>CONDICIONES:</b></font> <b><font size=7>Estimado cliente, Queremos brindarle la mejor experiencia en nuestro servicio de reparación de celulares. Por favor, tenga en cuenta las siguientes condiciones antes de dejar su equipo:Retiro del equipo: Retiro del equipos dentro de los 30 días posteriores a su reparación tendrá un recargo del 50% sobre el precio pactado. Si transcurren 45 días desde la fecha de recepción, el equipo se considerará abandonado, conforme a los artículos 2525 y 2526 del Código Civil. En tal caso, la empresa podrá disponer del mismo en concepto de compensación de tiempo prestado y el costo de almacenamiento. Responsabilidad sobre la información y procedencia del equipo: No nos hacemos responsables por la pérdida parcial o total de la información contenida en el dispositivo. Asimismo, el cliente asume total responsabilidad por la procedencia del equipo entregado. Garantía sobre equipos mojados, celulares que han sufrido daños por humedad o contacto con líquidos no cuentan con ningún tipo de garantía una vez reparados. Garantía de reparación: La reparación del equipo está garantizada por tres días hábiles a partir de la fecha de entrega, siempre que el dispositivo no presente daños físicos posteriores, como golpes o rupturas, y que conserve el film protector en la pantalla. Agradecemos su confianza en nuestro servicio. Estamos aquí para ayudarle a mantener su dispositivo en óptimas condiciones.</font></b>"""
-            cond_table = Table([[Paragraph(condiciones, styles['Normal'])]], colWidths=[6.5*inch])
-            cond_table.setStyle(TableStyle([
-                ('BOX', (0, 0), (-1, -1), 3, colors.black),
-                ('BACKGROUND', (0, 0), (-1, -1), colors.lightgrey),
-                ('TOPPADDING', (0, 0), (-1, -1), 7),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
-                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ]))
-            story.append(cond_table)
-            
-            # PIE DE PÁGINA CON FIRMA
-            story.append(Spacer(1, 0.08*inch))
-            
-            firma_data = [
-                ['', '', ''],
-                ['_________________________', '', '_________________________'],
-                ['Firma del Técnico', '', 'RECIBI CONFORME'],
-            ]
-            firma_table = Table(firma_data, colWidths=[2*inch, 2.5*inch, 2*inch])
-            firma_table.setStyle(TableStyle([
-                ('FONTSIZE', (0, 0), (-1, -1), 8),
-                ('FONTNAME', (0, 2), (-1, 2), 'Helvetica-Bold'),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('TOPPADDING', (0, 0), (-1, -1), 5),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ]))
-            story.append(firma_table)
-            
-            # Generar PDF
+            story.append(patron_table)
+
+        story.append(Spacer(1, 0.03*inch))
+        falla_data = [['Falla detectada:', reparacion['problema'][:200] + ('...' if len(reparacion['problema']) > 200 else '')]]
+        falla_table = Table(falla_data, colWidths=[1.5*inch, 5*inch])
+        falla_table.setStyle(TableStyle([
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
+            ('BOX', (0, 0), (-1, -1), 1, colors.black),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ]))
+        story.append(falla_table)
+        story.append(Spacer(1, 0.05*inch))
+
+        saldo = reparacion['total'] - reparacion['sena']
+        precios_data = [['Precio $', 'Seña $', 'Saldo $'], [f"${int(reparacion['total'])}", f"${int(reparacion['sena'])}", f"${int(saldo)}"]]
+        precios_table = Table(precios_data, colWidths=[2.17*inch, 2.17*inch, 2.16*inch])
+        precios_table.setStyle(TableStyle([
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('BOX', (0, 0), (-1, -1), 1.5, colors.black),
+            ('INNERGRID', (0, 0), (-1, -1), 1, colors.black),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ]))
+        story.append(precios_table)
+        story.append(Spacer(1, 0.05*inch))
+
+        obs_text = reparacion['observaciones'] if reparacion['observaciones'] else ''
+        obs_data = [['OBSERVACIONES:'], [obs_text if obs_text else '']]
+        obs_table = Table(obs_data, colWidths=[6.5*inch])
+        obs_table.setStyle(TableStyle([
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
+            ('BOX', (0, 0), (-1, -1), 1, colors.black),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 25),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ]))
+        story.append(obs_table)
+        story.append(Spacer(1, 0.1*inch))
+
+        condiciones = """<font size=8><b>CONDICIONES:</b></font> <b><font size=7>Estimado cliente, Queremos brindarle la mejor experiencia en nuestro servicio de reparación de celulares. Por favor, tenga en cuenta las siguientes condiciones antes de dejar su equipo:Retiro del equipo: Retiro del equipos dentro de los 30 días posteriores a su reparación tendrá un recargo del 50% sobre el precio pactado. Si transcurren 45 días desde la fecha de recepción, el equipo se considerará abandonado, conforme a los artículos 2525 y 2526 del Código Civil. En tal caso, la empresa podrá disponer del mismo en concepto de compensación de tiempo prestado y el costo de almacenamiento. Responsabilidad sobre la información y procedencia del equipo: No nos hacemos responsables por la pérdida parcial o total de la información contenida en el dispositivo. Asimismo, el cliente asume total responsabilidad por la procedencia del equipo entregado. Garantía sobre equipos mojados, celulares que han sufrido daños por humedad o contacto con líquidos no cuentan con ningún tipo de garantía una vez reparados. Garantía de reparación: La reparación del equipo está garantizada por tres días hábiles a partir de la fecha de entrega, siempre que el dispositivo no presente daños físicos posteriores, como golpes o rupturas, y que conserve el film protector en la pantalla. Agradecemos su confianza en nuestro servicio. Estamos aquí para ayudarle a mantener su dispositivo en óptimas condiciones.</font></b>"""
+        cond_table = Table([[Paragraph(condiciones, styles['Normal'])]], colWidths=[6.5*inch])
+        cond_table.setStyle(TableStyle([
+            ('BOX', (0, 0), (-1, -1), 3, colors.black),
+            ('BACKGROUND', (0, 0), (-1, -1), colors.lightgrey),
+            ('TOPPADDING', (0, 0), (-1, -1), 7),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ]))
+        story.append(cond_table)
+        story.append(Spacer(1, 0.08*inch))
+
+        firma_data = [['', '', ''], ['_________________________', '', '_________________________'], ['Firma del Técnico', '', 'RECIBI CONFORME']]
+        firma_table = Table(firma_data, colWidths=[2*inch, 2.5*inch, 2*inch])
+        firma_table.setStyle(TableStyle([
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('FONTNAME', (0, 2), (-1, 2), 'Helvetica-Bold'),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        story.append(firma_table)
+        return story
+
+    def generar_boleta_pdf(self, reparacion, auto_print=False):
+        """Generar PDF de la boleta (2 copias: Cliente y Local); si auto_print es True, envía a impresión."""
+        folder = filedialog.askdirectory(title="Seleccionar carpeta para guardar la boleta")
+        if not folder:
+            return
+
+        try:
+            config = self.config_model.obtener_configuracion()
+            pdf_path = os.path.join(folder, f"Presupuesto_{reparacion['numero_orden']}.pdf")
+            from reportlab.lib.pagesizes import A4
+            doc = SimpleDocTemplate(pdf_path, pagesize=A4, topMargin=0.2*inch, bottomMargin=0.2*inch,
+                                   leftMargin=0.3*inch, rightMargin=0.3*inch)
+
+            story = []
+            story.extend(self._construir_boleta_story(reparacion, config, "COPIA CLIENTE"))
+            story.append(PageBreak())
+            story.extend(self._construir_boleta_story(reparacion, config, "COPIA LOCAL"))
+
             doc.build(story)
 
-            # Imprimir automáticamente si se solicita (solo Windows)
             if auto_print:
                 try:
                     os.startfile(pdf_path, "print")
                 except Exception as e:
                     messagebox.showwarning("Impresión", f"No se pudo enviar a la impresora automáticamente:\n{str(e)}")
-            
-            messagebox.showinfo("Éxito", f"Presupuesto guardado en:\n{pdf_path}")
-            
+
+            messagebox.showinfo("Éxito", f"Presupuesto (2 copias) guardado en:\n{pdf_path}")
+
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo generar el presupuesto:\n{str(e)}")
     
@@ -1529,8 +1501,8 @@ CUIT: {config.get('cuit', 'N/A')}</font>"""
                     rep['cliente_nombre'],
                     rep['dispositivo'],
                     estado_ui,
-                    f"${rep['sena']:.2f}" if rep['sena'] else '$0.00',
-                    f"${rep['total']:.2f}",
+                    formatear_moneda(rep['sena']),
+                    formatear_moneda(rep['total']),
                     fecha,
                     'Ver'
                 ))

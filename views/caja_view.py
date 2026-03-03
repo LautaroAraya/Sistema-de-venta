@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from models.caja import Caja
 from datetime import datetime
+from utils.moneda import formatear_moneda, formatear_moneda_con_signo, parsear_monto
 
 class CajaView:
     def __init__(self, parent, db_manager, user_data):
@@ -204,7 +205,7 @@ class CajaView:
                     bg='white', fg='black', font=("Arial", 10)).pack(anchor=tk.W, padx=20)
             tk.Label(self.info_frame, text=f"Fecha: {caja_abierta['fecha_apertura'][:16]}", 
                     bg='white', fg='black', font=("Arial", 10)).pack(anchor=tk.W, padx=20)
-            tk.Label(self.info_frame, text=f"Monto Inicial: ${caja_abierta['monto_inicial']:.2f}", 
+            tk.Label(self.info_frame, text=f"Monto Inicial: {formatear_moneda(caja_abierta['monto_inicial'])}", 
                     bg='white', fg='black', font=("Arial", 10, 'bold')).pack(anchor=tk.W, padx=20)
             
             # Cargar movimientos
@@ -288,8 +289,8 @@ class CajaView:
                 caja['usuario'],
                 caja['fecha_apertura'][:16] if caja['fecha_apertura'] else '',
                 caja['fecha_cierre'][:16] if caja['fecha_cierre'] else 'Abierta',
-                f"${caja['monto_inicial']:.2f}",
-                f"${caja['monto_final']:.2f}" if caja['monto_final'] else 'N/A',
+                formatear_moneda(caja['monto_inicial']),
+                formatear_moneda(caja['monto_final']) if caja['monto_final'] is not None else 'N/A',
                 caja['estado'].capitalize()
             ))
     
@@ -308,7 +309,7 @@ class CajaView:
             self.tree_movimientos.insert('', tk.END, values=(
                 mov['id'],
                 mov['tipo'].upper(),
-                f"${mov['monto']:.2f}",
+                formatear_moneda(mov['monto']),
                 mov['descripcion'] or '',
                 mov['fecha'][:16]
             ))
@@ -415,7 +416,7 @@ class AbrirCajaDialog:
     def abrir(self):
         """Abrir la caja"""
         try:
-            monto = float(self.monto_entry.get().strip())
+            monto = parsear_monto(self.monto_entry.get().strip())
         except ValueError:
             messagebox.showerror("Error", "El monto inicial debe ser un número válido")
             return
@@ -536,7 +537,7 @@ class AgregarMovimientoDialog:
     def agregar(self):
         """Agregar movimiento"""
         try:
-            monto = float(self.monto_entry.get().strip())
+            monto = parsear_monto(self.monto_entry.get().strip())
         except ValueError:
             messagebox.showerror("Error", "El monto debe ser un número válido")
             return
@@ -623,7 +624,7 @@ class HistorialCajasDialog:
     def abrir(self):
         """Abrir la caja"""
         try:
-            monto = float(self.monto_entry.get().strip())
+            monto = parsear_monto(self.monto_entry.get().strip())
         except ValueError:
             messagebox.showerror("Error", "El monto inicial debe ser un número válido")
             return
@@ -683,7 +684,7 @@ class CerrarCajaDialog:
         info_frame = tk.Frame(main_frame, bg='#F3F4F6', relief=tk.RIDGE, bd=1)
         info_frame.pack(fill=tk.X, pady=10)
         
-        tk.Label(info_frame, text=f"Monto Inicial: ${self.caja_data['monto_inicial']:.2f}", 
+        tk.Label(info_frame, text=f"Monto Inicial: {formatear_moneda(self.caja_data['monto_inicial'])}", 
                 bg='#F3F4F6', fg='black', font=("Arial", 10, 'bold')).pack(anchor=tk.W, padx=10, pady=5)
         tk.Label(info_frame, text=f"Abierta: {self.caja_data['fecha_apertura'][:16]}", 
                 bg='#F3F4F6', fg='black', font=("Arial", 9)).pack(anchor=tk.W, padx=10, pady=2)
@@ -713,7 +714,7 @@ class CerrarCajaDialog:
                 
                 color_monto = '#10B981' if mov['monto'] >= 0 else '#EF4444'
                 tk.Label(row_frame, text=mov['tipo'].capitalize(), font=("Arial", 8), bg='white', width=12).pack(side=tk.LEFT, padx=2, pady=1)
-                tk.Label(row_frame, text=f"${mov['monto']:+.2f}", font=("Arial", 8), bg='white', fg=color_monto, width=12, justify=tk.RIGHT).pack(side=tk.LEFT, padx=2, pady=1)
+                tk.Label(row_frame, text=formatear_moneda_con_signo(mov['monto']), font=("Arial", 8), bg='white', fg=color_monto, width=12, justify=tk.RIGHT).pack(side=tk.LEFT, padx=2, pady=1)
         else:
             tk.Label(info_frame, text="Sin movimientos registrados", font=("Arial", 9, "italic"),
                     bg='#F3F4F6', fg='#6B7280').pack(anchor=tk.W, padx=10, pady=3)
@@ -722,10 +723,10 @@ class CerrarCajaDialog:
         tk.Frame(info_frame, bg='#E5E7EB', height=1).pack(fill=tk.X, pady=8)
         
         # Totales
-        tk.Label(info_frame, text=f"Total Movimientos: ${self.total_movimientos:+.2f}", 
+        tk.Label(info_frame, text=f"Total Movimientos: {formatear_moneda_con_signo(self.total_movimientos)}", 
                 bg='#F3F4F6', fg='#8B5CF6' if self.total_movimientos >= 0 else '#EF4444', 
                 font=("Arial", 10, 'bold')).pack(anchor=tk.W, padx=10, pady=2)
-        tk.Label(info_frame, text=f"Monto Final: ${self.monto_final_calculado:.2f}", 
+        tk.Label(info_frame, text=f"Monto Final: {formatear_moneda(self.monto_final_calculado)}", 
                 bg='#F3F4F6', fg='#10B981', font=("Arial", 11, 'bold')).pack(anchor=tk.W, padx=10, pady=5)
         
         # Observaciones
@@ -755,7 +756,7 @@ class CerrarCajaDialog:
         )
         
         if success:
-            messagebox.showinfo("Éxito", f"Caja cerrada correctamente\n\nMonto Final: ${self.monto_final_calculado:.2f}")
+            messagebox.showinfo("Éxito", f"Caja cerrada correctamente\n\nMonto Final: {formatear_moneda(self.monto_final_calculado)}")
             self.callback()
             self.dialog.destroy()
         else:
@@ -803,7 +804,7 @@ class DetalleCajaDialog:
             ("Fecha Apertura:", self.caja_data['fecha_apertura'][:16] if self.caja_data['fecha_apertura'] else 'N/A'),
             ("Fecha Cierre:", self.caja_data['fecha_cierre'][:16] if self.caja_data['fecha_cierre'] else 'No cerrada'),
             ("", ""),
-            ("Monto Inicial:", f"${self.caja_data['monto_inicial']:.2f}"),
+            ("Monto Inicial:", formatear_moneda(self.caja_data['monto_inicial'])),
         ]
         
         for label, value in datos:
@@ -841,7 +842,7 @@ class DetalleCajaDialog:
                 row_frame.pack(fill=tk.X, pady=2)
                 
                 # Tipo y monto
-                monto_text = f"{signo} ${abs(monto):.2f}"
+                monto_text = f"{signo}{formatear_moneda(abs(monto))}"
                 texto_mov = f"{icono} {tipo.capitalize()}"
                 
                 tk.Label(row_frame, text=texto_mov, bg='white', fg='black',
@@ -868,7 +869,7 @@ class DetalleCajaDialog:
             row_frame.pack(fill=tk.X, pady=5)
             tk.Label(row_frame, text="Monto Final:", bg='white', fg='black',
                     font=("Arial", 12, 'bold'), width=20, anchor=tk.W).pack(side=tk.LEFT)
-            tk.Label(row_frame, text=f"${self.caja_data['monto_final']:.2f}", bg='white',
+            tk.Label(row_frame, text=formatear_moneda(self.caja_data['monto_final']), bg='white',
                     fg='#10B981', font=("Arial", 12, 'bold'), anchor=tk.W).pack(side=tk.LEFT)
             
             # Diferencia
@@ -878,7 +879,7 @@ class DetalleCajaDialog:
             row_frame.pack(fill=tk.X, pady=5)
             tk.Label(row_frame, text="Diferencia:", bg='white', fg='black',
                     font=("Arial", 11, 'bold'), width=20, anchor=tk.W).pack(side=tk.LEFT)
-            tk.Label(row_frame, text=f"${diferencia:.2f}", bg='white',
+            tk.Label(row_frame, text=formatear_moneda(diferencia), bg='white',
                     fg=color_dif, font=("Arial", 11, 'bold'), anchor=tk.W).pack(side=tk.LEFT)
         
         # Observaciones
@@ -986,15 +987,15 @@ class HistorialCajasDialog:
             diferencia = ''
             if caja['monto_final'] is not None:
                 dif = caja['monto_final'] - caja['monto_inicial']
-                diferencia = f"${dif:.2f}"
+                diferencia = formatear_moneda(dif)
             
             self.tree.insert('', tk.END, values=(
                 caja['id'],
                 caja['usuario'],
                 caja['fecha_apertura'][:16] if caja['fecha_apertura'] else '',
                 caja['fecha_cierre'][:16] if caja['fecha_cierre'] else 'Abierta',
-                f"${caja['monto_inicial']:.2f}",
-                f"${caja['monto_final']:.2f}" if caja['monto_final'] else 'N/A',
+                formatear_moneda(caja['monto_inicial']),
+                formatear_moneda(caja['monto_final']) if caja['monto_final'] is not None else 'N/A',
                 diferencia,
                 caja['estado'].capitalize()
             ))

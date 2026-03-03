@@ -13,8 +13,21 @@ from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
 import tempfile
 from PIL import Image as PILImage
+from utils.moneda import formatear_moneda, parsear_monto
 
 class CelularesView:
+    def _texto_monto_normalizado(self, valor):
+        try:
+            return formatear_moneda(parsear_monto(valor)).replace('$', '')
+        except Exception:
+            return str(valor or '')
+
+    def _normalizar_var_monto(self, string_var):
+        texto = (string_var.get() or '').strip()
+        if not texto:
+            return
+        string_var.set(self._texto_monto_normalizado(texto))
+
     def __init__(self, parent, db_manager, user_data):
         self.parent = parent
         self.db_manager = db_manager
@@ -30,8 +43,8 @@ class CelularesView:
         self.telefono_marca_var = tk.StringVar()
         self.telefono_modelo_var = tk.StringVar()
         self.descripcion_var = tk.StringVar()
-        self.sena_var = tk.StringVar(value="0.00")
-        self.total_var = tk.StringVar(value="0.00")
+        self.sena_var = tk.StringVar(value="0")
+        self.total_var = tk.StringVar(value="0")
         
         self.ventas_realizadas = []
         self.create_widgets()
@@ -155,16 +168,16 @@ class CelularesView:
         contenido.pack(fill=tk.BOTH, expand=True, padx=15, pady=15)
 
         tk.Label(contenido, text="Seña:", font=("Arial", 10, "bold"), bg='white').grid(row=0, column=0, sticky=tk.W, pady=6)
-        tk.Label(contenido, text=f"${sena:.2f}", font=("Arial", 10), bg='white').grid(row=0, column=1, sticky=tk.W, pady=6)
+        tk.Label(contenido, text=formatear_moneda(sena), font=("Arial", 10), bg='white').grid(row=0, column=1, sticky=tk.W, pady=6)
 
         tk.Label(contenido, text="Total:", font=("Arial", 10, "bold"), bg='white').grid(row=1, column=0, sticky=tk.W, pady=6)
-        tk.Label(contenido, text=f"${total:.2f}", font=("Arial", 10), bg='white').grid(row=1, column=1, sticky=tk.W, pady=6)
+        tk.Label(contenido, text=formatear_moneda(total), font=("Arial", 10), bg='white').grid(row=1, column=1, sticky=tk.W, pady=6)
 
         tk.Label(contenido, text="Saldo:", font=("Arial", 10, "bold"), bg='white').grid(row=2, column=0, sticky=tk.W, pady=6)
-        tk.Label(contenido, text=f"${saldo:.2f}", font=("Arial", 10), bg='white').grid(row=2, column=1, sticky=tk.W, pady=6)
+        tk.Label(contenido, text=formatear_moneda(saldo), font=("Arial", 10), bg='white').grid(row=2, column=1, sticky=tk.W, pady=6)
 
         fecha_var = tk.StringVar(value=datetime.now().strftime('%Y-%m-%d'))
-        monto_var = tk.StringVar(value=f"{monto_sugerido:.2f}")
+        monto_var = tk.StringVar(value=str(int(round(monto_sugerido))))
         medio_var = tk.StringVar(value='Efectivo')
         recargo_var = tk.StringVar(value='0')
 
@@ -172,7 +185,9 @@ class CelularesView:
         ttk.Entry(contenido, textvariable=fecha_var, font=("Arial", 10), width=18).grid(row=3, column=1, sticky=tk.W, pady=6)
 
         tk.Label(contenido, text="Monto pagado:", font=("Arial", 10, "bold"), bg='white').grid(row=4, column=0, sticky=tk.W, pady=6)
-        ttk.Entry(contenido, textvariable=monto_var, font=("Arial", 10), width=18).grid(row=4, column=1, sticky=tk.W, pady=6)
+        monto_entry = ttk.Entry(contenido, textvariable=monto_var, font=("Arial", 10), width=18)
+        monto_entry.grid(row=4, column=1, sticky=tk.W, pady=6)
+        monto_entry.bind('<FocusOut>', lambda _e: self._normalizar_var_monto(monto_var))
 
         tk.Label(contenido, text="Medio:", font=("Arial", 10, "bold"), bg='white').grid(row=5, column=0, sticky=tk.W, pady=6)
         medio_combo = ttk.Combobox(contenido, textvariable=medio_var, values=['Efectivo', 'Transferencia', 'Tarjeta'], state='readonly', width=16)
@@ -194,7 +209,7 @@ class CelularesView:
                 messagebox.showwarning("Validación", "La fecha debe tener formato YYYY-MM-DD")
                 return
             try:
-                monto = float(monto_var.get() or 0)
+                monto = parsear_monto(monto_var.get() or 0)
                 recargo_pct = float(recargo_var.get() or 0)
             except Exception:
                 messagebox.showwarning("Validación", "El monto y recargo deben ser números")
@@ -253,8 +268,8 @@ class CelularesView:
                     venta[0],  # numero_venta
                     venta[1],  # cliente_nombre
                     venta[2] or '',  # cliente_telefono
-                    f"${venta[3]:.2f}",  # sena
-                    f"${venta[4]:.2f}",  # total
+                    formatear_moneda(venta[3]),  # sena
+                    formatear_moneda(venta[4]),  # total
                     fecha,
                     fecha_pago
                 ))
@@ -354,10 +369,14 @@ class CelularesView:
         tk.Label(form_frame, text="Detalles de la Venta", font=("Arial", 12, "bold"), bg='white', fg='#8B5CF6').grid(row=8, column=0, columnspan=4, sticky=tk.W, pady=10, padx=5)
 
         tk.Label(form_frame, text="Total ($):", font=("Arial", 10, "bold"), bg='white').grid(row=9, column=0, sticky=tk.W, pady=5, padx=5)
-        ttk.Entry(form_frame, textvariable=self.total_var, font=("Arial", 10), width=30).grid(row=9, column=1, sticky=tk.EW, pady=5, padx=5)
+        total_entry = ttk.Entry(form_frame, textvariable=self.total_var, font=("Arial", 10), width=30)
+        total_entry.grid(row=9, column=1, sticky=tk.EW, pady=5, padx=5)
+        total_entry.bind('<FocusOut>', lambda _e: self._normalizar_var_monto(self.total_var))
 
         tk.Label(form_frame, text="Seña ($):", font=("Arial", 10, "bold"), bg='white').grid(row=9, column=2, sticky=tk.W, pady=5, padx=5)
-        ttk.Entry(form_frame, textvariable=self.sena_var, font=("Arial", 10), width=20).grid(row=9, column=3, sticky=tk.EW, pady=5, padx=5)
+        sena_entry = ttk.Entry(form_frame, textvariable=self.sena_var, font=("Arial", 10), width=20)
+        sena_entry.grid(row=9, column=3, sticky=tk.EW, pady=5, padx=5)
+        sena_entry.bind('<FocusOut>', lambda _e: self._normalizar_var_monto(self.sena_var))
 
         # Botones
         btn_frame = tk.Frame(form_frame, bg='white')
@@ -379,7 +398,7 @@ class CelularesView:
             self.celulares_tree.insert('', 'end', values=(
                 producto['codigo'],
                 producto['nombre'][:30],
-                f"${producto['precio']:.2f}",
+                formatear_moneda(producto['precio']),
                 producto['stock'],
                 1,
                 "Agregar"
@@ -397,12 +416,12 @@ class CelularesView:
             descripcion = self.descripcion_var.get() or ""
             
             try:
-                total = float(self.total_var.get() or 0)
+                total = parsear_monto(self.total_var.get() or 0)
             except:
                 total = 0
             
             try:
-                sena = float(self.sena_var.get() or 0)
+                sena = parsear_monto(self.sena_var.get() or 0)
             except:
                 sena = 0
 
@@ -435,8 +454,8 @@ class CelularesView:
                                   f"Marca: {marca}\n"
                                   f"Modelo: {modelo}\n"
                                   f"Descripción: {descripcion}\n"
-                                  f"Total: ${total:.2f}\n"
-                                  f"Seña: ${sena:.2f}")
+                                  f"Total: {formatear_moneda(total)}\n"
+                                  f"Seña: {formatear_moneda(sena)}")
                 
             except Exception as e:
                 conn.rollback()
@@ -451,8 +470,8 @@ class CelularesView:
             self.telefono_marca_var.set("")
             self.telefono_modelo_var.set("")
             self.descripcion_var.set("")
-            self.sena_var.set("0.00")
-            self.total_var.set("0.00")
+            self.sena_var.set("0")
+            self.total_var.set("0")
             
             # Recargar tabla
             self.cargar_ventas()
@@ -521,8 +540,8 @@ class CelularesView:
             edit_telefono_marca = tk.StringVar(value=venta[6] or "")
             edit_telefono_modelo = tk.StringVar(value=venta[7] or "")
             edit_descripcion = tk.StringVar(value=venta[8] or "")
-            edit_total = tk.StringVar(value=f"{venta[9]:.2f}")
-            edit_sena = tk.StringVar(value=f"{venta[10]:.2f}")
+            edit_total = tk.StringVar(value=self._texto_monto_normalizado(venta[9]))
+            edit_sena = tk.StringVar(value=self._texto_monto_normalizado(venta[10]))
 
             # Datos del cliente
             tk.Label(form_frame, text="Datos del Cliente", font=("Arial", 12, "bold"), bg='white', fg='#8B5CF6').grid(row=0, column=0, columnspan=4, sticky=tk.W, pady=10, padx=5)
@@ -561,10 +580,14 @@ class CelularesView:
             tk.Label(form_frame, text="Detalles de la Venta", font=("Arial", 12, "bold"), bg='white', fg='#8B5CF6').grid(row=8, column=0, columnspan=4, sticky=tk.W, pady=10, padx=5)
 
             tk.Label(form_frame, text="Total ($):", font=("Arial", 10, "bold"), bg='white').grid(row=9, column=0, sticky=tk.W, pady=5, padx=5)
-            ttk.Entry(form_frame, textvariable=edit_total, font=("Arial", 10), width=30).grid(row=9, column=1, sticky=tk.EW, pady=5, padx=5)
+            edit_total_entry = ttk.Entry(form_frame, textvariable=edit_total, font=("Arial", 10), width=30)
+            edit_total_entry.grid(row=9, column=1, sticky=tk.EW, pady=5, padx=5)
+            edit_total_entry.bind('<FocusOut>', lambda _e: self._normalizar_var_monto(edit_total))
 
             tk.Label(form_frame, text="Seña ($):", font=("Arial", 10, "bold"), bg='white').grid(row=9, column=2, sticky=tk.W, pady=5, padx=5)
-            ttk.Entry(form_frame, textvariable=edit_sena, font=("Arial", 10), width=20).grid(row=9, column=3, sticky=tk.EW, pady=5, padx=5)
+            edit_sena_entry = ttk.Entry(form_frame, textvariable=edit_sena, font=("Arial", 10), width=20)
+            edit_sena_entry.grid(row=9, column=3, sticky=tk.EW, pady=5, padx=5)
+            edit_sena_entry.bind('<FocusOut>', lambda _e: self._normalizar_var_monto(edit_sena))
 
             # Botones
             btn_frame = tk.Frame(form_frame, bg='white')
@@ -581,12 +604,12 @@ class CelularesView:
                     descripcion = edit_descripcion.get() or ""
                     
                     try:
-                        total = float(edit_total.get() or 0)
+                        total = parsear_monto(edit_total.get() or 0)
                     except:
                         total = 0
                     
                     try:
-                        sena = float(edit_sena.get() or 0)
+                        sena = parsear_monto(edit_sena.get() or 0)
                     except:
                         sena = 0
 
@@ -932,10 +955,10 @@ class CelularesView:
         
         # Crear tabla con mejor formato
         totales_data = [
-            ["Precio Total:", f"${total_con_recargo:,.2f}"],
-            ["Recargo:", f"${recargo_monto:,.2f}"],
-            ["Seña Pagada:", f"${sena:,.2f}"],
-            ["SALDO A PAGAR:", f"${saldo:,.2f}"],
+            ["Precio Total:", formatear_moneda(total_con_recargo)],
+            ["Recargo:", formatear_moneda(recargo_monto)],
+            ["Seña Pagada:", formatear_moneda(sena)],
+            ["SALDO A PAGAR:", formatear_moneda(saldo)],
             ["Fecha:", fecha[:10]],
         ]
         

@@ -5,6 +5,7 @@ from models.venta import Venta
 from datetime import datetime
 import os
 import sys
+from utils.moneda import formatear_moneda
 
 class VentasView:
     def __init__(self, parent, db_manager, user_data):
@@ -300,7 +301,7 @@ class VentasView:
             font=("Arial", 11, "bold"),
             bg='#F9FAFB',
             fg='#374151').grid(row=0, column=0, sticky=tk.E, padx=10, pady=5)
-        self.subtotal_label = tk.Label(totals_frame, text="$0.00", 
+        self.subtotal_label = tk.Label(totals_frame, text=formatear_moneda(0), 
                           font=("Arial", 11),
                           bg='#F9FAFB',
                           fg='#1F2937')
@@ -310,7 +311,7 @@ class VentasView:
             font=("Arial", 11, "bold"),
             bg='#F9FAFB',
             fg='#374151').grid(row=1, column=0, sticky=tk.E, padx=10, pady=5)
-        self.descuento_total_label = tk.Label(totals_frame, text="$0.00", 
+        self.descuento_total_label = tk.Label(totals_frame, text=formatear_moneda(0), 
                      font=("Arial", 11),
                      bg='#F9FAFB',
                      fg='#DC2626')
@@ -318,7 +319,7 @@ class VentasView:
 
         # Recargo
         tk.Label(totals_frame, text="Recargo:", font=("Arial", 11, "bold"), bg='#F9FAFB', fg='#374151').grid(row=2, column=0, sticky=tk.E, padx=10, pady=5)
-        self.recargo_total_label = tk.Label(totals_frame, text="$0.00", font=("Arial", 11), bg='#F9FAFB', fg='#F59E0B')
+        self.recargo_total_label = tk.Label(totals_frame, text=formatear_moneda(0), font=("Arial", 11), bg='#F9FAFB', fg='#F59E0B')
         self.recargo_total_label.grid(row=2, column=1, sticky=tk.W, padx=10, pady=5)
 
         # Separador (ahora debajo del recargo)
@@ -328,7 +329,7 @@ class VentasView:
             font=("Arial", 16, "bold"),
             bg='#F9FAFB',
             fg='#1F2937').grid(row=4, column=0, sticky=tk.E, padx=10, pady=8)
-        self.total_label = tk.Label(totals_frame, text="$0.00", 
+        self.total_label = tk.Label(totals_frame, text=formatear_moneda(0), 
                        font=("Arial", 16, "bold"),
                        bg='#F9FAFB',
                        fg='#10B981')
@@ -379,7 +380,7 @@ class VentasView:
         if len(termino) >= 2:
             productos = self.producto_model.buscar_producto(termino)
             for idx, prod in enumerate(productos):
-                display_text = f"{prod[1]} - {prod[2]} (Stock: {prod[6]}) - ${prod[5]:.2f}"
+                display_text = f"{prod[1]} - {prod[2]} (Stock: {prod[6]}) - {formatear_moneda(prod[5])}"
                 self.productos_listbox.insert(tk.END, display_text)
                 # Guardar datos del producto en el diccionario
                 self.productos_cache[idx] = prod
@@ -439,7 +440,7 @@ class VentasView:
                 self.producto_seleccionado = prod
                 
                 self.producto_label.config(text=prod[2])
-                self.precio_label.config(text=f"${prod[5]:.2f}")
+                self.precio_label.config(text=formatear_moneda(prod[5]))
                 self.stock_label.config(text=str(prod[6]))
     
     def agregar_item(self):
@@ -495,10 +496,10 @@ class VentasView:
             self.items_tree.insert('', tk.END, values=(
                 item['producto_nombre'],
                 item['cantidad'],
-                f"${item['precio_unitario']:.2f}",
+                formatear_moneda(item['precio_unitario']),
                 f"{item['descuento_porcentaje']}%",
                 f"{item['recargo']}%",
-                f"${item['subtotal']:.2f}"
+                formatear_moneda(item['subtotal'])
             ))
             
             # Actualizar totales
@@ -548,10 +549,10 @@ class VentasView:
         else:
             recargo = 0.0
 
-        self.subtotal_label.config(text=f"${subtotal:.2f}")
-        self.descuento_total_label.config(text=f"${descuento_total:.2f}")
-        self.recargo_total_label.config(text=f"${recargo:.2f}")
-        self.total_label.config(text=f"${(total + recargo):.2f}")
+        self.subtotal_label.config(text=formatear_moneda(subtotal))
+        self.descuento_total_label.config(text=formatear_moneda(descuento_total))
+        self.recargo_total_label.config(text=formatear_moneda(recargo))
+        self.total_label.config(text=formatear_moneda(total + recargo))
     
     def limpiar_seleccion(self):
         """Limpiar la selección de producto"""
@@ -699,9 +700,9 @@ class VentasView:
             for detalle in venta_data['detalles']:
                 c.drawString(1*inch, y, detalle[5][:30])  # Producto
                 c.drawString(3.5*inch, y, str(detalle[0]))  # Cantidad
-                c.drawString(4.2*inch, y, f"${detalle[1]:.2f}")  # Precio
+                c.drawString(4.2*inch, y, formatear_moneda(detalle[1]))  # Precio
                 c.drawString(5*inch, y, f"{detalle[2]:.0f}%")  # Descuento
-                c.drawString(5.8*inch, y, f"${detalle[4]:.2f}")  # Subtotal
+                c.drawString(5.8*inch, y, formatear_moneda(detalle[4]))  # Subtotal
                 y -= 0.25*inch
             
             # Totales
@@ -711,24 +712,24 @@ class VentasView:
             y -= 0.3*inch
             c.setFont("Helvetica-Bold", 12)
             c.drawString(4.5*inch, y, f"Subtotal:")
-            c.drawString(5.8*inch, y, f"${venta[4]:.2f}")
+            c.drawString(5.8*inch, y, formatear_moneda(venta[4]))
 
             y -= 0.3*inch
             c.drawString(4.5*inch, y, f"Descuento:")
-            c.drawString(5.8*inch, y, f"${venta[5]:.2f}")
+            c.drawString(5.8*inch, y, formatear_moneda(venta[5]))
 
             # Mostrar recargo y total con recargo
             y -= 0.3*inch
             c.drawString(4.5*inch, y, f"Recargo:")
             # Calcular el monto del recargo
             recargo_monto = (venta[6] * venta[10]) / 100 if venta[10] else 0.0
-            c.drawString(5.8*inch, y, f"${recargo_monto:.2f}")
+            c.drawString(5.8*inch, y, formatear_moneda(recargo_monto))
 
             y -= 0.4*inch
             c.setFont("Helvetica-Bold", 14)
             c.drawString(4.5*inch, y, f"TOTAL:")
             total_con_recargo = venta[6] + recargo_monto
-            c.drawString(5.8*inch, y, f"${total_con_recargo:.2f}")
+            c.drawString(5.8*inch, y, formatear_moneda(total_con_recargo))
             
             c.save()
             

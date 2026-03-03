@@ -6,6 +6,14 @@ from datetime import datetime, timedelta
 import calendar
 import math
 
+
+def formatear_moneda(valor):
+    try:
+        monto = int(round(float(valor or 0)))
+    except (TypeError, ValueError):
+        monto = 0
+    return f"${monto:,}".replace(",", ".")
+
 class ReportesView:
     def __init__(self, parent, db_manager, user_data):
         self.parent = parent
@@ -108,11 +116,11 @@ class ReportesView:
         self.total_ventas_label.grid(row=1, column=1, sticky=tk.W, padx=5)
         
         tk.Label(stats_frame, text="Total Ingresos:", bg='white', fg='black').grid(row=1, column=2, sticky=tk.W, padx=20)
-        self.total_ingresos_label = tk.Label(stats_frame, text="$0.00", font=("Arial", 11, "bold"), bg='white', fg='#10B981')
+        self.total_ingresos_label = tk.Label(stats_frame, text=formatear_moneda(0), font=("Arial", 11, "bold"), bg='white', fg='#10B981')
         self.total_ingresos_label.grid(row=1, column=3, sticky=tk.W, padx=5)
         
         tk.Label(stats_frame, text="Promedio por Venta:", bg='white', fg='black').grid(row=1, column=4, sticky=tk.W, padx=20)
-        self.promedio_label = tk.Label(stats_frame, text="$0.00", font=("Arial", 11, "bold"), bg='white', fg='black')
+        self.promedio_label = tk.Label(stats_frame, text=formatear_moneda(0), font=("Arial", 11, "bold"), bg='white', fg='black')
         self.promedio_label.grid(row=1, column=5, sticky=tk.W, padx=5)
         
         # Tabla de ventas
@@ -201,15 +209,15 @@ class ReportesView:
         self.total_reparaciones_label.grid(row=1, column=1, sticky=tk.W, padx=5)
         
         tk.Label(stats_frame, text="Total Ingresos:", bg='white', fg='black').grid(row=1, column=2, sticky=tk.W, padx=20)
-        self.total_ingresos_rep_label = tk.Label(stats_frame, text="$0.00", font=("Arial", 11, "bold"), bg='white', fg='#10B981')
+        self.total_ingresos_rep_label = tk.Label(stats_frame, text=formatear_moneda(0), font=("Arial", 11, "bold"), bg='white', fg='#10B981')
         self.total_ingresos_rep_label.grid(row=1, column=3, sticky=tk.W, padx=5)
         
         tk.Label(stats_frame, text="Total Seña:", bg='white', fg='black').grid(row=1, column=4, sticky=tk.W, padx=20)
-        self.total_sena_label = tk.Label(stats_frame, text="$0.00", font=("Arial", 11, "bold"), bg='white', fg='#F59E0B')
+        self.total_sena_label = tk.Label(stats_frame, text=formatear_moneda(0), font=("Arial", 11, "bold"), bg='white', fg='#F59E0B')
         self.total_sena_label.grid(row=1, column=5, sticky=tk.W, padx=5)
         
         tk.Label(stats_frame, text="Promedio por Reparación:", bg='white', fg='black').grid(row=1, column=6, sticky=tk.W, padx=20)
-        self.promedio_rep_label = tk.Label(stats_frame, text="$0.00", font=("Arial", 11, "bold"), bg='white', fg='black')
+        self.promedio_rep_label = tk.Label(stats_frame, text=formatear_moneda(0), font=("Arial", 11, "bold"), bg='white', fg='black')
         self.promedio_rep_label.grid(row=1, column=7, sticky=tk.W, padx=5)
         
         # Tabla de reparaciones
@@ -314,15 +322,15 @@ class ReportesView:
         for venta in ventas:
             self.tree_ventas.insert('', tk.END, values=(
                 venta[0], venta[1], venta[2] or '-', 
-                f"${venta[3]:.2f}", venta[4], venta[5]
+                formatear_moneda(venta[3]), venta[4], venta[5]
             ))
         
         # Actualizar estadísticas
         stats = self.venta_model.obtener_estadisticas(fecha_inicio, fecha_fin)
         if stats:
             self.total_ventas_label.config(text=str(stats[0]))
-            self.total_ingresos_label.config(text=f"${stats[1]:.2f}")
-            self.promedio_label.config(text=f"${stats[2]:.2f}")
+            self.total_ingresos_label.config(text=formatear_moneda(stats[1]))
+            self.promedio_label.config(text=formatear_moneda(stats[2]))
     
     def ver_detalles_venta(self):
         """Ver detalles de la venta seleccionada"""
@@ -440,10 +448,10 @@ class ReportesView:
             pagado_total = sena + monto_final
             saldo = total - pagado_total
             if saldo <= 0:
-                estado_pago_texto = f"Pagado: ${monto_final:.2f}"
+                estado_pago_texto = f"Pagado: {formatear_moneda(monto_final)}"
                 tag = 'pago_ok'
             else:
-                estado_pago_texto = f"Debe ${saldo:.2f}"
+                estado_pago_texto = f"Debe {formatear_moneda(saldo)}"
                 tag = 'pago_debe'
 
             fecha_pago = rep.get('fecha_pago_final')
@@ -459,8 +467,8 @@ class ReportesView:
                 rep['cliente_nombre'],
                 rep['dispositivo'],
                 estado_ui,
-                f"${sena:.2f}" if sena else '$0.00',
-                f"${total:.2f}",
+                formatear_moneda(sena),
+                formatear_moneda(total),
                 rep['fecha_creacion'][:10],
                 estado_pago_texto,
                 fecha_pago,
@@ -513,14 +521,14 @@ class ReportesView:
         total_ingresos = total_sena + total_pago_final
         
         self.total_reparaciones_label.config(text=str(total_reparaciones))
-        self.total_ingresos_rep_label.config(text=f"${total_ingresos:.2f}")
-        self.total_sena_label.config(text=f"${total_sena:.2f}")
+        self.total_ingresos_rep_label.config(text=formatear_moneda(total_ingresos))
+        self.total_sena_label.config(text=formatear_moneda(total_sena))
         
         if total_reparaciones > 0:
             promedio = total_ingresos / total_reparaciones
-            self.promedio_rep_label.config(text=f"${promedio:.2f}")
+            self.promedio_rep_label.config(text=formatear_moneda(promedio))
         else:
-            self.promedio_rep_label.config(text="$0.00")
+            self.promedio_rep_label.config(text=formatear_moneda(0))
     
     def crear_tab_ventas_celulares(self, parent):
         """Crear la pestaña de ventas de celulares"""
@@ -563,11 +571,11 @@ class ReportesView:
         self.total_ventas_cel_label.grid(row=1, column=1, sticky=tk.W, padx=5)
         
         tk.Label(stats_frame, text="Total Ingresos:", bg='white', fg='black').grid(row=1, column=2, sticky=tk.W, padx=20)
-        self.total_ingresos_cel_label = tk.Label(stats_frame, text="$0.00", font=("Arial", 11, "bold"), bg='white', fg='#10B981')
+        self.total_ingresos_cel_label = tk.Label(stats_frame, text=formatear_moneda(0), font=("Arial", 11, "bold"), bg='white', fg='#10B981')
         self.total_ingresos_cel_label.grid(row=1, column=3, sticky=tk.W, padx=5)
         
         tk.Label(stats_frame, text="Total Seña:", bg='white', fg='black').grid(row=1, column=4, sticky=tk.W, padx=20)
-        self.total_sena_cel_label = tk.Label(stats_frame, text="$0.00", font=("Arial", 11, "bold"), bg='white', fg='#F59E0B')
+        self.total_sena_cel_label = tk.Label(stats_frame, text=formatear_moneda(0), font=("Arial", 11, "bold"), bg='white', fg='#F59E0B')
         self.total_sena_cel_label.grid(row=1, column=5, sticky=tk.W, padx=5)
         
         # Tabla de ventas de celulares
@@ -623,7 +631,7 @@ class ReportesView:
 
         self.reporte_final_total_label = tk.Label(
             header_frame,
-            text="Suma total: $0.00",
+            text=f"Suma total: {formatear_moneda(0)}",
             font=("Arial", 14, "bold"),
             bg='white',
             fg='#111827'
@@ -698,7 +706,7 @@ class ReportesView:
             color_box = tk.Canvas(row, width=14, height=14, bg='white', highlightthickness=0)
             color_box.pack(side=tk.LEFT, padx=(0, 6))
 
-            text_label = tk.Label(row, text=f"{label_text}: $0.00", bg='white', fg='black', font=("Arial", 10, "bold"))
+            text_label = tk.Label(row, text=f"{label_text}: {formatear_moneda(0)}", bg='white', fg='black', font=("Arial", 10, "bold"))
             text_label.pack(side=tk.LEFT)
 
             self.reporte_final_labels[label_text] = (color_box, text_label)
@@ -723,7 +731,7 @@ class ReportesView:
         seleccionados = [k for k, v in self.reporte_final_checks.items() if v.get()]
         total_general = sum(totales[k] for k in seleccionados if k in totales)
         if hasattr(self, "reporte_final_total_label"):
-            self.reporte_final_total_label.config(text=f"Suma total: ${total_general:.2f}")
+            self.reporte_final_total_label.config(text=f"Suma total: {formatear_moneda(total_general)}")
         self._dibujar_grafico_torta(totales)
         self._programar_actualizacion_reporte_final()
 
@@ -892,7 +900,7 @@ class ReportesView:
                 color_box.create_rectangle(0, 0, 14, 14, fill=fill_color, outline='')
             if text_label is not None:
                 fg = 'black' if is_checked else '#9CA3AF'
-                text_label.config(text=f"{key}: ${value:.2f}", fg=fg)
+                text_label.config(text=f"{key}: {formatear_moneda(value)}", fg=fg)
 
     def _ajustar_color(self, color_hex, factor):
         """Aclarar u oscurecer un color hexadecimal."""
@@ -942,7 +950,7 @@ class ReportesView:
                 in_sector = angulo >= start or angulo < (end - 360)
 
             if in_sector:
-                texto = f"{slice_info['label']}: ${slice_info['value']:.2f}"
+                texto = f"{slice_info['label']}: {formatear_moneda(slice_info['value'])}"
                 self.reporte_final_tooltip.config(text=texto)
                 self.reporte_final_tooltip.place(x=event.x + 10, y=event.y + 10)
                 return
@@ -1001,10 +1009,10 @@ class ReportesView:
 
                 saldo = total - (sena + monto_pago_final)
                 if saldo <= 0:
-                    estado_pago_texto = f"Pagado: ${monto_pago_final:.2f}"
+                    estado_pago_texto = f"Pagado: {formatear_moneda(monto_pago_final)}"
                     tag = 'pago_ok'
                 else:
-                    estado_pago_texto = f"Debe ${saldo:.2f}"
+                    estado_pago_texto = f"Debe {formatear_moneda(saldo)}"
                     tag = 'pago_debe'
 
                 self.tree_ventas_cel.insert('', 'end', values=(
@@ -1013,8 +1021,8 @@ class ReportesView:
                     venta[2] or '',  # cliente_telefono
                     venta[3] or '',  # telefono_marca
                     venta[4] or '',  # telefono_modelo
-                    f"${sena:.2f}" if sena else '$0.00',  # sena
-                    f"${total:.2f}",  # total
+                    formatear_moneda(sena),  # sena
+                    formatear_moneda(total),  # total
                     fecha,
                     estado_pago_texto,
                     fecha_pago,
@@ -1029,8 +1037,8 @@ class ReportesView:
             total_ingresos = total_sena + total_pago_final
             
             self.total_ventas_cel_label.config(text=str(total_ventas))
-            self.total_ingresos_cel_label.config(text=f"${total_ingresos:.2f}")
-            self.total_sena_cel_label.config(text=f"${total_sena:.2f}")
+            self.total_ingresos_cel_label.config(text=formatear_moneda(total_ingresos))
+            self.total_sena_cel_label.config(text=formatear_moneda(total_sena))
         
         except Exception as e:
             messagebox.showerror("Error", f"Error al cargar ventas de celulares: {str(e)}")
@@ -1148,9 +1156,9 @@ class DetalleVentaDialog:
             tree.insert('', tk.END, values=(
                 detalle[5],  # Producto
                 detalle[0],  # Cantidad
-                f"${detalle[1]:.2f}",  # Precio
+                formatear_moneda(detalle[1]),  # Precio
                 f"{detalle[2]:.0f}%",  # Descuento
-                f"${detalle[4]:.2f}"  # Subtotal
+                formatear_moneda(detalle[4])  # Subtotal
             ))
 
         # Scrollbar vertical
@@ -1164,13 +1172,13 @@ class DetalleVentaDialog:
         totals_frame.pack(fill=tk.X, pady=10)
 
         tk.Label(totals_frame, text="Subtotal:", font=("Arial", 11, "bold"), bg='white').grid(row=0, column=0, sticky=tk.E, padx=5)
-        tk.Label(totals_frame, text=f"${venta[4]:.2f}", font=("Arial", 11), bg='white').grid(row=0, column=1, sticky=tk.W, padx=5)
+        tk.Label(totals_frame, text=formatear_moneda(venta[4]), font=("Arial", 11), bg='white').grid(row=0, column=1, sticky=tk.W, padx=5)
 
         tk.Label(totals_frame, text="Descuento:", font=("Arial", 11, "bold"), bg='white').grid(row=1, column=0, sticky=tk.E, padx=5)
-        tk.Label(totals_frame, text=f"${venta[5]:.2f}", font=("Arial", 11), bg='white').grid(row=1, column=1, sticky=tk.W, padx=5)
+        tk.Label(totals_frame, text=formatear_moneda(venta[5]), font=("Arial", 11), bg='white').grid(row=1, column=1, sticky=tk.W, padx=5)
 
         tk.Label(totals_frame, text="TOTAL:", font=("Arial", 13, "bold"), bg='white').grid(row=2, column=0, sticky=tk.E, padx=5, pady=5)
-        tk.Label(totals_frame, text=f"${venta[6]:.2f}", font=("Arial", 13, "bold"), fg="green", bg='white').grid(row=2, column=1, sticky=tk.W, padx=5, pady=5)
+        tk.Label(totals_frame, text=formatear_moneda(venta[6]), font=("Arial", 13, "bold"), fg="green", bg='white').grid(row=2, column=1, sticky=tk.W, padx=5, pady=5)
 
 
 class DetalleReparacionDialog:
@@ -1253,10 +1261,10 @@ class DetalleReparacionDialog:
         total_con_recargo = total_base + recargo_monto
 
         tk.Label(prices_frame, text="Seña:", font=("Arial", 11, "bold"), bg='white').grid(row=0, column=0, sticky=tk.E, padx=5)
-        tk.Label(prices_frame, text=f"${self.rep_data['sena']:.2f}" if self.rep_data['sena'] else "$0.00", font=("Arial", 11), bg='white').grid(row=0, column=1, sticky=tk.W, padx=5)
+        tk.Label(prices_frame, text=formatear_moneda(self.rep_data.get('sena', 0)), font=("Arial", 11), bg='white').grid(row=0, column=1, sticky=tk.W, padx=5)
 
         tk.Label(prices_frame, text="Total:", font=("Arial", 11, "bold"), bg='white').grid(row=0, column=2, sticky=tk.E, padx=20)
-        tk.Label(prices_frame, text=f"${total_con_recargo:.2f}", font=("Arial", 11, "bold"), fg="green", bg='white').grid(row=0, column=3, sticky=tk.W, padx=5)
+        tk.Label(prices_frame, text=formatear_moneda(total_con_recargo), font=("Arial", 11, "bold"), fg="green", bg='white').grid(row=0, column=3, sticky=tk.W, padx=5)
         
         estado_ui = self.reportes_view._estado_db_to_ui(self.rep_data['estado'])
         tk.Label(prices_frame, text="Estado:", font=("Arial", 11, "bold"), bg='white').grid(row=1, column=0, sticky=tk.E, padx=5)
@@ -1274,7 +1282,7 @@ class DetalleReparacionDialog:
         recargo_pct = (recargo_monto / base_tarjeta * 100) if base_tarjeta > 0 else 0
 
         tk.Label(prices_frame, text="Pago Final:", font=("Arial", 11, "bold"), bg='white').grid(row=2, column=0, sticky=tk.E, padx=5)
-        tk.Label(prices_frame, text=f"${monto_pago_final:.2f}", font=("Arial", 11), bg='white').grid(row=2, column=1, sticky=tk.W, padx=5)
+        tk.Label(prices_frame, text=formatear_moneda(monto_pago_final), font=("Arial", 11), bg='white').grid(row=2, column=1, sticky=tk.W, padx=5)
 
         tk.Label(prices_frame, text="Fecha Pago:", font=("Arial", 11, "bold"), bg='white').grid(row=2, column=2, sticky=tk.E, padx=20)
         tk.Label(prices_frame, text=fecha_pago, font=("Arial", 11), bg='white').grid(row=2, column=3, sticky=tk.W, padx=5)
@@ -1374,14 +1382,14 @@ class DetalleVentaCelularDialog:
         prices_frame.pack(fill=tk.X, pady=10)
         
         tk.Label(prices_frame, text="Seña:", font=("Arial", 11, "bold"), bg='white').grid(row=0, column=0, sticky=tk.E, padx=5)
-        tk.Label(prices_frame, text=f"${self.venta_data.get('sena', 0):.2f}", font=("Arial", 11), bg='white').grid(row=0, column=1, sticky=tk.W, padx=5)
+        tk.Label(prices_frame, text=formatear_moneda(self.venta_data.get('sena', 0)), font=("Arial", 11), bg='white').grid(row=0, column=1, sticky=tk.W, padx=5)
         
         recargo_monto = float(self.venta_data.get('recargo_tarjeta') or 0)
         total_base = float(self.venta_data.get('total') or 0)
         total_con_recargo = total_base + recargo_monto
 
         tk.Label(prices_frame, text="Total:", font=("Arial", 11, "bold"), bg='white').grid(row=0, column=2, sticky=tk.E, padx=20)
-        tk.Label(prices_frame, text=f"${total_con_recargo:.2f}", font=("Arial", 11, "bold"), fg="#10B981", bg='white').grid(row=0, column=3, sticky=tk.W, padx=5)
+        tk.Label(prices_frame, text=formatear_moneda(total_con_recargo), font=("Arial", 11, "bold"), fg="#10B981", bg='white').grid(row=0, column=3, sticky=tk.W, padx=5)
 
         fecha_pago = self.venta_data.get('fecha_pago_final')
         fecha_pago = fecha_pago[:10] if fecha_pago else 'Pendiente'
@@ -1392,7 +1400,7 @@ class DetalleVentaCelularDialog:
         recargo_pct = (recargo_monto / base_tarjeta * 100) if base_tarjeta > 0 else 0
 
         tk.Label(prices_frame, text="Pago Final:", font=("Arial", 11, "bold"), bg='white').grid(row=1, column=0, sticky=tk.E, padx=5)
-        tk.Label(prices_frame, text=f"${monto_pago_final:.2f}", font=("Arial", 11), bg='white').grid(row=1, column=1, sticky=tk.W, padx=5)
+        tk.Label(prices_frame, text=formatear_moneda(monto_pago_final), font=("Arial", 11), bg='white').grid(row=1, column=1, sticky=tk.W, padx=5)
 
         tk.Label(prices_frame, text="Fecha Pago:", font=("Arial", 11, "bold"), bg='white').grid(row=1, column=2, sticky=tk.E, padx=20)
         tk.Label(prices_frame, text=fecha_pago, font=("Arial", 11), bg='white').grid(row=1, column=3, sticky=tk.W, padx=5)
