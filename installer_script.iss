@@ -35,13 +35,13 @@ Source: "serviceAccountKey.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "serviceAccountKey.json.example"; DestDir: "{app}"; Flags: ignoreversion
 Source: "firebase_config.py"; DestDir: "{app}"; Flags: ignoreversion
 Source: "requirements.txt"; DestDir: "{app}"; Flags: ignoreversion
-Source: "database\\*"; DestDir: "{app}\\database"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "reports\\*"; DestDir: "{app}\\reports"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "assets\\*"; DestDir: "{app}\\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "logs\\*"; DestDir: "{app}\\logs"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "views\\*"; DestDir: "{app}\\views"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "models\\*"; DestDir: "{app}\\models"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "utils\\*"; DestDir: "{app}\\utils"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "database\\*"; DestDir: "{app}\\database"; Excludes: "__pycache__\\*;*.pyc;*.pyo;*.pyd"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "reports\\*"; DestDir: "{app}\\reports"; Excludes: "__pycache__\\*;*.pyc;*.pyo;*.pyd"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "assets\\*"; DestDir: "{app}\\assets"; Excludes: "__pycache__\\*;*.pyc;*.pyo;*.pyd"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "logs\\*"; DestDir: "{app}\\logs"; Excludes: "__pycache__\\*;*.pyc;*.pyo;*.pyd"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "views\\*"; DestDir: "{app}\\views"; Excludes: "__pycache__\\*;*.pyc;*.pyo;*.pyd"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "models\\*"; DestDir: "{app}\\models"; Excludes: "__pycache__\\*;*.pyc;*.pyo;*.pyd"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "utils\\*"; DestDir: "{app}\\utils"; Excludes: "__pycache__\\*;*.pyc;*.pyo;*.pyd"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: ".update_config.json"; DestDir: "{app}"; Flags: ignoreversion
 
 [Dirs]

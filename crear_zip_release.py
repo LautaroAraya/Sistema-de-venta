@@ -8,10 +8,9 @@ Incluye todos los archivos necesarios del sistema
 import os
 import zipfile
 import sys
-from datetime import datetime
 import argparse
 
-def create_release_zip(no_pause=False):
+def create_release_zip(no_pause=False, include_setup=False):
     """Crear archivo ZIP para el release"""
     
     # Leer versión
@@ -51,8 +50,14 @@ def create_release_zip(no_pause=False):
         '.pyd',
         '.spec',
         '.update_config.json',
-        zip_filename,  # No incluirse a sí mismo
     ]
+
+    # Extensiones que NO deben entrar al ZIP de distribución
+    # (evita incluir releases anteriores y ejecutables locales)
+    exclude_extensions = {'.zip', '.exe'}
+
+    # Archivo permitido cuando se solicita incluir setup
+    setup_relative_path = os.path.normpath(os.path.join('installer', 'SistemaVentas_Setup.exe'))
     
     # Archivos que DEBEN incluirse
     important_files = [
@@ -73,19 +78,39 @@ def create_release_zip(no_pause=False):
     
     def should_exclude(path):
         """Verificar si un archivo/carpeta debe excluirse"""
-        parts = set(os.path.normpath(path).split(os.sep))
+        normalized_path = os.path.normpath(path)
+        parts = set(normalized_path.split(os.sep))
+
         if parts.intersection(exclude_dirs):
             return True
 
+        file_name = os.path.basename(normalized_path)
+        _, ext = os.path.splitext(file_name)
+
+        relative_path = normalized_path
+        if relative_path.startswith(f'.{os.sep}'):
+            relative_path = relative_path[2:]
+
+        # Permitir solamente el setup cuando se pide explícitamente
+        if include_setup and relative_path == setup_relative_path:
+            return False
+
+        if ext.lower() in exclude_extensions:
+            return True
+
+        if file_name == zip_filename:
+            return True
+
         for pattern in exclude_patterns:
-            if path.endswith(pattern):
+            if normalized_path.endswith(pattern):
                 return True
-            if pattern in path:
+            if pattern in normalized_path:
                 return True
 
         return False
     
     print(f"\n📝 Creando: {zip_filename}")
+    print(f"📦 Incluir setup en ZIP: {'Sí' if include_setup else 'No'}\n")
     print(f"📂 Carpeta: {os.getcwd()}\n")
     
     files_added = 0
@@ -150,10 +175,15 @@ def create_release_zip(no_pause=False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Crear ZIP de distribucion")
     parser.add_argument("--no-pause", action="store_true", help="No esperar Enter al finalizar")
+    parser.add_argument(
+        "--include-setup",
+        action="store_true",
+        help="Incluir installer/SistemaVentas_Setup.exe en el ZIP"
+    )
     args = parser.parse_args()
 
     try:
-        create_release_zip(no_pause=args.no_pause)
+        create_release_zip(no_pause=args.no_pause, include_setup=args.include_setup)
     except Exception as e:
         print(f"❌ Error: {e}")
 
