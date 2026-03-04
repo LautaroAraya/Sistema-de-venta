@@ -33,7 +33,7 @@ class ProductosView:
                 fg='white').pack(expand=True)
         
         # Botones de acción
-        buttons_frame = ttk.Frame(self.parent)
+        buttons_frame = tk.Frame(self.parent, bg='#F0F4F8')
         buttons_frame.pack(fill=tk.X, padx=10, pady=5)
         
         # Permitir a empleados crear/editar/eliminar productos
@@ -55,6 +55,26 @@ class ProductosView:
         # Botón para agregar categorías
         ttk.Button(buttons_frame, text="➕ Nueva Categoría", 
                   command=self.nueva_categoria).pack(side=tk.LEFT, padx=5)
+
+        # Buscador de productos
+        tk.Label(buttons_frame, text="Buscar:", bg='#F0F4F8', fg='black', font=('Arial', 11, 'bold')).pack(side=tk.LEFT, padx=(15, 5))
+        self.busqueda_var = tk.StringVar()
+        self.busqueda_var.trace_add('write', self.on_busqueda_change)
+        self.buscar_entry = tk.Entry(
+            buttons_frame,
+            textvariable=self.busqueda_var,
+            width=36,
+            font=('Arial', 11),
+            bg='white',
+            fg='black',
+            relief=tk.FLAT,
+            bd=1,
+            insertbackground='black',
+            highlightthickness=1,
+            highlightbackground='#D1D5DB',
+            highlightcolor='#3B82F6'
+        )
+        self.buscar_entry.pack(side=tk.LEFT, padx=5, ipady=4)
         
         # Tabla de productos
         columns = ('id', 'codigo', 'nombre', 'categoria', 'precio', 'stock', 'proveedor')
@@ -105,13 +125,22 @@ class ProductosView:
         for item in self.tree.get_children():
             self.tree.delete(item)
         
-        # Cargar productos
-        productos = self.producto_model.listar_productos()
+        # Cargar productos (con o sin filtro de búsqueda)
+        termino_busqueda = self.busqueda_var.get().strip() if hasattr(self, 'busqueda_var') else ''
+        if termino_busqueda:
+            productos = self.producto_model.buscar_producto(termino_busqueda)
+        else:
+            productos = self.producto_model.listar_productos()
+
         for prod in productos:
             self.tree.insert('', tk.END, values=(
                 prod[0], prod[1], prod[2], prod[4] or '-', 
                 formatear_moneda(prod[5]), prod[6], prod[7] or '-'
             ))
+
+    def on_busqueda_change(self, *args):
+        """Actualizar tabla al cambiar el texto de búsqueda"""
+        self.cargar_productos()
     
     def nuevo_producto(self):
         """Abrir ventana para nuevo producto"""
