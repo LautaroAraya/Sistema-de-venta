@@ -77,7 +77,7 @@ class ProductosView:
         self.buscar_entry.pack(side=tk.LEFT, padx=5, ipady=4)
         
         # Tabla de productos
-        columns = ('id', 'codigo', 'nombre', 'categoria', 'precio', 'precio_compra', 'stock', 'proveedor')
+        columns = ('id', 'codigo', 'nombre', 'categoria', 'precio_venta', 'precio_compra', 'stock', 'proveedor')
 
         style = ttk.Style()
         style.configure('Productos.Treeview', font=('Arial', 11), rowheight=24)
@@ -95,8 +95,8 @@ class ProductosView:
         self.tree.heading('codigo', text='Código')
         self.tree.heading('nombre', text='Nombre')
         self.tree.heading('categoria', text='Categoría')
-        self.tree.heading('precio', text='Precio')
-        self.tree.heading('precio_compra', text='Precio compra')
+        self.tree.heading('precio_venta', text='Precio Venta')
+        self.tree.heading('precio_compra', text='Precio Compra')
         self.tree.heading('stock', text='Stock')
         self.tree.heading('proveedor', text='Proveedor')
         
@@ -104,7 +104,7 @@ class ProductosView:
         self.tree.column('codigo', width=100)
         self.tree.column('nombre', width=250)
         self.tree.column('categoria', width=150)
-        self.tree.column('precio', width=100)
+        self.tree.column('precio_venta', width=100)
         self.tree.column('precio_compra', width=120)
         self.tree.column('stock', width=80)
         self.tree.column('proveedor', width=200)
