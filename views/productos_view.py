@@ -77,7 +77,7 @@ class ProductosView:
         self.buscar_entry.pack(side=tk.LEFT, padx=5, ipady=4)
         
         # Tabla de productos
-        columns = ('id', 'codigo', 'nombre', 'categoria', 'precio', 'stock', 'proveedor')
+        columns = ('id', 'codigo', 'nombre', 'categoria', 'precio', 'precio_compra', 'stock', 'proveedor')
 
         style = ttk.Style()
         style.configure('Productos.Treeview', font=('Arial', 11), rowheight=24)
@@ -96,6 +96,7 @@ class ProductosView:
         self.tree.heading('nombre', text='Nombre')
         self.tree.heading('categoria', text='Categoría')
         self.tree.heading('precio', text='Precio')
+        self.tree.heading('precio_compra', text='Precio compra')
         self.tree.heading('stock', text='Stock')
         self.tree.heading('proveedor', text='Proveedor')
         
@@ -104,6 +105,7 @@ class ProductosView:
         self.tree.column('nombre', width=250)
         self.tree.column('categoria', width=150)
         self.tree.column('precio', width=100)
+        self.tree.column('precio_compra', width=120)
         self.tree.column('stock', width=80)
         self.tree.column('proveedor', width=200)
         
@@ -135,7 +137,7 @@ class ProductosView:
         for prod in productos:
             self.tree.insert('', tk.END, values=(
                 prod[0], prod[1], prod[2], prod[4] or '-', 
-                formatear_moneda(prod[5]), prod[6], prod[7] or '-'
+                formatear_moneda(prod[5]), formatear_moneda(prod[8] or 0), prod[6], prod[7] or '-'
             ))
 
     def on_busqueda_change(self, *args):
@@ -189,7 +191,7 @@ class ProductoDialog:
         
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Nuevo Producto" if producto_id is None else "Editar Producto")
-        self.dialog.geometry("500x450")
+        self.dialog.geometry("500x500")
         self.dialog.resizable(False, False)
         self.dialog.transient(parent)
         self.dialog.grab_set()
@@ -197,8 +199,8 @@ class ProductoDialog:
         # Centrar diálogo
         self.dialog.update_idletasks()
         x = parent.winfo_x() + (parent.winfo_width() // 2) - 250
-        y = parent.winfo_y() + (parent.winfo_height() // 2) - 225
-        self.dialog.geometry(f"500x450+{x}+{y}")
+        y = parent.winfo_y() + (parent.winfo_height() // 2) - 250
+        self.dialog.geometry(f"500x500+{x}+{y}")
         
         self.create_widgets()
         
@@ -246,16 +248,22 @@ class ProductoDialog:
         self.precio_entry = tk.Entry(main_frame, width=30)
         self.precio_entry.grid(row=4, column=1, pady=5, padx=5)
         self.precio_entry.bind('<FocusOut>', self.normalizar_precio_entry)
+
+        # Precio de compra
+        tk.Label(main_frame, text="Precio compra:", bg='white', fg='black').grid(row=5, column=0, sticky=tk.W, pady=5)
+        self.precio_compra_entry = tk.Entry(main_frame, width=30)
+        self.precio_compra_entry.grid(row=5, column=1, pady=5, padx=5)
+        self.precio_compra_entry.bind('<FocusOut>', self.normalizar_precio_compra_entry)
         
         # Stock
-        tk.Label(main_frame, text="Stock:", bg='white', fg='black').grid(row=5, column=0, sticky=tk.W, pady=5)
+        tk.Label(main_frame, text="Stock:", bg='white', fg='black').grid(row=6, column=0, sticky=tk.W, pady=5)
         self.stock_entry = tk.Entry(main_frame, width=30)
-        self.stock_entry.grid(row=5, column=1, pady=5, padx=5)
+        self.stock_entry.grid(row=6, column=1, pady=5, padx=5)
         
         # Proveedor
-        tk.Label(main_frame, text="Proveedor:", bg='white', fg='black').grid(row=6, column=0, sticky=tk.W, pady=5)
+        tk.Label(main_frame, text="Proveedor:", bg='white', fg='black').grid(row=7, column=0, sticky=tk.W, pady=5)
         self.proveedor_combo = ttk.Combobox(main_frame, width=28, state='readonly')
-        self.proveedor_combo.grid(row=6, column=1, pady=5, padx=5)
+        self.proveedor_combo.grid(row=7, column=1, pady=5, padx=5)
         
         # Cargar proveedores
         proveedores = self.proveedor_model.listar_proveedores()
@@ -263,7 +271,7 @@ class ProductoDialog:
         
         # Botones
         buttons_frame = tk.Frame(main_frame, bg='white')
-        buttons_frame.grid(row=7, column=0, columnspan=2, pady=20)
+        buttons_frame.grid(row=8, column=0, columnspan=2, pady=20)
         
         tk.Button(buttons_frame, text="Guardar", font=('Arial', 10), bg='#10B981', fg='white', relief=tk.RAISED,
                   command=self.guardar).pack(side=tk.LEFT, padx=5)
@@ -278,6 +286,7 @@ class ProductoDialog:
             self.nombre_entry.insert(0, producto[2])
             self.descripcion_entry.insert(0, producto[3] or '')
             self.precio_entry.insert(0, formatear_moneda(producto[5]).replace('$', ''))
+            self.precio_compra_entry.insert(0, formatear_moneda(producto[8] or 0).replace('$', ''))
             self.stock_entry.insert(0, str(producto[6]))
             
             # Seleccionar categoría
@@ -300,6 +309,7 @@ class ProductoDialog:
         nombre = self.nombre_entry.get().strip()
         descripcion = self.descripcion_entry.get().strip()
         precio = self.precio_entry.get().strip()
+        precio_compra = self.precio_compra_entry.get().strip()
         stock = self.stock_entry.get().strip()
         
         if not codigo or not nombre or not precio or not stock:
@@ -308,9 +318,10 @@ class ProductoDialog:
         
         try:
             precio = parsear_monto(precio)
+            precio_compra = parsear_monto(precio_compra) if precio_compra else 0
             stock = int(stock)
         except ValueError:
-            messagebox.showerror("Error", "Precio o stock inválido")
+            messagebox.showerror("Error", "Precio, precio de compra o stock inválido")
             return
         
         # Obtener IDs de categoría y proveedor
@@ -325,12 +336,12 @@ class ProductoDialog:
         if self.producto_id:
             exito, mensaje = self.producto_model.actualizar_producto(
                 self.producto_id, codigo, nombre, descripcion, 
-                categoria_id, precio, stock, proveedor_id
+                categoria_id, precio, stock, proveedor_id, precio_compra
             )
         else:
             exito, mensaje = self.producto_model.crear_producto(
                 codigo, nombre, descripcion, categoria_id, 
-                precio, stock, proveedor_id
+                precio, stock, proveedor_id, precio_compra
             )
         
         if exito:
@@ -352,6 +363,19 @@ class ProductoDialog:
 
         self.precio_entry.delete(0, tk.END)
         self.precio_entry.insert(0, formatear_moneda(monto).replace('$', ''))
+
+    def normalizar_precio_compra_entry(self, _event=None):
+        texto = self.precio_compra_entry.get().strip()
+        if not texto:
+            return
+
+        try:
+            monto = parsear_monto(texto)
+        except ValueError:
+            return
+
+        self.precio_compra_entry.delete(0, tk.END)
+        self.precio_compra_entry.insert(0, formatear_moneda(monto).replace('$', ''))
     
     def actualizar_categorias_combo(self):
         """Actualizar el combo de categorías"""

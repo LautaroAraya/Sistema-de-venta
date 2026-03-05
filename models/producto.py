@@ -5,22 +5,22 @@ class Producto:
     def __init__(self, db_manager):
         self.db = db_manager
     
-    def crear_producto(self, codigo, nombre, descripcion, categoria_id, precio, stock, proveedor_id):
+    def crear_producto(self, codigo, nombre, descripcion, categoria_id, precio, stock, proveedor_id, precio_compra=0):
         """Crear nuevo producto"""
         conn = self.db.get_connection()
         cursor = conn.cursor()
         
         try:
             cursor.execute('''
-                INSERT INTO productos (codigo, nombre, descripcion, categoria_id, precio, stock, proveedor_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (codigo, nombre, descripcion, categoria_id, precio, stock, proveedor_id))
+                INSERT INTO productos (codigo, nombre, descripcion, categoria_id, precio, precio_compra, stock, proveedor_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (codigo, nombre, descripcion, categoria_id, precio, precio_compra, stock, proveedor_id))
             conn.commit()
             return True, "Producto creado exitosamente"
         except Exception as e:
             return False, f"Error al crear producto: {str(e)}"
     
-    def actualizar_producto(self, producto_id, codigo, nombre, descripcion, categoria_id, precio, stock, proveedor_id):
+    def actualizar_producto(self, producto_id, codigo, nombre, descripcion, categoria_id, precio, stock, proveedor_id, precio_compra=0):
         """Actualizar producto existente"""
         conn = self.db.get_connection()
         cursor = conn.cursor()
@@ -29,9 +29,9 @@ class Producto:
             cursor.execute('''
                 UPDATE productos
                 SET codigo = ?, nombre = ?, descripcion = ?, categoria_id = ?, 
-                    precio = ?, stock = ?, proveedor_id = ?
+                    precio = ?, precio_compra = ?, stock = ?, proveedor_id = ?
                 WHERE id = ?
-            ''', (codigo, nombre, descripcion, categoria_id, precio, stock, proveedor_id, producto_id))
+            ''', (codigo, nombre, descripcion, categoria_id, precio, precio_compra, stock, proveedor_id, producto_id))
             conn.commit()
             return True, "Producto actualizado exitosamente"
         except Exception as e:
@@ -44,7 +44,7 @@ class Producto:
         
         query = '''
             SELECT p.id, p.codigo, p.nombre, p.descripcion, c.nombre as categoria, 
-                   p.precio, p.stock, pr.nombre as proveedor
+                   p.precio, p.stock, pr.nombre as proveedor, p.precio_compra
             FROM productos p
             LEFT JOIN categorias c ON p.categoria_id = c.id
             LEFT JOIN proveedores pr ON p.proveedor_id = pr.id
@@ -65,7 +65,7 @@ class Producto:
         
         cursor.execute('''
             SELECT p.id, p.codigo, p.nombre, p.descripcion, c.nombre as categoria, 
-                   p.precio, p.stock, pr.nombre as proveedor
+                 p.precio, p.stock, pr.nombre as proveedor, p.precio_compra
             FROM productos p
             LEFT JOIN categorias c ON p.categoria_id = c.id
             LEFT JOIN proveedores pr ON p.proveedor_id = pr.id
@@ -81,7 +81,7 @@ class Producto:
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT id, codigo, nombre, descripcion, categoria_id, precio, stock, proveedor_id
+            SELECT id, codigo, nombre, descripcion, categoria_id, precio, stock, proveedor_id, precio_compra
             FROM productos
             WHERE id = ? AND activo = 1
         ''', (producto_id,))

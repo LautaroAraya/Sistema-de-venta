@@ -100,6 +100,7 @@ class DatabaseManager:
                 descripcion TEXT,
                 categoria_id INTEGER,
                 precio REAL NOT NULL,
+                precio_compra REAL DEFAULT 0,
                 stock INTEGER DEFAULT 0,
                 proveedor_id INTEGER,
                 activo INTEGER DEFAULT 1,
@@ -262,6 +263,13 @@ class DatabaseManager:
                 conn.commit()
             if 'recargo_tarjeta' not in columnas:
                 cursor.execute("ALTER TABLE ventas_celulares ADD COLUMN recargo_tarjeta REAL DEFAULT 0")
+                conn.commit()
+
+            # Agregar columna precio_compra en productos si no existe
+            cursor.execute("PRAGMA table_info(productos)")
+            columnas_productos = [info[1] for info in cursor.fetchall()]
+            if 'precio_compra' not in columnas_productos:
+                cursor.execute("ALTER TABLE productos ADD COLUMN precio_compra REAL DEFAULT 0")
                 conn.commit()
 
             # Verificar si la tabla reparaciones existe y hacer migración si es necesario
