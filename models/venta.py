@@ -124,7 +124,8 @@ class Venta:
         
         query = '''
             SELECT v.id, v.numero_factura, v.cliente_nombre, v.total, v.fecha_venta,
-                   u.nombre_completo as vendedor
+                   u.nombre_completo as vendedor,
+                   COALESCE(v.metodo_pago, 'Efectivo') as metodo_pago
             FROM ventas v
             JOIN usuarios u ON v.usuario_id = u.id
             WHERE 1=1

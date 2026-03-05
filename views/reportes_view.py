@@ -124,13 +124,14 @@ class ReportesView:
         self.promedio_label.grid(row=1, column=5, sticky=tk.W, padx=5)
         
         # Tabla de ventas
-        columns = ('id', 'factura', 'cliente', 'total', 'fecha', 'vendedor')
+        columns = ('id', 'factura', 'cliente', 'total', 'metodo_pago', 'fecha', 'vendedor')
         self.tree_ventas = ttk.Treeview(parent, columns=columns, show='headings', height=15)
         
         self.tree_ventas.heading('id', text='ID')
         self.tree_ventas.heading('factura', text='N° Factura')
         self.tree_ventas.heading('cliente', text='Cliente')
         self.tree_ventas.heading('total', text='Total')
+        self.tree_ventas.heading('metodo_pago', text='Método Pago')
         self.tree_ventas.heading('fecha', text='Fecha')
         self.tree_ventas.heading('vendedor', text='Vendedor')
         
@@ -138,6 +139,7 @@ class ReportesView:
         self.tree_ventas.column('factura', width=150)
         self.tree_ventas.column('cliente', width=200)
         self.tree_ventas.column('total', width=120, anchor=tk.E)
+        self.tree_ventas.column('metodo_pago', width=120)
         self.tree_ventas.column('fecha', width=150)
         self.tree_ventas.column('vendedor', width=180)
         
@@ -322,7 +324,7 @@ class ReportesView:
         for venta in ventas:
             self.tree_ventas.insert('', tk.END, values=(
                 venta[0], venta[1], venta[2] or '-', 
-                formatear_moneda(venta[3]), venta[4], venta[5]
+                formatear_moneda(venta[3]), venta[6] or 'Efectivo', venta[4], venta[5]
             ))
         
         # Actualizar estadísticas

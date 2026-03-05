@@ -568,9 +568,9 @@ class VentasView:
         self.descuento_entry.insert(0, "0")
         self.search_entry.focus()
     
-    def limpiar_venta(self):
+    def limpiar_venta(self, omitir_confirmacion=False):
         """Limpiar toda la venta"""
-        if self.items_venta and not messagebox.askyesno("Confirmar", "¿Desea cancelar la venta actual?"):
+        if self.items_venta and not omitir_confirmacion and not messagebox.askyesno("Confirmar", "¿Desea cancelar la venta actual?"):
             return
         
         self.items_venta = []
@@ -579,6 +579,14 @@ class VentasView:
         
         self.cliente_nombre_entry.delete(0, tk.END)
         self.cliente_documento_entry.delete(0, tk.END)
+        if hasattr(self, 'metodo_pago_var'):
+            self.metodo_pago_var.set("Efectivo")
+        if hasattr(self, 'recargo_entry'):
+            self.recargo_entry.delete(0, tk.END)
+            self.recargo_entry.insert(0, "0")
+            self.recargo_entry.grid_forget()
+        if hasattr(self, 'recargo_label'):
+            self.recargo_label.grid_forget()
         self.actualizar_totales()
         self.limpiar_seleccion()
     
@@ -621,7 +629,7 @@ class VentasView:
                 self.generar_factura_pdf(venta_id)
             
             # Limpiar venta
-            self.limpiar_venta()
+            self.limpiar_venta(omitir_confirmacion=True)
         else:
             messagebox.showerror("Error", mensaje)
     
