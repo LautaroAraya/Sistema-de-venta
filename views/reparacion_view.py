@@ -8,12 +8,19 @@ import os
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as RLImage, PageBreak
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as RLImage, Frame
 from reportlab.lib.units import inch
 from reportlab.graphics.shapes import Drawing, Circle, Line
 from reportlab.graphics import renderPDF
 import io
 from utils.moneda import formatear_moneda, parsear_monto
+# import threading  # Sincronización desactivada temporalmente
+# from sync_service import run_sync_once, get_sync_status  # Desactivado temporalmente
+
+# try:
+#     from utils.reparaciones_sync import ReparacionesSync
+# except ImportError:
+#     ReparacionesSync = None
 
 
 class ReparacionView:
@@ -110,10 +117,13 @@ class ReparacionView:
         self.user_data = user_data
         self.reparacion_model = Reparacion(db_manager)
         self.config_model = Configuracion(db_manager)
+        # self.reparaciones_sync = ReparacionesSync() if ReparacionesSync else None
+        self.reparaciones_sync = None
         # Variables para el formulario
         self.cliente_nombre_var = tk.StringVar()
         self.cliente_telefono_var = tk.StringVar()
         self.cliente_email_var = tk.StringVar()
+        self.cliente_dni_var = tk.StringVar()
         self.dispositivo_var = tk.StringVar()
         self.modelo_var = tk.StringVar()
         self.numero_serie_var = tk.StringVar()
@@ -123,6 +133,7 @@ class ReparacionView:
         self.estado_var = tk.StringVar(value='En Proceso')
         self.observaciones_var = tk.StringVar()
         self.buscar_cliente_var = tk.StringVar()
+        self.buscar_reparacion_var = tk.StringVar()
         # Variables de estado inicial
         self.sin_bateria_var = tk.BooleanVar()
         self.rajado_var = tk.BooleanVar()
@@ -142,8 +153,27 @@ class ReparacionView:
         # Variables de control
         self.reparacion_actual = None
         self.modo_edicion = False
+        # self.sync_manual_en_curso = False  # Sync manual desactivado temporalmente
         self.create_widgets()
         self.cargar_reparaciones()
+
+    def _sincronizar_reparacion_publica(self, reparacion_id):
+        """Sincroniza una reparación con Firestore sin bloquear el flujo local."""
+        # Sincronización desactivada temporalmente.
+        return
+
+    def _eliminar_reparacion_publica(self, numero_orden):
+        """Elimina la reparación pública en Firestore por número de orden."""
+        # Sincronización desactivada temporalmente.
+        return
+
+    def sincronizar_ahora(self):
+        """Dispara sincronización manual a API central sin bloquear la UI."""
+        messagebox.showinfo("Sincronización", "Sincronización desactivada temporalmente")
+
+    def _finalizar_sync_manual(self, resultado, estado):
+        # Método mantenido para futura reactivación.
+        return
 
     def create_widgets(self):
         """Crear widgets de la interfaz"""
@@ -171,6 +201,32 @@ class ReparacionView:
         # Solo la lista de comprobantes y el botón para abrir el formulario
         list_frame = tk.Frame(parent, bg='white', bd=1, relief=tk.RIDGE, padx=10, pady=10)
         list_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=5)
+
+        search_frame = tk.Frame(list_frame, bg='white')
+        search_frame.pack(fill=tk.X, pady=(0, 8))
+
+        tk.Label(search_frame,
+             text="Buscar:",
+             font=('Arial', 10, 'bold'),
+             bg='white',
+             fg='#374151').pack(side=tk.LEFT, padx=(0, 6))
+
+        search_entry = ttk.Entry(search_frame, textvariable=self.buscar_reparacion_var)
+        search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        search_entry.bind('<KeyRelease>', self.on_busqueda_reparaciones)
+
+        btn_limpiar_busqueda = tk.Button(search_frame,
+            text="Limpiar",
+            font=('Arial', 9, 'bold'),
+            bg='#E5E7EB',
+            fg='#111827',
+            activebackground='#D1D5DB',
+            bd=0,
+            padx=10,
+            pady=4,
+            cursor='hand2',
+            command=self.limpiar_busqueda_reparaciones)
+        btn_limpiar_busqueda.pack(side=tk.LEFT, padx=(8, 0))
 
         columns = ('numero', 'cliente', 'dispositivo', 'estado', 'sena', 'total', 'fecha')
         self.tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=20)
@@ -215,6 +271,19 @@ class ReparacionView:
             cursor='hand2',
             command=self.abrir_formulario_completo)
         btn_formulario.pack(side=tk.LEFT, padx=5, ipadx=10)
+
+        # Botón de sincronización manual desactivado temporalmente.
+        # self.btn_sync_ahora = tk.Button(actions_frame,
+        #     text="🔄 Sincronizar ahora",
+        #     font=('Arial', 11, 'bold'),
+        #     bg='#0EA5E9',
+        #     fg='white',
+        #     activebackground='#0284C7',
+        #     bd=0,
+        #     pady=10,
+        #     cursor='hand2',
+        #     command=self.sincronizar_ahora)
+        # self.btn_sync_ahora.pack(side=tk.LEFT, padx=5, ipadx=10)
 
 
         self.tree.bind('<<TreeviewSelect>>', self.on_reparacion_select)
@@ -273,7 +342,10 @@ class ReparacionView:
         ttk.Entry(form_frame, textvariable=self.modelo_var, font=("Arial", 10), width=20).grid(row=2, column=3, sticky=tk.EW, pady=5, padx=5)
 
         tk.Label(form_frame, text="DNI:", font=("Arial", 10, "bold"), bg='white').grid(row=3, column=0, sticky=tk.W, pady=5, padx=5)
-        ttk.Entry(form_frame, textvariable=self.numero_serie_var, font=("Arial", 10), width=30).grid(row=3, column=1, sticky=tk.EW, pady=5, padx=5)
+        ttk.Entry(form_frame, textvariable=self.cliente_dni_var, font=("Arial", 10), width=30).grid(row=3, column=1, sticky=tk.EW, pady=5, padx=5)
+
+        tk.Label(form_frame, text="N° Serie:", font=("Arial", 10, "bold"), bg='white').grid(row=3, column=2, sticky=tk.W, pady=5, padx=5)
+        ttk.Entry(form_frame, textvariable=self.numero_serie_var, font=("Arial", 10), width=20).grid(row=3, column=3, sticky=tk.EW, pady=5, padx=5)
 
         # Problema
         tk.Label(form_frame, text="Problema:", font=("Arial", 10, "bold"), bg='white').grid(row=4, column=0, sticky=tk.NW, pady=5, padx=5)
@@ -509,14 +581,11 @@ class ReparacionView:
         self.patron_label.config(text='')
         self.actualizar_patron_visual()
     
-    def cargar_reparaciones(self):
-        """Cargar lista de reparaciones en la tabla"""
+    def _cargar_reparaciones_en_tabla(self, reparaciones):
+        """Renderizar reparaciones en la tabla."""
         # Limpiar tabla
         for item in self.tree.get_children():
             self.tree.delete(item)
-        
-        # Obtener reparaciones
-        reparaciones = self.reparacion_model.obtener_reparaciones()
         
         # Agregar filas
         for rep in reparaciones:
@@ -527,30 +596,50 @@ class ReparacionView:
                            values=(rep['numero_orden'], rep['cliente_nombre'], 
                                   rep['dispositivo'], rep['estado'],
                                   sena, total, fecha))
+        self.actualizar_estado_finalizar_pago()
+
+    def cargar_reparaciones(self):
+        """Cargar lista de reparaciones en la tabla"""
+        reparaciones = self.reparacion_model.obtener_reparaciones()
+        termino = (self.buscar_reparacion_var.get() or '').strip().lower()
+
+        if termino:
+            reparaciones_filtradas = []
+            for rep in reparaciones:
+                texto_busqueda = ' '.join([
+                    str(rep.get('numero_orden') or ''),
+                    str(rep.get('cliente_nombre') or ''),
+                    str(rep.get('cliente_telefono') or ''),
+                    str(rep.get('cliente_dni') or ''),
+                    str(rep.get('dispositivo') or ''),
+                    str(rep.get('modelo') or ''),
+                    str(rep.get('estado') or '')
+                ]).lower()
+                if termino in texto_busqueda:
+                    reparaciones_filtradas.append(rep)
+            reparaciones = reparaciones_filtradas
+
+        self._cargar_reparaciones_en_tabla(reparaciones)
+
+    def on_busqueda_reparaciones(self, _event=None):
+        """Actualizar tabla al escribir en el buscador."""
+        self.cargar_reparaciones()
+
+    def limpiar_busqueda_reparaciones(self):
+        """Limpiar buscador y mostrar todas las reparaciones."""
+        self.buscar_reparacion_var.set('')
+        self.cargar_reparaciones()
 
     # Eliminada la función on_tree_action_click porque ya no hay columna de acción
     
     def filtrar_reparaciones(self, estado):
         """Filtrar reparaciones por estado"""
-        # Limpiar tabla
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-        
         if estado == 'Todas':
             reparaciones = self.reparacion_model.obtener_reparaciones()
         else:
             reparaciones = self.reparacion_model.obtener_reparaciones(estado)
-        
-        # Agregar filas
-        for rep in reparaciones:
-            fecha = rep['fecha_creacion'].split(' ')[0] if rep['fecha_creacion'] else 'N/A'
-            sena = formatear_moneda(rep['sena'])
-            total = formatear_moneda(rep['total'])
-            
-            self.tree.insert('', 'end', 
-                           values=(rep['numero_orden'], rep['cliente_nombre'], 
-                                  rep['dispositivo'], rep['estado'],
-                                  sena, total, fecha, 'Ver'))
+
+        self._cargar_reparaciones_en_tabla(reparaciones)
     
     def ver_detalles(self):
         """Ver detalles de una reparación"""
@@ -674,6 +763,7 @@ class ReparacionView:
                 estado='retirado'
             )
             if success:
+                # self._sincronizar_reparacion_publica(reparacion['id'])  # Desactivado temporalmente
                 messagebox.showinfo("Éxito", "Pago final registrado correctamente")
                 top.destroy()
                 self.cargar_reparaciones()
@@ -755,6 +845,7 @@ class ReparacionView:
             ("Email:", reparacion['cliente_email'] or 'N/A'),
             ("Dispositivo:", reparacion['dispositivo']),
             ("Modelo:", reparacion['modelo'] or 'N/A'),
+            ("DNI:", reparacion.get('cliente_dni') or 'N/A'),
             ("Nº Serie:", reparacion['numero_serie'] or 'N/A'),
             ("Estado:", reparacion['estado'].replace('_', ' ').title()),
             ("Seña:", formatear_moneda(reparacion['sena'])),
@@ -814,6 +905,7 @@ class ReparacionView:
         self.cliente_nombre_var.set(reparacion['cliente_nombre'])
         self.cliente_telefono_var.set(reparacion['cliente_telefono'] or '')
         self.cliente_email_var.set(reparacion['cliente_email'] or '')
+        self.cliente_dni_var.set(reparacion.get('cliente_dni') or '')
         self.dispositivo_var.set(reparacion['dispositivo'])
         self.modelo_var.set(reparacion['modelo'] or '')
         self.numero_serie_var.set(reparacion['numero_serie'] or '')
@@ -885,6 +977,7 @@ class ReparacionView:
                 cliente_nombre=self.cliente_nombre_var.get(),
                 cliente_telefono=self.cliente_telefono_var.get(),
                 cliente_email=self.cliente_email_var.get(),
+                cliente_dni=self.cliente_dni_var.get().strip() or None,
                 dispositivo=self.dispositivo_var.get(),
                 modelo=self.modelo_var.get(),
                 numero_serie=self.numero_serie_var.get() or None,
@@ -914,6 +1007,7 @@ class ReparacionView:
                     self.fotos_temporales = []
                     self.actualizar_contador_fotos_temporales()
                 messagebox.showinfo("Éxito", "Reparación actualizada correctamente")
+                # self._sincronizar_reparacion_publica(self.reparacion_actual['id'])  # Desactivado temporalmente
                 self.limpiar_formulario()
                 self.reparacion_actual = None  # Limpiar referencia después de editar
                 self.cargar_reparaciones()
@@ -926,6 +1020,7 @@ class ReparacionView:
                 cliente_nombre=self.cliente_nombre_var.get(),
                 cliente_telefono=self.cliente_telefono_var.get(),
                 cliente_email=self.cliente_email_var.get(),
+                cliente_dni=self.cliente_dni_var.get().strip() or None,
                 dispositivo=self.dispositivo_var.get(),
                 modelo=self.modelo_var.get(),
                 numero_serie=self.numero_serie_var.get() or None,
@@ -958,6 +1053,8 @@ class ReparacionView:
                         shutil.move(foto_temp, os.path.join(carpeta_destino, nombre_final))
                     self.fotos_temporales = []
                     self.actualizar_contador_fotos_temporales()
+                # if nueva_rep:
+                #     self._sincronizar_reparacion_publica(nueva_rep['id'])  # Desactivado temporalmente
                 messagebox.showinfo("Éxito", f"Reparación registrada con número: {numero_orden}")
                 self.limpiar_formulario()
                 self.cargar_reparaciones()
@@ -969,6 +1066,7 @@ class ReparacionView:
         self.cliente_nombre_var.set('')
         self.cliente_telefono_var.set('')
         self.cliente_email_var.set('')
+        self.cliente_dni_var.set('')
         self.dispositivo_var.set('')
         self.modelo_var.set('')
         self.numero_serie_var.set('')
@@ -1014,6 +1112,7 @@ class ReparacionView:
                 if rep['numero_orden'] == numero_orden:
                     success, msg = self.reparacion_model.eliminar_reparacion(rep['id'])
                     if success:
+                        # self._eliminar_reparacion_publica(rep['numero_orden'])  # Desactivado temporalmente
                         messagebox.showinfo("Éxito", msg)
                         self.reparacion_actual = None  # Limpiar referencia después de eliminar
                         self.cargar_reparaciones()
@@ -1051,26 +1150,26 @@ class ReparacionView:
     
     def crear_patron_grid(self, patron_str):
         """Crear cuadrícula visual 3x3 para el patrón de desbloqueo"""
-        # Crear dibujo más pequeño: 100x100 puntos
-        d = Drawing(100, 100)
+        # Crear dibujo compacto para que el bloque de patrón ocupe menos espacio
+        d = Drawing(76, 76)
         
         # Posiciones de los círculos en la cuadrícula 3x3
         positions = []
-        spacing = 33
-        offset = 17
+        spacing = 25
+        offset = 13
         
         for row in range(3):
             for col in range(3):
                 x = offset + col * spacing
-                y = 83 - row * spacing  # Invertir Y para que 1 esté arriba a la izquierda
+                y = 63 - row * spacing  # Invertir Y para que 1 esté arriba a la izquierda
                 positions.append((x, y))
         
         # Dibujar todos los círculos
         for i, (x, y) in enumerate(positions):
-            circle = Circle(x, y, 6)
+            circle = Circle(x, y, 4.5)
             circle.fillColor = colors.white
             circle.strokeColor = colors.black
-            circle.strokeWidth = 1.5
+            circle.strokeWidth = 1.2
             d.add(circle)
         
         # Si hay un patrón, resaltar los círculos y dibujar líneas
@@ -1084,10 +1183,10 @@ class ReparacionView:
                     if 1 <= num <= 9:
                         idx = num - 1
                         x, y = positions[idx]
-                        circle = Circle(x, y, 6)
+                        circle = Circle(x, y, 4.5)
                         circle.fillColor = colors.HexColor('#3B82F6')
                         circle.strokeColor = colors.black
-                        circle.strokeWidth = 2
+                        circle.strokeWidth = 1.4
                         d.add(circle)
                 
                 # Dibujar líneas conectando los puntos
@@ -1099,7 +1198,7 @@ class ReparacionView:
                         x2, y2 = positions[idx2]
                         line = Line(x1, y1, x2, y2)
                         line.strokeColor = colors.HexColor('#3B82F6')
-                        line.strokeWidth = 2
+                        line.strokeWidth = 1.6
                         d.add(line)
             except:
                 pass  # Si hay error parseando, solo mostrar la cuadrícula vacía
@@ -1108,58 +1207,76 @@ class ReparacionView:
     
     def _construir_boleta_story(self, reparacion, config, tipo_copia):
         styles = getSampleStyleSheet()
-        small_style = ParagraphStyle('small', parent=styles['Normal'], fontSize=7, alignment=1)
+        small_style = ParagraphStyle('small', parent=styles['Normal'], fontSize=6, alignment=1, leading=6.6)
+        falla_style = ParagraphStyle(
+            'falla_wrap',
+            parent=styles['Normal'],
+            fontSize=8,
+            leading=9,
+            wordWrap='CJK'
+        )
+        cond_style = ParagraphStyle(
+            'condiciones_compact',
+            parent=styles['Normal'],
+            fontSize=6.4,
+            leading=7,
+            alignment=0,
+            wordWrap='CJK'
+        )
         story = []
 
         header_data = []
         logo_cell = ''
         if config.get('logo_path') and os.path.exists(config['logo_path']):
             try:
-                logo_cell = RLImage(config['logo_path'], width=1.3*inch, height=1.3*inch)
+                logo_cell = RLImage(config['logo_path'], width=0.95*inch, height=0.95*inch)
             except Exception:
                 logo_cell = ''
 
-        empresa_info = f"""<b style="font-size: 16">{config.get('nombre_sistema', 'EMPRESA')}</b><br/>
-<font size="8">☎ {config.get('telefono', 'N/A')}<br/>
+        empresa_info = f"""<b style="font-size: 12">{config.get('nombre_sistema', 'EMPRESA')}</b><br/>
+    <font size="6.5">☎ {config.get('telefono', 'N/A')}<br/>
 {config.get('direccion', 'N/A')}<br/>
 CUIT: {config.get('cuit', 'N/A')}</font>"""
 
-        numero_info = f"""<b style="font-size: 18">PRESUPUESTO</b><br/>
-<font size="9">N° {reparacion['numero_orden']}</font><br/>
-<font size="9"><b>{tipo_copia}</b></font>"""
+        numero_info = f"""<b style="font-size: 12">PRESUPUESTO</b><br/>
+    <font size="7">N° {reparacion['numero_orden']}</font><br/>
+    <font size="7"><b>{tipo_copia}</b></font>"""
 
         fecha_data = [['Día', 'Mes', 'Año'], ['', '', '']]
         fecha_table = Table(fecha_data, colWidths=[0.6*inch, 0.6*inch, 0.6*inch])
         fecha_table.setStyle(TableStyle([
-            ('FONTSIZE', (0, 0), (-1, -1), 7),
+            ('FONTSIZE', (0, 0), (-1, -1), 6),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('BOX', (0, 0), (-1, -1), 1, colors.black),
             ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.grey),
-            ('TOPPADDING', (0, 0), (-1, -1), 2),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ('TOPPADDING', (0, 0), (-1, -1), 0.5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 0.5),
         ]))
 
-        right_cell = Table([[Paragraph(numero_info, small_style)], [fecha_table]], colWidths=[2*inch])
+        right_cell = Table([[Paragraph(numero_info, small_style)], [fecha_table]], colWidths=[1.9*inch])
         right_cell.setStyle(TableStyle([
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('TOPPADDING', (0, 0), (-1, -1), 2),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ('TOPPADDING', (0, 0), (-1, -1), 1),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
         ]))
 
         header_data.append([logo_cell, Paragraph(empresa_info, small_style), right_cell])
-        header_table = Table(header_data, colWidths=[1.6*inch, 3.2*inch, 2.4*inch])
+        # Ancho total 6.5in para alinear con las tablas de abajo
+        header_table = Table(header_data, colWidths=[1.1*inch, 3.4*inch, 2.0*inch])
         header_table.setStyle(TableStyle([
             ('ALIGN', (0, 0), (0, 0), 'CENTER'),
             ('ALIGN', (1, 0), (1, 0), 'CENTER'),
             ('ALIGN', (2, 0), (2, 0), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('BOX', (0, 0), (-1, -1), 1.5, colors.black),
+            ('TOPPADDING', (0, 0), (-1, -1), 1),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
         ]))
         story.append(header_table)
-        story.append(Spacer(1, 0.1*inch))
+        story.append(Spacer(1, 0.05*inch))
 
-        cliente_data = [['Señor/es:', reparacion['cliente_nombre'], 'D.N.I.:', reparacion.get('numero_serie', ''), 'Tel:', reparacion['cliente_telefono'] or '']]
+        cliente_data = [['Señor/es:', reparacion['cliente_nombre'], 'D.N.I.:', reparacion.get('cliente_dni') or reparacion.get('numero_serie', ''), 'Tel:', reparacion['cliente_telefono'] or '']]
         cliente_table = Table(cliente_data, colWidths=[0.7*inch, 2.5*inch, 0.6*inch, 1.2*inch, 0.5*inch, 1*inch])
         cliente_table.setStyle(TableStyle([
             ('FONTSIZE', (0, 0), (-1, -1), 8),
@@ -1168,11 +1285,11 @@ CUIT: {config.get('cuit', 'N/A')}</font>"""
             ('FONTNAME', (4, 0), (4, 0), 'Helvetica-Bold'),
             ('BOX', (0, 0), (-1, -1), 1, colors.black),
             ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.grey),
-            ('TOPPADDING', (0, 0), (-1, -1), 2),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ('TOPPADDING', (0, 0), (-1, -1), 1),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
         ]))
         story.append(cliente_table)
-        story.append(Spacer(1, 0.05*inch))
+        story.append(Spacer(1, 0.02*inch))
 
         marca_data = [['Marca y Modelo:', reparacion['dispositivo'] + ' - ' + (reparacion['modelo'] or 'N/A')]]
         marca_table = Table(marca_data, colWidths=[1.5*inch, 5*inch])
@@ -1180,8 +1297,8 @@ CUIT: {config.get('cuit', 'N/A')}</font>"""
             ('FONTSIZE', (0, 0), (-1, -1), 9),
             ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
             ('BOX', (0, 0), (-1, -1), 1, colors.black),
-            ('TOPPADDING', (0, 0), (-1, -1), 3),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('TOPPADDING', (0, 0), (-1, -1), 1),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
         ]))
         story.append(marca_table)
         story.append(Spacer(1, 0.03*inch))
@@ -1215,26 +1332,29 @@ CUIT: {config.get('cuit', 'N/A')}</font>"""
                 secuencia_texto = patron_str
 
             patron_data = [['Patrón:', patron_grid, '', f"Secuencia: {secuencia_texto}"]]
-            patron_table = Table(patron_data, colWidths=[1*inch, 1.2*inch, 0.4*inch, 3.9*inch])
+            patron_table = Table(patron_data, colWidths=[0.9*inch, 0.9*inch, 0.25*inch, 4.45*inch])
             patron_table.setStyle(TableStyle([
-                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('FONTSIZE', (0, 0), (-1, -1), 7),
                 ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
                 ('BOX', (0, 0), (-1, -1), 1, colors.black),
-                ('TOPPADDING', (0, 0), (-1, -1), 5),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                ('TOPPADDING', (0, 0), (-1, -1), 3),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ]))
             story.append(patron_table)
 
         story.append(Spacer(1, 0.03*inch))
-        falla_data = [['Falla detectada:', reparacion['problema'][:200] + ('...' if len(reparacion['problema']) > 200 else '')]]
+        problema_txt = (reparacion.get('problema') or '').strip()
+        problema_txt = problema_txt.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        problema_txt = problema_txt.replace('\n', '<br/>')
+        falla_data = [['Falla detectada:', Paragraph(problema_txt, falla_style)]]
         falla_table = Table(falla_data, colWidths=[1.5*inch, 5*inch])
         falla_table.setStyle(TableStyle([
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
             ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
             ('BOX', (0, 0), (-1, -1), 1, colors.black),
-            ('TOPPADDING', (0, 0), (-1, -1), 3),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('TOPPADDING', (0, 0), (-1, -1), 2),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ]))
         story.append(falla_table)
@@ -1258,25 +1378,27 @@ CUIT: {config.get('cuit', 'N/A')}</font>"""
 
         obs_text = reparacion['observaciones'] if reparacion['observaciones'] else ''
         obs_data = [['OBSERVACIONES:'], [obs_text if obs_text else '']]
-        obs_table = Table(obs_data, colWidths=[6.5*inch])
+        obs_table = Table(obs_data, colWidths=[6.5*inch], rowHeights=[None, 0.32*inch])
         obs_table.setStyle(TableStyle([
             ('FONTSIZE', (0, 0), (-1, -1), 8),
             ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
             ('BOX', (0, 0), (-1, -1), 1, colors.black),
-            ('TOPPADDING', (0, 0), (-1, -1), 3),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 25),
+            ('TOPPADDING', (0, 0), (-1, -1), 2),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ]))
         story.append(obs_table)
         story.append(Spacer(1, 0.1*inch))
 
-        condiciones = """<font size=8><b>CONDICIONES:</b></font> <b><font size=7>Estimado cliente, Queremos brindarle la mejor experiencia en nuestro servicio de reparación de celulares. Por favor, tenga en cuenta las siguientes condiciones antes de dejar su equipo:Retiro del equipo: Retiro del equipos dentro de los 30 días posteriores a su reparación tendrá un recargo del 50% sobre el precio pactado. Si transcurren 45 días desde la fecha de recepción, el equipo se considerará abandonado, conforme a los artículos 2525 y 2526 del Código Civil. En tal caso, la empresa podrá disponer del mismo en concepto de compensación de tiempo prestado y el costo de almacenamiento. Responsabilidad sobre la información y procedencia del equipo: No nos hacemos responsables por la pérdida parcial o total de la información contenida en el dispositivo. Asimismo, el cliente asume total responsabilidad por la procedencia del equipo entregado. Garantía sobre equipos mojados, celulares que han sufrido daños por humedad o contacto con líquidos no cuentan con ningún tipo de garantía una vez reparados. Garantía de reparación: La reparación del equipo está garantizada por tres días hábiles a partir de la fecha de entrega, siempre que el dispositivo no presente daños físicos posteriores, como golpes o rupturas, y que conserve el film protector en la pantalla. Agradecemos su confianza en nuestro servicio. Estamos aquí para ayudarle a mantener su dispositivo en óptimas condiciones.</font></b>"""
-        cond_table = Table([[Paragraph(condiciones, styles['Normal'])]], colWidths=[6.5*inch])
+        condiciones = """<font size=7.2><b>CONDICIONES:</b></font> <font size=6.4>Estimado cliente, Queremos brindarle la mejor experiencia en nuestro servicio de reparación de celulares. Por favor, tenga en cuenta las siguientes condiciones antes de dejar su equipo:Retiro del equipo: Retiro del equipos dentro de los 30 días posteriores a su reparación tendrá un recargo del 50% sobre el precio pactado. Si transcurren 45 días desde la fecha de recepción, el equipo se considerará abandonado, conforme a los artículos 2525 y 2526 del Código Civil. En tal caso, la empresa podrá disponer del mismo en concepto de compensación de tiempo prestado y el costo de almacenamiento. Responsabilidad sobre la información y procedencia del equipo: No nos hacemos responsables por la pérdida parcial o total de la información contenida en el dispositivo. Asimismo, el cliente asume total responsabilidad por la procedencia del equipo entregado. Garantía sobre equipos mojados, celulares que han sufrido daños por humedad o contacto con líquidos no cuentan con ningún tipo de garantía una vez reparados. Garantía de reparación: La reparación del equipo está garantizada por tres días hábiles a partir de la fecha de entrega, siempre que el dispositivo no presente daños físicos posteriores, como golpes o rupturas, y que conserve el film protector en la pantalla. Agradecemos su confianza en nuestro servicio. Estamos aquí para ayudarle a mantener su dispositivo en óptimas condiciones.</font>"""
+        cond_table = Table([[Paragraph(condiciones, cond_style)]], colWidths=[6.5*inch])
         cond_table.setStyle(TableStyle([
-            ('BOX', (0, 0), (-1, -1), 3, colors.black),
+            ('BOX', (0, 0), (-1, -1), 2.5, colors.black),
             ('BACKGROUND', (0, 0), (-1, -1), colors.lightgrey),
-            ('TOPPADDING', (0, 0), (-1, -1), 7),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('LEFTPADDING', (0, 0), (-1, -1), 4),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ]))
         story.append(cond_table)
@@ -1294,7 +1416,7 @@ CUIT: {config.get('cuit', 'N/A')}</font>"""
         return story
 
     def generar_boleta_pdf(self, reparacion, auto_print=False):
-        """Generar PDF de la boleta (2 copias: Cliente y Local); si auto_print es True, envía a impresión."""
+        """Generar PDF en una sola hoja: copia cliente vertical y copia local horizontal."""
         folder = filedialog.askdirectory(title="Seleccionar carpeta para guardar la boleta")
         if not folder:
             return
@@ -1306,12 +1428,67 @@ CUIT: {config.get('cuit', 'N/A')}</font>"""
             doc = SimpleDocTemplate(pdf_path, pagesize=A4, topMargin=0.2*inch, bottomMargin=0.2*inch,
                                    leftMargin=0.3*inch, rightMargin=0.3*inch)
 
-            story = []
-            story.extend(self._construir_boleta_story(reparacion, config, "COPIA CLIENTE"))
-            story.append(PageBreak())
-            story.extend(self._construir_boleta_story(reparacion, config, "COPIA LOCAL"))
+            def dibujar_copias(canvas, _doc):
+                left = doc.leftMargin
+                bottom = doc.bottomMargin
+                usable_w = A4[0] - doc.leftMargin - doc.rightMargin
+                usable_h = A4[1] - doc.topMargin - doc.bottomMargin
+                gap = 0.10 * inch
+                top_h = (usable_h - gap) / 2.0
+                bottom_h = usable_h - gap - top_h
 
-            doc.build(story)
+                def dibujar_copia_horizontal(tipo_copia, area_bottom, area_h):
+                    canvas.saveState()
+                    canvas.translate(left + usable_w, area_bottom)
+                    canvas.rotate(90)
+
+                    story = self._construir_boleta_story(reparacion, config, tipo_copia)
+                    base_w = 6.5 * inch
+                    story_h = 0
+                    for flowable in story:
+                        try:
+                            _, h = flowable.wrap(base_w, 1000 * inch)
+                            story_h += h
+                        except Exception:
+                            pass
+
+                    scale = min(
+                        1.0,
+                        area_h / base_w,
+                        usable_w / max(story_h, 1)
+                    )
+                    canvas.scale(scale, scale)
+
+                    available_h_scaled = usable_w / scale
+                    y_offset = max(0, (available_h_scaled - story_h) / 2.0)
+                    frame = Frame(
+                        0,
+                        y_offset,
+                        base_w,
+                        max(0, story_h + 0.05 * inch),
+                        showBoundary=0,
+                        leftPadding=0,
+                        rightPadding=0,
+                        topPadding=0,
+                        bottomPadding=0,
+                    )
+                    frame.addFromList(story, canvas)
+                    canvas.restoreState()
+
+                # Copia cliente horizontal en la mitad superior
+                dibujar_copia_horizontal("COPIA CLIENTE", bottom + bottom_h + gap, top_h)
+
+                # Línea separadora
+                canvas.saveState()
+                y_sep = bottom + bottom_h + (gap / 2.0)
+                canvas.setLineWidth(1)
+                canvas.line(left, y_sep, left + usable_w, y_sep)
+                canvas.restoreState()
+
+                # Copia local horizontal en la mitad inferior
+                dibujar_copia_horizontal("COPIA LOCAL", bottom, bottom_h)
+
+            doc.build([Spacer(1, 1)], onFirstPage=dibujar_copias)
 
             if auto_print:
                 try:
@@ -1319,7 +1496,7 @@ CUIT: {config.get('cuit', 'N/A')}</font>"""
                 except Exception as e:
                     messagebox.showwarning("Impresión", f"No se pudo enviar a la impresora automáticamente:\n{str(e)}")
 
-            messagebox.showinfo("Éxito", f"Presupuesto (2 copias) guardado en:\n{pdf_path}")
+            messagebox.showinfo("Éxito", f"Presupuesto (2 copias en 1 hoja) guardado en:\n{pdf_path}")
 
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo generar el presupuesto:\n{str(e)}")

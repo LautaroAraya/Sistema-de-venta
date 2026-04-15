@@ -19,8 +19,8 @@ class Reparacion:
         
         return f"REP-{fecha}-{count:04d}"
     
-    def agregar_reparacion(self, usuario_id, cliente_nombre, cliente_telefono, cliente_email, 
-                          dispositivo, modelo, numero_serie, problema, sena, total,
+    def agregar_reparacion(self, usuario_id, cliente_nombre, cliente_telefono, cliente_email,
+                          cliente_dni, dispositivo, modelo, numero_serie, problema, sena, total,
                           sin_bateria=False, rajado=False, mojado=False, contrasena='', patron='',
                           estado='pendiente', observaciones=''):
         """Agregar nueva reparación"""
@@ -34,11 +34,13 @@ class Reparacion:
             cursor.execute('''
                 INSERT INTO reparaciones (
                     numero_orden, usuario_id, cliente_nombre, cliente_telefono, cliente_email,
+                    cliente_dni,
                     dispositivo, modelo, numero_serie, problema, sin_bateria, rajado, mojado,
                     contrasena, patron, sena, total, estado, observaciones, fecha_creacion
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (numero_orden, usuario_id, cliente_nombre, cliente_telefono, cliente_email,
+                  cliente_dni,
                   dispositivo, modelo, numero_serie, problema, 1 if sin_bateria else 0, 
                   1 if rajado else 0, 1 if mojado else 0, contrasena, patron, sena, total, 
                   estado, observaciones, fecha_actual))
@@ -81,8 +83,8 @@ class Reparacion:
             return dict(result)
         return None
     
-    def actualizar_reparacion(self, reparacion_id, cliente_nombre=None, cliente_telefono=None, 
-                             cliente_email=None, dispositivo=None, modelo=None, numero_serie=None,
+    def actualizar_reparacion(self, reparacion_id, cliente_nombre=None, cliente_telefono=None,
+                             cliente_email=None, cliente_dni=None, dispositivo=None, modelo=None, numero_serie=None,
                              problema=None, sena=None, total=None, sin_bateria=None, rajado=None,
                              mojado=None, contrasena=None, patron=None, estado=None, 
                              observaciones=None, fecha_pago_final=None, medio_pago_final=None,
@@ -109,6 +111,9 @@ class Reparacion:
         if cliente_email is not None:
             updates.append("cliente_email = ?")
             values.append(cliente_email)
+        if cliente_dni is not None:
+            updates.append("cliente_dni = ?")
+            values.append(cliente_dni)
         if dispositivo is not None:
             updates.append("dispositivo = ?")
             values.append(dispositivo)
@@ -164,6 +169,8 @@ class Reparacion:
         if recargo_tarjeta is not None:
             updates.append("recargo_tarjeta = ?")
             values.append(recargo_tarjeta)
+
+        # Sincronización desactivada temporalmente: no tocar campos sync_*.
         
         if not updates:
             return False, "No hay campos para actualizar"
@@ -177,6 +184,20 @@ class Reparacion:
             return True, "Reparación actualizada correctamente"
         except Exception as e:
             return False, str(e)
+
+    def obtener_reparaciones_por_dni(self, cliente_dni):
+        """Obtener reparaciones por DNI del cliente"""
+        conn = self.db_manager.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT * FROM reparaciones
+            WHERE cliente_dni = ?
+            ORDER BY fecha_creacion DESC
+        ''', (cliente_dni,))
+
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
     
     def eliminar_reparacion(self, reparacion_id):
         """Eliminar reparación"""

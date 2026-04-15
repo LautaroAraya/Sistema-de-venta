@@ -17,3 +17,6 @@ FIREBASE_CONFIG = {
 
 # Nombre de la colección de licencias en Firestore
 LICENSES_COLLECTION = "licencias"
+
+# Colección pública para consulta de estado de reparaciones desde web
+REPARACIONES_PUBLICAS_COLLECTION = "reparaciones_publicas"

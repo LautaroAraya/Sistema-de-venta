@@ -479,8 +479,8 @@ def validar_licencia_inicio():
             # Licencia válida, mostrar información en consola
             print(f"✓ Licencia válida: {resultado['mensaje']}")
             
-            # Mostrar aviso si quedan 30 días o menos
-            if resultado['dias_restantes'] > 0 and resultado['dias_restantes'] <= 30:
+            # Mostrar aviso si quedan 15 días o menos
+            if resultado['dias_restantes'] > 0 and resultado['dias_restantes'] <= 15:
                 print(f"⚠️  Advertencia: La licencia vencerá en {resultado['dias_restantes']} días")
                 validador.mostrar_aviso_vencimiento(resultado)
             

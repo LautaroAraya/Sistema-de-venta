@@ -1,4 +1,6 @@
-Pillow==10.1.0
+Pillow>=11.2.1
 reportlab==4.0.7
-pyinstaller==6.3.0
+pyinstaller>=6.19.0
 requests==2.31.0
+firebase-admin==6.5.0
+Flask==3.0.3

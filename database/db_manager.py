@@ -164,6 +164,7 @@ class DatabaseManager:
                 cliente_nombre TEXT NOT NULL,
                 cliente_telefono TEXT,
                 cliente_email TEXT,
+                cliente_dni TEXT,
                 dispositivo TEXT NOT NULL,
                 modelo TEXT,
                 numero_serie TEXT,
@@ -183,6 +184,11 @@ class DatabaseManager:
                 monto_pago_final REAL DEFAULT 0,
                 recargo_tarjeta REAL DEFAULT 0,
                 observaciones TEXT,
+                sync_pending INTEGER NOT NULL DEFAULT 1,
+                sync_attempts INTEGER NOT NULL DEFAULT 0,
+                last_sync_error TEXT,
+                synced_at TEXT,
+                external_id TEXT,
                 FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
             )
         ''')
@@ -287,6 +293,7 @@ class DatabaseManager:
                         cliente_nombre TEXT NOT NULL,
                         cliente_telefono TEXT,
                         cliente_email TEXT,
+                        cliente_dni TEXT,
                         dispositivo TEXT NOT NULL,
                         modelo TEXT,
                         numero_serie TEXT,
@@ -309,7 +316,8 @@ class DatabaseManager:
                 # Copiar datos migrando estados
                 cursor.execute('''
                     INSERT INTO reparaciones_new
-                    SELECT id, numero_orden, usuario_id, cliente_nombre, cliente_telefono, cliente_email,
+                          SELECT id, numero_orden, usuario_id, cliente_nombre, cliente_telefono, cliente_email,
+                              NULL as cliente_dni,
                            dispositivo, modelo, numero_serie, problema, sin_bateria, rajado, mojado,
                            contrasena, patron, sena, total,
                            CASE 
@@ -342,13 +350,19 @@ class DatabaseManager:
             'sin_bateria': 'INTEGER DEFAULT 0',
             'rajado': 'INTEGER DEFAULT 0',
             'mojado': 'INTEGER DEFAULT 0',
+            'cliente_dni': 'TEXT',
             'contrasena': 'TEXT',
             'patron': 'TEXT',
             'fotos_reparacion_id': 'INTEGER',
             'fecha_pago_final': 'TIMESTAMP',
             'medio_pago_final': 'TEXT',
             'monto_pago_final': 'REAL DEFAULT 0',
-            'recargo_tarjeta': 'REAL DEFAULT 0'
+            'recargo_tarjeta': 'REAL DEFAULT 0',
+            'sync_pending': 'INTEGER NOT NULL DEFAULT 1',
+            'sync_attempts': 'INTEGER NOT NULL DEFAULT 0',
+            'last_sync_error': 'TEXT',
+            'synced_at': 'TEXT',
+            'external_id': 'TEXT'
         }
         
         for columna, tipo in columnas_nuevas.items():
