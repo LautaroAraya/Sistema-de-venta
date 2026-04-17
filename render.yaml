@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: sistema-ventas-panel-tecnico
+    env: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn api_tecnico_remoto:app --bind 0.0.0.0:$PORT
+    autoDeploy: true
+    envVars:
+      - key: TECNICO_USER
+        sync: false
+      - key: TECNICO_PASS_HASH
+        sync: false
+      - key: TECNICO_APP_SECRET
+        sync: false
+      - key: TECNICO_TOKEN_MAX_AGE_SECONDS
+        value: "28800"
+      - key: TECNICO_ALLOW_CORS
+        value: "1"
+      - key: TECNICO_EXPOSE_UNLOCK_FIELDS
+        value: "1"
+      - key: TECNICO_DATA_BACKEND
+        value: firestore
+      - key: TECNICO_FIRESTORE_COLLECTION
+        value: reparaciones_publicas
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false

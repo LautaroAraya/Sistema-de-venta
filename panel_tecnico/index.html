@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panel Tecnico Reparaciones</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/panel/styles.css" />
+</head>
+<body>
+  <div class="bg-shape bg-shape-1"></div>
+  <div class="bg-shape bg-shape-2"></div>
+
+  <header class="topbar">
+    <div>
+      <h1>Panel Tecnico</h1>
+      <p>Control remoto de reparaciones</p>
+    </div>
+    <div class="topbar-actions">
+      <span id="userBadge" class="badge hidden"></span>
+      <button id="logoutBtn" class="btn ghost hidden">Salir</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="loginCard" class="card login-card">
+      <h2>Ingreso tecnico</h2>
+      <form id="loginForm">
+        <label for="username">Usuario</label>
+        <input id="username" type="text" autocomplete="username" required />
+
+        <label for="password">Contrasena</label>
+        <input id="password" type="password" autocomplete="current-password" required />
+
+        <button class="btn primary" type="submit">Entrar</button>
+      </form>
+      <p id="loginError" class="error"></p>
+    </section>
+
+    <section id="panelCard" class="card hidden">
+      <div class="filters">
+        <input id="searchInput" type="search" placeholder="Buscar orden, cliente, DNI, equipo..." />
+        <select id="estadoSelect">
+          <option value="">Todos los estados</option>
+          <option value="en_proceso">En proceso</option>
+          <option value="en_espera_retiro">En espera de retiro</option>
+          <option value="retirado">Retirado</option>
+        </select>
+        <button id="refreshBtn" class="btn">Actualizar</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Orden</th>
+              <th>Cliente</th>
+              <th>Equipo</th>
+              <th>Estado</th>
+              <th>Fecha</th>
+              <th>Accion</th>
+            </tr>
+          </thead>
+          <tbody id="reparacionesBody"></tbody>
+        </table>
+      </div>
+      <p id="panelError" class="error"></p>
+    </section>
+
+    <section id="detalleCard" class="card hidden">
+      <h2>Detalle de reparacion</h2>
+      <div id="detalleContent" class="detail-grid"></div>
+      <div class="status-editor">
+        <label for="nuevoEstado">Cambiar estado</label>
+        <select id="nuevoEstado">
+          <option value="en_proceso">En proceso</option>
+          <option value="en_espera_retiro">En espera de retiro</option>
+          <option value="retirado">Retirado</option>
+        </select>
+        <button id="guardarEstadoBtn" class="btn primary">Guardar estado</button>
+      </div>
+      <p id="detalleMsg"></p>
+    </section>
+  </main>
+
+  <script src="/panel/app.js"></script>
+</body>
+</html>

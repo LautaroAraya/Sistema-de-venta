@@ -58,6 +58,8 @@ class ReparacionesSync:
             return False
 
     def _doc_from_reparacion(self, reparacion):
+        include_unlock_fields = os.environ.get("REPARACIONES_PUBLICAS_INCLUDE_UNLOCK_FIELDS", "1") == "1"
+
         estado_map = {
             "en_proceso": "En reparacion",
             "en_espera_retiro": "En espera de retiro",
@@ -68,21 +70,33 @@ class ReparacionesSync:
         modelo = (reparacion.get("modelo") or "").strip()
         equipo = dispositivo if not modelo else f"{dispositivo} {modelo}"
 
-        return {
+        payload = {
             "numero_orden": reparacion.get("numero_orden"),
             "cliente_dni": (reparacion.get("cliente_dni") or "").strip(),
             "cliente_nombre": reparacion.get("cliente_nombre") or "",
             "cliente_telefono": reparacion.get("cliente_telefono") or "",
+            "cliente_email": reparacion.get("cliente_email") or "",
             "dispositivo": dispositivo,
             "modelo": modelo,
+            "numero_serie": reparacion.get("numero_serie") or "",
             "equipo": equipo,
             "falla": (reparacion.get("problema") or "").strip(),
+            "problema": (reparacion.get("problema") or "").strip(),
+            "sena": reparacion.get("sena") or "",
+            "total": reparacion.get("total") or "",
+            "observaciones": reparacion.get("observaciones") or "",
             "estado": reparacion.get("estado") or "en_proceso",
             "estado_texto": estado_map.get(reparacion.get("estado"), "En reparacion"),
             "fecha_creacion": reparacion.get("fecha_creacion") or "",
             "fecha_entrega": reparacion.get("fecha_entrega") or "",
             "fecha_actualizacion": datetime.now().isoformat(),
         }
+
+        if include_unlock_fields:
+            payload["contrasena"] = reparacion.get("contrasena") or ""
+            payload["patron"] = reparacion.get("patron") or ""
+
+        return payload
 
     def upsert_reparacion(self, reparacion):
         """Crea o actualiza una reparación pública en Firestore."""

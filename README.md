@@ -12,6 +12,7 @@ Sistema completo de ventas con gestión de inventario, proveedores y reportes.
 - ✅ **Generación de facturas en PDF**
 - ✅ **Base de datos SQLite** integrada
 - ✅ **Interfaz gráfica** con Tkinter
+- ✅ **Panel tecnico remoto** (API + web) para gestionar reparaciones desde otra PC
 
 ## Requisitos
 
@@ -28,6 +29,26 @@ pip install -r requirements.txt
 2. Ejecutar la aplicación:
 ```bash
 python main.py
+```
+
+### Panel tecnico remoto (nuevo)
+
+```bash
+python api_tecnico_remoto.py
+```
+
+Luego abrir en navegador:
+
+```text
+http://localhost:8080/
+```
+
+Para deploy y variables de entorno ver [DEPLOY_PANEL_TECNICO.md](DEPLOY_PANEL_TECNICO.md).
+
+Utilidad para generar hash de password tecnico:
+
+```bash
+python tecnico_generar_hash.py
 ```
 
 ## Credenciales por Defecto
