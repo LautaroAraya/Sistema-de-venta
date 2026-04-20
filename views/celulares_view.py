@@ -22,6 +22,11 @@ class CelularesView:
         except Exception:
             return str(valor or '')
 
+    def _texto_mayuscula(self, valor):
+        if valor is None:
+            return ''
+        return str(valor).strip().upper()
+
     def _normalizar_var_monto(self, string_var):
         texto = (string_var.get() or '').strip()
         if not texto:
@@ -407,13 +412,13 @@ class CelularesView:
     def guardar_venta_modal(self, top):
         """Guardar la venta desde el modal"""
         try:
-            cliente = self.cliente_nombre_var.get() or "Cliente General"
-            documento = self.cliente_documento_var.get() or ""
-            telefono = self.cliente_telefono_var.get() or ""
-            email = self.cliente_email_var.get() or ""
-            marca = self.telefono_marca_var.get() or ""
-            modelo = self.telefono_modelo_var.get() or ""
-            descripcion = self.descripcion_var.get() or ""
+            cliente = self._texto_mayuscula(self.cliente_nombre_var.get() or "Cliente General")
+            documento = self._texto_mayuscula(self.cliente_documento_var.get())
+            telefono = self._texto_mayuscula(self.cliente_telefono_var.get())
+            email = self._texto_mayuscula(self.cliente_email_var.get())
+            marca = self._texto_mayuscula(self.telefono_marca_var.get())
+            modelo = self._texto_mayuscula(self.telefono_modelo_var.get())
+            descripcion = self._texto_mayuscula(self.descripcion_var.get())
             
             try:
                 total = parsear_monto(self.total_var.get() or 0)
@@ -595,13 +600,13 @@ class CelularesView:
 
             def guardar_cambios():
                 try:
-                    cliente = edit_cliente_nombre.get() or "Cliente General"
-                    documento = edit_cliente_documento.get() or ""
-                    telefono = edit_cliente_telefono.get() or ""
-                    email = edit_cliente_email.get() or ""
-                    marca = edit_telefono_marca.get() or ""
-                    modelo = edit_telefono_modelo.get() or ""
-                    descripcion = edit_descripcion.get() or ""
+                    cliente = self._texto_mayuscula(edit_cliente_nombre.get() or "Cliente General")
+                    documento = self._texto_mayuscula(edit_cliente_documento.get())
+                    telefono = self._texto_mayuscula(edit_cliente_telefono.get())
+                    email = self._texto_mayuscula(edit_cliente_email.get())
+                    marca = self._texto_mayuscula(edit_telefono_marca.get())
+                    modelo = self._texto_mayuscula(edit_telefono_modelo.get())
+                    descripcion = self._texto_mayuscula(edit_descripcion.get())
                     
                     try:
                         total = parsear_monto(edit_total.get() or 0)

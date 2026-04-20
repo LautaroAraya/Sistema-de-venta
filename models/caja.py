@@ -1,4 +1,5 @@
 from datetime import datetime
+import unicodedata
 
 class Caja:
     def __init__(self, db_manager):
@@ -37,6 +38,7 @@ class Caja:
                 caja_id INTEGER NOT NULL,
                 tipo TEXT NOT NULL CHECK(tipo IN ('efectivo', 'transferencia', 'tarjeta')),
                 monto REAL NOT NULL,
+                categoria TEXT,
                 descripcion TEXT,
                 fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (caja_id) REFERENCES cajas (id)
@@ -178,16 +180,16 @@ class Caja:
         except Exception as e:
             return False, f"Error al eliminar caja: {str(e)}"
     
-    def agregar_movimiento(self, caja_id, tipo, monto, descripcion=''):
+    def agregar_movimiento(self, caja_id, tipo, monto, descripcion='', categoria=''):
         """Agregar un movimiento a la caja abierta"""
         conn = self.db.get_connection()
         cursor = conn.cursor()
         
         try:
             cursor.execute('''
-                INSERT INTO movimientos_caja (caja_id, tipo, monto, descripcion)
-                VALUES (?, ?, ?, ?)
-            ''', (caja_id, tipo, monto, descripcion))
+                INSERT INTO movimientos_caja (caja_id, tipo, monto, categoria, descripcion)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (caja_id, tipo, monto, categoria, descripcion))
             conn.commit()
             return True, "Movimiento agregado"
         except Exception as e:
@@ -199,13 +201,150 @@ class Caja:
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT id, tipo, monto, descripcion, fecha
+            SELECT id, tipo, monto, categoria, descripcion, fecha
             FROM movimientos_caja
             WHERE caja_id = ?
             ORDER BY fecha ASC
         ''', (caja_id,))
         
         return [dict(row) for row in cursor.fetchall()]
+
+    def _normalizar_texto(self, texto):
+        if not texto:
+            return ''
+        texto = unicodedata.normalize('NFKD', str(texto))
+        texto = texto.encode('ascii', 'ignore').decode('ascii')
+        return texto.lower().strip()
+
+    def _clasificar_egreso(self, descripcion):
+        texto = self._normalizar_texto(descripcion)
+        if any(palabra in texto for palabra in ('tecnico', 'servicio tecnico', 'reparacion tecnica', 'mecanico')):
+            return 'Pago técnico'
+        if any(palabra in texto for palabra in ('publicidad', 'anuncio', 'ads', 'facebook', 'instagram', 'meta', 'marketing')):
+            return 'Publicidad'
+        if any(palabra in texto for palabra in ('impuesto', 'iva', 'afip', 'tribut', 'tasas', 'monotributo')):
+            return 'Impuestos'
+        if any(palabra in texto for palabra in ('empleado', 'sueldo', 'salario', 'nomina', 'nomina', 'liquidacion')):
+            return 'Empleados'
+        return 'Otros'
+
+    def obtener_resumen_financiero_mes(self, fecha_inicio, fecha_fin):
+        """Obtener resumen financiero mensual con ingresos, egresos y ganancia."""
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+
+        resumen = {
+            'ingresos_ventas': 0.0,
+            'ingresos_reparaciones': 0.0,
+            'ingresos_celulares': 0.0,
+            'ingresos_otros_caja': 0.0,
+            'ingresos_movimientos': 0.0,
+            'egresos_otros_caja': 0.0,
+            'egresos_movimientos': 0.0,
+            'egresos_por_categoria': {
+                'Pago técnico': 0.0,
+                'Publicidad': 0.0,
+                'Impuestos': 0.0,
+                'Empleados': 0.0,
+                'Otros': 0.0,
+            },
+            'ingresos_por_origen': {
+                'Reparación': 0.0,
+                'Ventas en general': 0.0,
+                'Venta celulares': 0.0,
+                'Otros': 0.0,
+            },
+        }
+
+        try:
+            cursor.execute('''
+                SELECT COALESCE(SUM(total), 0)
+                FROM ventas
+                WHERE DATE(fecha_venta) >= ? AND DATE(fecha_venta) <= ?
+            ''', (fecha_inicio, fecha_fin))
+            resumen['ingresos_ventas'] = float(cursor.fetchone()[0] or 0)
+        except Exception:
+            resumen['ingresos_ventas'] = 0.0
+
+        try:
+            cursor.execute('''
+                SELECT COALESCE(SUM(COALESCE(sena, 0) + COALESCE(monto_pago_final, 0)), 0)
+                FROM reparaciones
+                WHERE DATE(fecha_creacion) >= ? AND DATE(fecha_creacion) <= ?
+                  AND (COALESCE(sena, 0) > 0 OR estado = 'retirado' OR COALESCE(monto_pago_final, 0) > 0)
+            ''', (fecha_inicio, fecha_fin))
+            resumen['ingresos_reparaciones'] = float(cursor.fetchone()[0] or 0)
+        except Exception:
+            resumen['ingresos_reparaciones'] = 0.0
+
+        try:
+            cursor.execute('''
+                SELECT COALESCE(SUM(COALESCE(sena, 0) + COALESCE(monto_pago_final, 0)), 0)
+                FROM ventas_celulares
+                WHERE DATE(fecha_venta) >= ? AND DATE(fecha_venta) <= ?
+            ''', (fecha_inicio, fecha_fin))
+            resumen['ingresos_celulares'] = float(cursor.fetchone()[0] or 0)
+        except Exception:
+            resumen['ingresos_celulares'] = 0.0
+
+        try:
+            cursor.execute('''
+                SELECT COALESCE(SUM(otros_ingresos), 0), COALESCE(SUM(otros_egresos), 0)
+                FROM cajas
+                WHERE fecha_cierre IS NOT NULL
+                  AND DATE(fecha_cierre) >= ? AND DATE(fecha_cierre) <= ?
+            ''', (fecha_inicio, fecha_fin))
+            fila_cajas = cursor.fetchone() or (0, 0)
+            resumen['ingresos_otros_caja'] = float(fila_cajas[0] or 0)
+            resumen['egresos_otros_caja'] = float(fila_cajas[1] or 0)
+        except Exception:
+            resumen['ingresos_otros_caja'] = 0.0
+            resumen['egresos_otros_caja'] = 0.0
+
+        try:
+            cursor.execute('''
+                SELECT monto, categoria, descripcion
+                FROM movimientos_caja
+                WHERE DATE(fecha) >= ? AND DATE(fecha) <= ?
+            ''', (fecha_inicio, fecha_fin))
+            movimientos = cursor.fetchall()
+            for movimiento in movimientos:
+                monto = float(movimiento['monto'] or 0)
+                categoria = (movimiento['categoria'] or '').strip()
+                descripcion = movimiento['descripcion'] or ''
+                if monto >= 0:
+                    resumen['ingresos_movimientos'] += monto
+                    if categoria in resumen['ingresos_por_origen']:
+                        resumen['ingresos_por_origen'][categoria] += monto
+                    elif categoria:
+                        resumen['ingresos_por_origen']['Otros'] += monto
+                    else:
+                        resumen['ingresos_por_origen']['Otros'] += monto
+                else:
+                    egreso = abs(monto)
+                    resumen['egresos_movimientos'] += egreso
+                    if categoria in resumen['egresos_por_categoria']:
+                        categoria_egreso = categoria
+                    else:
+                        categoria_egreso = self._clasificar_egreso(descripcion)
+                    resumen['egresos_por_categoria'][categoria_egreso] += egreso
+        except Exception:
+            pass
+
+        resumen['ingresos_totales'] = (
+            resumen['ingresos_ventas']
+            + resumen['ingresos_reparaciones']
+            + resumen['ingresos_celulares']
+            + resumen['ingresos_otros_caja']
+            + resumen['ingresos_movimientos']
+        )
+        resumen['egresos_totales'] = resumen['egresos_otros_caja'] + resumen['egresos_movimientos']
+        resumen['ganancia_neta'] = resumen['ingresos_totales'] - resumen['egresos_totales']
+
+        if resumen['egresos_otros_caja']:
+            resumen['egresos_por_categoria']['Otros'] += resumen['egresos_otros_caja']
+
+        return resumen
     
     def eliminar_movimiento(self, movimiento_id):
         """Eliminar un movimiento"""

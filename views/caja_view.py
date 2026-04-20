@@ -129,19 +129,21 @@ class CajaView:
         tk.Label(scrollable_frame, text="Movimientos de Caja", font=("Arial", 9, "bold"),
                 bg='#F0F4F8', fg='black').pack(pady=(8, 2), anchor=tk.W, padx=5)
         
-        mov_columns = ('id', 'tipo', 'monto', 'descripcion', 'fecha')
+        mov_columns = ('id', 'tipo', 'categoria', 'monto', 'descripcion', 'fecha')
         self.tree_movimientos = ttk.Treeview(scrollable_frame, columns=mov_columns, show='headings', height=5)
         
         self.tree_movimientos.heading('id', text='ID')
         self.tree_movimientos.heading('tipo', text='Tipo')
+        self.tree_movimientos.heading('categoria', text='Categoría/Origen')
         self.tree_movimientos.heading('monto', text='Monto')
         self.tree_movimientos.heading('descripcion', text='Descripción')
         self.tree_movimientos.heading('fecha', text='Fecha')
         
         self.tree_movimientos.column('id', width=30)
         self.tree_movimientos.column('tipo', width=70)
+        self.tree_movimientos.column('categoria', width=120)
         self.tree_movimientos.column('monto', width=75, anchor=tk.E)
-        self.tree_movimientos.column('descripcion', width=180)
+        self.tree_movimientos.column('descripcion', width=140)
         self.tree_movimientos.column('fecha', width=90)
         
         self.tree_movimientos.pack(fill=tk.BOTH, expand=False, padx=5, pady=2)
@@ -309,6 +311,7 @@ class CajaView:
             self.tree_movimientos.insert('', tk.END, values=(
                 mov['id'],
                 mov['tipo'].upper(),
+                mov.get('categoria') or '',
                 formatear_moneda(mov['monto']),
                 mov['descripcion'] or '',
                 mov['fecha'][:16]
@@ -453,7 +456,7 @@ class AgregarMovimientoDialog:
         
         self.dialog = tk.Toplevel(parent)
         self.dialog.title(tipo_titles.get(tipo, 'Agregar Movimiento'))
-        self.dialog.geometry("500x400")
+        self.dialog.geometry("500x460")
         self.dialog.transient(parent)
         self.dialog.grab_set()
         
@@ -493,6 +496,34 @@ class AgregarMovimientoDialog:
         if self.tipo in ('efectivo', 'transferencia'):
             tk.Radiobutton(ingreso_frame, text="Retiro (-)", variable=self.tipo_var, value="retiro",
                           font=("Arial", 10), bg='white', fg='#EF4444').pack(side=tk.LEFT, padx=20)
+
+        # Categoria de ingreso
+        self.categoria_ingreso_frame = tk.Frame(main_frame, bg='white')
+        self.categoria_ingreso_frame.pack(anchor=tk.W, fill=tk.X, pady=(10, 0))
+        tk.Label(self.categoria_ingreso_frame, text="Origen del ingreso:", font=("Arial", 11, "bold"), bg='white').pack(anchor=tk.W, pady=(0, 5))
+        self.categoria_ingreso_var = tk.StringVar(value="Reparación")
+        self.categoria_ingreso_combo = ttk.Combobox(
+            self.categoria_ingreso_frame,
+            textvariable=self.categoria_ingreso_var,
+            values=["Reparación", "Ventas en general", "Venta celulares"],
+            state="readonly",
+            width=24
+        )
+        self.categoria_ingreso_combo.pack(anchor=tk.W, pady=5)
+
+        # Categoria de egreso
+        self.categoria_egreso_frame = tk.Frame(main_frame, bg='white')
+        self.categoria_egreso_frame.pack(anchor=tk.W, fill=tk.X, pady=(10, 0))
+        tk.Label(self.categoria_egreso_frame, text="Categoría de egreso:", font=("Arial", 11, "bold"), bg='white').pack(anchor=tk.W, pady=(0, 5))
+        self.categoria_egreso_var = tk.StringVar(value="Otros")
+        self.categoria_egreso_combo = ttk.Combobox(
+            self.categoria_egreso_frame,
+            textvariable=self.categoria_egreso_var,
+            values=["Pago técnico", "Publicidad", "Impuestos", "Empleados", "Otros"],
+            state="readonly",
+            width=24
+        )
+        self.categoria_egreso_combo.pack(anchor=tk.W, pady=5)
         
         # Monto
         tk.Label(main_frame, text="Monto ($):", font=("Arial", 11, "bold"), bg='white').pack(anchor=tk.W, pady=(10, 5))
@@ -511,9 +542,8 @@ class AgregarMovimientoDialog:
         self.desc_entry = tk.Entry(self.desc_frame, width=40, font=("Arial", 10))
         self.desc_entry.pack(anchor=tk.W, pady=5)
         
-        # Ocultar descripcion si no es retiro
-        if self.tipo_var.get() != 'retiro':
-            self.desc_frame.pack_forget()
+        # Ajustar visibilidad inicial
+        self.actualizar_descripcion()
         
         # Bind para mostrar/ocultar descripción
         self.tipo_var.trace('w', self.actualizar_descripcion)
@@ -530,9 +560,13 @@ class AgregarMovimientoDialog:
     def actualizar_descripcion(self, *args):
         """Mostrar/ocultar descripción según tipo"""
         if self.tipo in ('efectivo', 'transferencia') and self.tipo_var.get() == 'retiro':
+            self.categoria_ingreso_frame.pack_forget()
+            self.categoria_egreso_frame.pack(anchor=tk.W, fill=tk.X, pady=(10, 0))
             self.desc_frame.pack(anchor=tk.W, fill=tk.X, pady=5)
         else:
+            self.categoria_egreso_frame.pack_forget()
             self.desc_frame.pack_forget()
+            self.categoria_ingreso_frame.pack(anchor=tk.W, fill=tk.X, pady=(10, 0))
     
     def agregar(self):
         """Agregar movimiento"""
@@ -549,14 +583,15 @@ class AgregarMovimientoDialog:
         # Si es retiro, negar el monto
         if self.tipo_var.get() == 'retiro':
             monto = -monto
-            descripcion = self.desc_entry.get().strip()
-            if not descripcion:
-                messagebox.showwarning("Advertencia", "Debes ingresar una descripción para el retiro")
-                return
+            categoria = self.categoria_egreso_var.get().strip() or 'Otros'
+            detalle = self.desc_entry.get().strip()
+            descripcion = categoria if not detalle else f"{categoria}: {detalle}"
         else:
-            descripcion = self.desc_entry.get().strip() if self.tipo == 'efectivo' else ''
+            categoria_ingreso = self.categoria_ingreso_var.get().strip() or 'Reparación'
+            descripcion = f"Ingreso: {categoria_ingreso}"
+            categoria = categoria_ingreso
         
-        success, msg = self.caja_model.agregar_movimiento(self.caja_id, self.tipo, monto, descripcion)
+        success, msg = self.caja_model.agregar_movimiento(self.caja_id, self.tipo, monto, descripcion, categoria)
         
         if success:
             messagebox.showinfo("Éxito", msg)
@@ -828,6 +863,7 @@ class DetalleCajaDialog:
             for mov in movimientos:
                 tipo = mov.get('tipo', '')
                 monto = mov.get('monto', 0)
+                categoria = mov.get('categoria', '') or ''
                 descripcion = mov.get('descripcion', '')
                 
                 # Formatear tipo
@@ -849,6 +885,10 @@ class DetalleCajaDialog:
                         font=("Arial", 9), width=15, anchor=tk.W).pack(side=tk.LEFT)
                 tk.Label(row_frame, text=monto_text, bg='white', fg=color,
                         font=("Arial", 9, 'bold'), anchor=tk.W).pack(side=tk.LEFT, padx=(10, 0))
+
+                if categoria:
+                    tk.Label(row_frame, text=f"[{categoria}]", bg='white', fg='#374151',
+                        font=("Arial", 8, 'italic')).pack(side=tk.LEFT, padx=(8, 0))
                 
                 # Mostrar descripción si existe (para retiros)
                 if descripcion:
@@ -898,6 +938,8 @@ class HistorialCajasDialog:
     def __init__(self, parent, db_manager):
         self.db_manager = db_manager
         self.caja_model = Caja(db_manager)
+        self.buscar_var = tk.StringVar()
+        self.filtro_categoria_var = tk.StringVar(value="Todas")
         
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Historial de Cajas")
@@ -937,10 +979,36 @@ class HistorialCajasDialog:
         self.fecha_hasta = tk.Entry(filter_frame, width=12)
         self.fecha_hasta.grid(row=0, column=3, padx=5)
         
+        tk.Label(filter_frame, text="Buscar:", bg='white', fg='black').grid(row=0, column=4, padx=(12, 5))
+        self.buscar_entry = tk.Entry(filter_frame, textvariable=self.buscar_var, width=20)
+        self.buscar_entry.grid(row=0, column=5, padx=5)
+        self.buscar_entry.bind('<KeyRelease>', self.on_busqueda_historial)
+
+        tk.Label(filter_frame, text="Categoría:", bg='white', fg='black').grid(row=0, column=6, padx=(12, 5))
+        self.categoria_combo = ttk.Combobox(
+            filter_frame,
+            textvariable=self.filtro_categoria_var,
+            values=[
+                "Todas",
+                "Reparación",
+                "Ventas en general",
+                "Venta celulares",
+                "Pago técnico",
+                "Publicidad",
+                "Impuestos",
+                "Empleados",
+                "Otros",
+            ],
+            state="readonly",
+            width=18
+        )
+        self.categoria_combo.grid(row=0, column=7, padx=5)
+        self.categoria_combo.bind('<<ComboboxSelected>>', lambda _e: self.cargar_historial())
+
         tk.Button(filter_frame, text="Filtrar", bg='#3B82F6', fg='white',
-                 command=self.cargar_historial).grid(row=0, column=4, padx=5)
+               command=self.cargar_historial).grid(row=0, column=8, padx=5)
         tk.Button(filter_frame, text="Limpiar", bg='#6B7280', fg='white',
-                 command=self.limpiar_filtros).grid(row=0, column=5, padx=5)
+               command=self.limpiar_filtros).grid(row=0, column=9, padx=5)
         
         # Tabla
         columns = ('id', 'usuario', 'apertura', 'cierre', 'inicial', 'final', 'diferencia', 'estado')
@@ -980,10 +1048,26 @@ class HistorialCajasDialog:
         
         fecha_desde = self.fecha_desde.get().strip() or None
         fecha_hasta = self.fecha_hasta.get().strip() or None
+        termino = self.buscar_var.get().strip().lower()
+        categoria = self.filtro_categoria_var.get().strip() or "Todas"
         
         cajas = self.caja_model.obtener_cajas(fecha_desde, fecha_hasta, limit=100)
         
         for caja in cajas:
+            fecha_apertura = (caja.get('fecha_apertura') or '')[:16]
+            fecha_cierre = (caja.get('fecha_cierre') or '')[:16]
+            texto_busqueda = ' '.join([
+                str(caja.get('id') or ''),
+                str(caja.get('usuario') or ''),
+                fecha_apertura,
+                fecha_cierre,
+                str(caja.get('estado') or '')
+            ]).lower()
+            if termino and termino not in texto_busqueda:
+                continue
+            if categoria != "Todas" and not self._caja_tiene_categoria(caja['id'], categoria):
+                continue
+
             diferencia = ''
             if caja['monto_final'] is not None:
                 dif = caja['monto_final'] - caja['monto_inicial']
@@ -1004,7 +1088,28 @@ class HistorialCajasDialog:
         """Limpiar filtros"""
         self.fecha_desde.delete(0, tk.END)
         self.fecha_hasta.delete(0, tk.END)
+        self.buscar_var.set('')
+        self.filtro_categoria_var.set('Todas')
         self.cargar_historial()
+
+    def on_busqueda_historial(self, _event=None):
+        """Actualizar historial al escribir en el buscador"""
+        self.cargar_historial()
+
+    def _caja_tiene_categoria(self, caja_id, categoria):
+        """Verificar si una caja tiene al menos un movimiento de la categoría indicada."""
+        movimientos = self.caja_model.obtener_movimientos(caja_id)
+        categoria_lower = categoria.lower()
+        for mov in movimientos:
+            mov_categoria = (mov.get('categoria') or '').strip()
+            mov_descripcion = (mov.get('descripcion') or '').strip()
+            if mov_categoria.lower() == categoria_lower:
+                return True
+            if not mov_categoria and mov_descripcion.lower().startswith(categoria_lower.lower()):
+                return True
+            if categoria_lower in mov_descripcion.lower():
+                return True
+        return False
     
     def ver_detalle(self):
         """Ver detalle de caja seleccionada"""

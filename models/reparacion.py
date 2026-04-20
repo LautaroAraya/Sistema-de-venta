@@ -7,6 +7,11 @@ from pathlib import Path
 class Reparacion:
     def __init__(self, db_manager):
         self.db_manager = db_manager
+
+    def _texto_mayuscula(self, valor):
+        if valor is None:
+            return None
+        return str(valor).strip().upper()
     
     def generar_numero_orden(self):
         """Generar número de orden único"""
@@ -39,11 +44,11 @@ class Reparacion:
                     contrasena, patron, sena, total, estado, observaciones, fecha_creacion
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (numero_orden, usuario_id, cliente_nombre, cliente_telefono, cliente_email,
-                  cliente_dni,
-                  dispositivo, modelo, numero_serie, problema, 1 if sin_bateria else 0, 
-                  1 if rajado else 0, 1 if mojado else 0, contrasena, patron, sena, total, 
-                  estado, observaciones, fecha_actual))
+                ''', (numero_orden, usuario_id, self._texto_mayuscula(cliente_nombre), self._texto_mayuscula(cliente_telefono), self._texto_mayuscula(cliente_email),
+                    self._texto_mayuscula(cliente_dni),
+                    self._texto_mayuscula(dispositivo), self._texto_mayuscula(modelo), self._texto_mayuscula(numero_serie), self._texto_mayuscula(problema), 1 if sin_bateria else 0, 
+                    1 if rajado else 0, 1 if mojado else 0, self._texto_mayuscula(contrasena), self._texto_mayuscula(patron), sena, total, 
+                    estado, self._texto_mayuscula(observaciones), fecha_actual))
             
             conn.commit()
             return True, numero_orden
@@ -104,28 +109,28 @@ class Reparacion:
         
         if cliente_nombre is not None:
             updates.append("cliente_nombre = ?")
-            values.append(cliente_nombre)
+            values.append(self._texto_mayuscula(cliente_nombre))
         if cliente_telefono is not None:
             updates.append("cliente_telefono = ?")
-            values.append(cliente_telefono)
+            values.append(self._texto_mayuscula(cliente_telefono))
         if cliente_email is not None:
             updates.append("cliente_email = ?")
-            values.append(cliente_email)
+            values.append(self._texto_mayuscula(cliente_email))
         if cliente_dni is not None:
             updates.append("cliente_dni = ?")
-            values.append(cliente_dni)
+            values.append(self._texto_mayuscula(cliente_dni))
         if dispositivo is not None:
             updates.append("dispositivo = ?")
-            values.append(dispositivo)
+            values.append(self._texto_mayuscula(dispositivo))
         if modelo is not None:
             updates.append("modelo = ?")
-            values.append(modelo)
+            values.append(self._texto_mayuscula(modelo))
         if numero_serie is not None:
             updates.append("numero_serie = ?")
-            values.append(numero_serie)
+            values.append(self._texto_mayuscula(numero_serie))
         if problema is not None:
             updates.append("problema = ?")
-            values.append(problema)
+            values.append(self._texto_mayuscula(problema))
         if sena is not None:
             updates.append("sena = ?")
             values.append(sena)
@@ -143,10 +148,10 @@ class Reparacion:
             values.append(1 if mojado else 0)
         if contrasena is not None:
             updates.append("contrasena = ?")
-            values.append(contrasena)
+            values.append(self._texto_mayuscula(contrasena))
         if patron is not None:
             updates.append("patron = ?")
-            values.append(patron)
+            values.append(self._texto_mayuscula(patron))
         if estado is not None:
             updates.append("estado = ?")
             values.append(estado)
@@ -156,7 +161,7 @@ class Reparacion:
                 values.append(fecha_entrega)
         if observaciones is not None:
             updates.append("observaciones = ?")
-            values.append(observaciones)
+            values.append(self._texto_mayuscula(observaciones))
         if fecha_pago_final is not None:
             updates.append("fecha_pago_final = ?")
             values.append(fecha_pago_final)

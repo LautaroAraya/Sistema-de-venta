@@ -245,12 +245,19 @@ class DatabaseManager:
                         caja_id INTEGER NOT NULL,
                         tipo TEXT NOT NULL CHECK(tipo IN ('efectivo', 'transferencia', 'tarjeta')),
                         monto REAL NOT NULL,
+                        categoria TEXT,
                         descripcion TEXT,
                         fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         FOREIGN KEY (caja_id) REFERENCES cajas (id)
                     )
                 ''')
                 conn.commit()
+            else:
+                cursor.execute("PRAGMA table_info(movimientos_caja)")
+                columnas_movimientos = [info[1] for info in cursor.fetchall()]
+                if 'categoria' not in columnas_movimientos:
+                    cursor.execute("ALTER TABLE movimientos_caja ADD COLUMN categoria TEXT")
+                    conn.commit()
             
             # Agregar columna descripcion en ventas_celulares si no existe
             cursor.execute("PRAGMA table_info(ventas_celulares)")

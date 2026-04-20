@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from models.venta import Venta
 from models.reparacion import Reparacion
+from models.caja import Caja
 from datetime import datetime, timedelta
 import calendar
 import math
@@ -21,6 +22,7 @@ class ReportesView:
         self.user_data = user_data
         self.venta_model = Venta(db_manager)
         self.reparacion_model = Reparacion(db_manager)
+        self.caja_model = Caja(db_manager)
         self.reporte_final_interval_ms = 15 * 60 * 1000
         self._reporte_final_job = None
         
@@ -625,7 +627,7 @@ class ReportesView:
 
         tk.Label(
             header_frame,
-            text="Reporte Final - Totales por Mes",
+            text="Reporte Final - Control Financiero Mensual",
             font=("Arial", 12, "bold"),
             bg='white',
             fg='black'
@@ -633,7 +635,7 @@ class ReportesView:
 
         self.reporte_final_total_label = tk.Label(
             header_frame,
-            text=f"Suma total: {formatear_moneda(0)}",
+            text=f"Ganancia neta: {formatear_moneda(0)}",
             font=("Arial", 14, "bold"),
             bg='white',
             fg='#111827'
@@ -642,11 +644,31 @@ class ReportesView:
 
         tk.Label(
             header_frame,
-            text="Selecciona un mes para ver la distribucion por tipo",
+            text="Selecciona un mes para ver ingresos, egresos y utilidad",
             font=("Arial", 9),
             bg='white',
             fg='gray'
         ).grid(row=1, column=0, sticky=tk.W, pady=(2, 0))
+
+        resumen_frame = tk.Frame(parent, bg='white')
+        resumen_frame.pack(fill=tk.X, padx=10, pady=(0, 8))
+        resumen_frame.columnconfigure(0, weight=1)
+        resumen_frame.columnconfigure(1, weight=1)
+        resumen_frame.columnconfigure(2, weight=1)
+
+        self.resumen_financiero_labels = {}
+        resumen_definiciones = [
+            ("Ingresos", "#10B981"),
+            ("Egresos", "#EF4444"),
+            ("Ganancia", "#2563EB"),
+        ]
+        for indice, (titulo, color) in enumerate(resumen_definiciones):
+            card = tk.Frame(resumen_frame, bg='#F9FAFB', bd=1, relief=tk.RIDGE, padx=10, pady=8)
+            card.grid(row=0, column=indice, padx=6, sticky=tk.EW)
+            tk.Label(card, text=titulo, font=("Arial", 10, "bold"), bg='#F9FAFB', fg='#111827').pack(anchor=tk.W)
+            valor_label = tk.Label(card, text=formatear_moneda(0), font=("Arial", 14, "bold"), bg='#F9FAFB', fg=color)
+            valor_label.pack(anchor=tk.W, pady=(2, 0))
+            self.resumen_financiero_labels[titulo] = valor_label
 
         selector_frame = tk.Frame(parent, bg='white')
         selector_frame.pack(fill=tk.X, padx=10, pady=(0, 5))
@@ -689,30 +711,29 @@ class ReportesView:
         legend_frame = tk.Frame(content_frame, bg='white')
         legend_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        self.reporte_final_labels = {}
-        self.reporte_final_checks = {}
-        for label_text in ["Ventas", "Reparaciones", "Ventas Celulares"]:
-            row = tk.Frame(legend_frame, bg='white')
+        tk.Label(legend_frame, text="Lectura del mes", font=("Arial", 11, "bold"), bg='white', fg='black').pack(anchor=tk.W)
+
+        pie_legend = tk.Frame(legend_frame, bg='white')
+        pie_legend.pack(anchor=tk.W, pady=(6, 12), fill=tk.X)
+
+        self.reporte_final_legend_labels = {}
+        for label_text, color in [("Ingresos", "#10B981"), ("Egresos", "#EF4444")]:
+            row = tk.Frame(pie_legend, bg='white')
             row.pack(anchor=tk.W, pady=4)
-
-            var = tk.BooleanVar(value=True)
-            chk = tk.Checkbutton(
-                row,
-                variable=var,
-                bg='white',
-                activebackground='white',
-                command=self.actualizar_reporte_final
-            )
-            chk.pack(side=tk.LEFT, padx=(0, 4))
-
             color_box = tk.Canvas(row, width=14, height=14, bg='white', highlightthickness=0)
             color_box.pack(side=tk.LEFT, padx=(0, 6))
-
+            color_box.create_rectangle(0, 0, 14, 14, fill=color, outline='')
             text_label = tk.Label(row, text=f"{label_text}: {formatear_moneda(0)}", bg='white', fg='black', font=("Arial", 10, "bold"))
             text_label.pack(side=tk.LEFT)
+            self.reporte_final_legend_labels[label_text] = text_label
 
-            self.reporte_final_labels[label_text] = (color_box, text_label)
-            self.reporte_final_checks[label_text] = var
+        tk.Label(legend_frame, text="Desglose de egresos", font=("Arial", 11, "bold"), bg='white', fg='black').pack(anchor=tk.W, pady=(6, 2))
+        self.egresos_breakdown_frame = tk.Frame(legend_frame, bg='white')
+        self.egresos_breakdown_frame.pack(fill=tk.BOTH, expand=True, anchor=tk.NW)
+
+        tk.Label(legend_frame, text="Desglose de ingresos (caja)", font=("Arial", 11, "bold"), bg='white', fg='black').pack(anchor=tk.W, pady=(10, 2))
+        self.ingresos_breakdown_frame = tk.Frame(legend_frame, bg='white')
+        self.ingresos_breakdown_frame.pack(fill=tk.BOTH, expand=True, anchor=tk.NW)
 
 
         self.reporte_final_tooltip = tk.Label(
@@ -728,13 +749,22 @@ class ReportesView:
 
     def actualizar_reporte_final(self):
         """Actualizar datos y grafico del reporte final"""
-        totales = self._obtener_totales_mes()
-        # Solo sumar los valores de las casillas seleccionadas
-        seleccionados = [k for k, v in self.reporte_final_checks.items() if v.get()]
-        total_general = sum(totales[k] for k in seleccionados if k in totales)
+        resumen = self._obtener_resumen_financiero_mes()
         if hasattr(self, "reporte_final_total_label"):
-            self.reporte_final_total_label.config(text=f"Suma total: {formatear_moneda(total_general)}")
-        self._dibujar_grafico_torta(totales)
+            self.reporte_final_total_label.config(text=f"Ganancia neta: {formatear_moneda(resumen['ganancia_neta'])}")
+
+        if hasattr(self, "resumen_financiero_labels"):
+            self.resumen_financiero_labels["Ingresos"].config(text=formatear_moneda(resumen["ingresos_totales"]))
+            self.resumen_financiero_labels["Egresos"].config(text=formatear_moneda(resumen["egresos_totales"]))
+            self.resumen_financiero_labels["Ganancia"].config(text=formatear_moneda(resumen["ganancia_neta"]))
+
+        if hasattr(self, "reporte_final_legend_labels"):
+            self.reporte_final_legend_labels["Ingresos"].config(text=f"Ingresos: {formatear_moneda(resumen['ingresos_totales'])}")
+            self.reporte_final_legend_labels["Egresos"].config(text=f"Egresos: {formatear_moneda(resumen['egresos_totales'])}")
+
+        self._actualizar_desglose_egresos(resumen)
+        self._actualizar_desglose_ingresos(resumen)
+        self._dibujar_grafico_torta(resumen)
         self._programar_actualizacion_reporte_final()
 
 
@@ -747,8 +777,8 @@ class ReportesView:
             self.actualizar_reporte_final
         )
 
-    def _obtener_totales_mes(self):
-        """Calcular totales del mes seleccionado (anio actual) para cada tipo"""
+    def _obtener_resumen_financiero_mes(self):
+        """Calcular resumen financiero del mes seleccionado."""
         meses = {
             "Enero": 1, "Febrero": 2, "Marzo": 3, "Abril": 4, "Mayo": 5, "Junio": 6,
             "Julio": 7, "Agosto": 8, "Septiembre": 9, "Octubre": 10, "Noviembre": 11, "Diciembre": 12
@@ -761,68 +791,66 @@ class ReportesView:
         inicio_mes = f"{anio:04d}-{mes_num:02d}-01"
         fin_mes = f"{anio:04d}-{mes_num:02d}-{ultimo_dia:02d}"
 
-        stats_ventas = self.venta_model.obtener_estadisticas(inicio_mes, fin_mes)
-        total_ventas = float(stats_ventas[1] or 0) if stats_ventas else 0.0
+        resumen = self.caja_model.obtener_resumen_financiero_mes(inicio_mes, fin_mes)
+        resumen['inicio_mes'] = inicio_mes
+        resumen['fin_mes'] = fin_mes
+        return resumen
 
-        reparaciones = self.reparacion_model.obtener_reparaciones(filtro_estado=None)
-        total_reparaciones = 0.0
-        for rep in reparaciones:
-            if not (rep.get('sena') and rep.get('sena') > 0 or rep.get('estado') == 'retirado'):
+    def _actualizar_desglose_egresos(self, resumen):
+        """Mostrar desglose de egresos por categoria."""
+        for child in self.egresos_breakdown_frame.winfo_children():
+            child.destroy()
+
+        categorias = resumen.get('egresos_por_categoria', {})
+        if not categorias or sum(categorias.values()) <= 0:
+            tk.Label(self.egresos_breakdown_frame, text="Sin egresos registrados", bg='white', fg='#9CA3AF', font=("Arial", 9, "italic")).pack(anchor=tk.W, pady=4)
+            return
+
+        for categoria, valor in categorias.items():
+            if valor <= 0:
                 continue
-            fecha_rep = (rep.get('fecha_creacion') or '')[:10]
-            if fecha_rep < inicio_mes or fecha_rep > fin_mes:
+            row = tk.Frame(self.egresos_breakdown_frame, bg='white')
+            row.pack(fill=tk.X, pady=2)
+            tk.Label(row, text=categoria, bg='white', fg='black', font=("Arial", 9)).pack(side=tk.LEFT)
+            tk.Label(row, text=formatear_moneda(valor), bg='white', fg='#EF4444', font=("Arial", 9, "bold")).pack(side=tk.RIGHT)
+
+    def _actualizar_desglose_ingresos(self, resumen):
+        """Mostrar desglose de ingresos por origen de caja."""
+        for child in self.ingresos_breakdown_frame.winfo_children():
+            child.destroy()
+
+        origenes = resumen.get('ingresos_por_origen', {})
+        if not origenes or sum(origenes.values()) <= 0:
+            tk.Label(self.ingresos_breakdown_frame, text="Sin ingresos categorizados en caja", bg='white', fg='#9CA3AF', font=("Arial", 9, "italic")).pack(anchor=tk.W, pady=4)
+            return
+
+        for origen, valor in origenes.items():
+            if valor <= 0:
                 continue
-            total_reparaciones += float(rep.get('sena') or 0) + float(rep.get('monto_pago_final') or 0)
+            row = tk.Frame(self.ingresos_breakdown_frame, bg='white')
+            row.pack(fill=tk.X, pady=2)
+            tk.Label(row, text=origen, bg='white', fg='black', font=("Arial", 9)).pack(side=tk.LEFT)
+            tk.Label(row, text=formatear_moneda(valor), bg='white', fg='#10B981', font=("Arial", 9, "bold")).pack(side=tk.RIGHT)
 
-        total_celulares = 0.0
-        conn = self.db_manager.get_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute('''
-                SELECT
-                    COALESCE(SUM(sena), 0) + COALESCE(SUM(monto_pago_final), 0)
-                FROM ventas_celulares
-                WHERE DATE(fecha_venta) >= ? AND DATE(fecha_venta) <= ?
-            ''', (inicio_mes, fin_mes))
-            result = cursor.fetchone()
-            if result:
-                total_celulares = float(result[0] or 0)
-        except Exception:
-            total_celulares = 0.0
-
-        return {
-            "Ventas": total_ventas,
-            "Reparaciones": total_reparaciones,
-            "Ventas Celulares": total_celulares
-        }
-
-    def _dibujar_grafico_torta(self, totales):
-        """Dibujar grafico de torta con totales"""
+    def _dibujar_grafico_torta(self, resumen):
+        """Dibujar grafico de torta con ingresos y egresos."""
         self.reporte_final_canvas.delete("all")
         colores = {
-            "Ventas": "#10B981",
-            "Reparaciones": "#F59E0B",
-            "Ventas Celulares": "#3B82F6"
+            "Ingresos": "#10B981",
+            "Egresos": "#EF4444"
         }
 
-        seleccionados = [k for k, v in self.reporte_final_checks.items() if v.get()]
-        totales_filtrados = {k: v for k, v in totales.items() if k in seleccionados}
-
-        total = sum(totales_filtrados.values())
+        ingresos = float(resumen.get('ingresos_totales') or 0)
+        egresos = float(resumen.get('egresos_totales') or 0)
+        ganancia = float(resumen.get('ganancia_neta') or 0)
+        total = ingresos + egresos
         self._reporte_final_slices = []
         box = (35, 40, 375, 330)
         self._reporte_final_pie_box = box
 
         cx = (box[0] + box[2]) / 2
         cy = (box[1] + box[3]) / 2
-        if not seleccionados:
-            self.reporte_final_canvas.create_text(
-                cx, cy,
-                text="Selecciona al menos un tipo",
-                fill="gray",
-                font=("Arial", 11, "bold")
-            )
-        elif total <= 0:
+        if total <= 0:
             self.reporte_final_canvas.create_text(
                 cx, cy,
                 text="Sin datos para el mes",
@@ -838,13 +866,15 @@ class ReportesView:
                 outline=""
             )
 
-            start_angle = 0
-            solo_uno = len(totales_filtrados) == 1
+            slices = [("Ingresos", ingresos), ("Egresos", egresos)]
+            solo_uno = ingresos <= 0 or egresos <= 0
 
             # Capas inferiores (efecto profundidad 3D)
             for y_offset in range(depth, 0, -1):
                 start_angle = 0
-                for key, value in totales_filtrados.items():
+                for key, value in slices:
+                    if value <= 0:
+                        continue
                     extent = 359.9 if solo_uno else (value / total) * 360
                     side_color = self._ajustar_color(colores.get(key, "#9CA3AF"), -0.35)
                     self.reporte_final_canvas.create_arc(
@@ -859,7 +889,9 @@ class ReportesView:
 
             # Capa superior
             start_angle = 0
-            for key, value in totales_filtrados.items():
+            for key, value in slices:
+                if value <= 0:
+                    continue
                 extent = 359.9 if solo_uno else (value / total) * 360
                 arc_box = box
 
@@ -893,16 +925,18 @@ class ReportesView:
                 })
                 start_angle += extent
 
-        for key, value in totales.items():
-            color_box, text_label = self.reporte_final_labels.get(key, (None, None))
-            is_checked = self.reporte_final_checks.get(key).get()
-            if color_box is not None:
-                color_box.delete("all")
-                fill_color = colores.get(key, "#9CA3AF") if is_checked else "#E5E7EB"
-                color_box.create_rectangle(0, 0, 14, 14, fill=fill_color, outline='')
-            if text_label is not None:
-                fg = 'black' if is_checked else '#9CA3AF'
-                text_label.config(text=f"{key}: {formatear_moneda(value)}", fg=fg)
+            self.reporte_final_canvas.create_text(
+                cx, cy - 14,
+                text=f"Ganancia neta: {formatear_moneda(ganancia)}",
+                fill="#111827",
+                font=("Arial", 12, "bold")
+            )
+            self.reporte_final_canvas.create_text(
+                cx, cy + 12,
+                text=f"Ingresos: {formatear_moneda(ingresos)}",
+                fill="#6B7280",
+                font=("Arial", 10)
+            )
 
     def _ajustar_color(self, color_hex, factor):
         """Aclarar u oscurecer un color hexadecimal."""

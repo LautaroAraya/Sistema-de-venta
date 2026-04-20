@@ -606,6 +606,9 @@ class ReparacionView:
         if termino:
             reparaciones_filtradas = []
             for rep in reparaciones:
+                fecha_creacion = (rep.get('fecha_creacion') or '')[:10]
+                fecha_entrega = (rep.get('fecha_entrega') or '')[:10]
+                fecha_pago = (rep.get('fecha_pago_final') or '')[:10]
                 texto_busqueda = ' '.join([
                     str(rep.get('numero_orden') or ''),
                     str(rep.get('cliente_nombre') or ''),
@@ -613,7 +616,10 @@ class ReparacionView:
                     str(rep.get('cliente_dni') or ''),
                     str(rep.get('dispositivo') or ''),
                     str(rep.get('modelo') or ''),
-                    str(rep.get('estado') or '')
+                    str(rep.get('estado') or ''),
+                    fecha_creacion,
+                    fecha_entrega,
+                    fecha_pago
                 ]).lower()
                 if termino in texto_busqueda:
                     reparaciones_filtradas.append(rep)
@@ -966,8 +972,8 @@ class ReparacionView:
             messagebox.showwarning("Validación", "La seña y total deben ser números")
             return
 
-        if total <= 0:
-            messagebox.showwarning("Validación", "El total debe ser mayor a 0")
+        if sena < 0 or total < 0:
+            messagebox.showwarning("Validación", "La seña y el total no pueden ser negativos")
             return
 
         if self.modo_edicion:
@@ -1665,8 +1671,22 @@ CUIT: {config.get('cuit', 'N/A')}</font>"""
         
         # Filtrar por cliente
         for rep in reparaciones:
-            cliente = rep['cliente_nombre'].lower()
-            if termino_busqueda in cliente:
+            cliente = (rep['cliente_nombre'] or '').lower()
+            fecha_creacion = (rep.get('fecha_creacion') or '')[:10]
+            fecha_entrega = (rep.get('fecha_entrega') or '')[:10]
+            fecha_pago = (rep.get('fecha_pago_final') or '')[:10]
+            texto_busqueda = ' '.join([
+                cliente,
+                str(rep.get('cliente_telefono') or '').lower(),
+                str(rep.get('cliente_dni') or '').lower(),
+                str(rep.get('dispositivo') or '').lower(),
+                str(rep.get('modelo') or '').lower(),
+                str(rep.get('estado') or '').lower(),
+                fecha_creacion,
+                fecha_entrega,
+                fecha_pago
+            ])
+            if termino_busqueda in texto_busqueda:
                 # Convertir estado
                 estado_ui = self.estado_db_to_ui(rep['estado'])
                 
