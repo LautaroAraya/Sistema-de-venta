@@ -195,9 +195,24 @@ def home():
     return send_from_directory(PANEL_DIR, "index.html")
 
 
+@app.route("/panel")
+def panel_home():
+    return send_from_directory(PANEL_DIR, "index.html")
+
+
 @app.route("/panel/<path:filename>")
 def panel_files(filename):
     return send_from_directory(PANEL_DIR, filename)
+
+
+@app.route("/styles.css")
+def panel_styles():
+    return send_from_directory(PANEL_DIR, "styles.css")
+
+
+@app.route("/app.js")
+def panel_app_js():
+    return send_from_directory(PANEL_DIR, "app.js")
 
 
 @app.route("/health", methods=["GET"])
@@ -205,8 +220,11 @@ def health():
     return jsonify({"ok": True, "service": "api_tecnico_remoto"})
 
 
-@app.route("/api/auth/login", methods=["POST"])
+@app.route("/api/auth/login", methods=["POST", "OPTIONS"])
 def login():
+    if request.method == "OPTIONS":
+        return jsonify({"ok": True})
+
     data = request.get_json(silent=True) or {}
     username = (data.get("username") or "").strip()
     password = data.get("password") or ""

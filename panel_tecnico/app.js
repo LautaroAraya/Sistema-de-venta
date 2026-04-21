@@ -4,6 +4,8 @@ const state = {
   selectedReparacionId: null,
 };
 
+const API_LOGIN_URL = "/api/auth/login";
+
 const loginCard = document.getElementById("loginCard");
 const panelCard = document.getElementById("panelCard");
 const detalleCard = document.getElementById("detalleCard");
@@ -18,6 +20,33 @@ function authHeaders() {
     "Content-Type": "application/json",
     Authorization: `Bearer ${state.token}`,
   };
+}
+
+async function readApiJson(res) {
+  const raw = await res.text();
+
+  if (!raw) {
+    return {
+      ok: false,
+      error: `Respuesta vacia del servidor (${res.status})`,
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") {
+      return parsed;
+    }
+    return {
+      ok: false,
+      error: `Respuesta invalida del servidor (${res.status})`,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: `Respuesta no JSON del servidor (${res.status})`,
+    };
+  }
 }
 
 function setLoggedInView(isLoggedIn) {
@@ -85,7 +114,7 @@ async function loadReparaciones() {
       return;
     }
 
-    const data = await res.json();
+    const data = await readApiJson(res);
     if (!data.ok) {
       panelError.textContent = data.error || "No se pudo obtener reparaciones";
       return;
@@ -141,7 +170,7 @@ async function loadDetalle(numeroOrden) {
       return;
     }
 
-    const data = await res.json();
+    const data = await readApiJson(res);
     if (!data.ok) {
       detalleMsg.textContent = data.error || "No se pudo cargar el detalle";
       return;
@@ -174,7 +203,7 @@ async function updateEstado() {
       return;
     }
 
-    const data = await res.json();
+    const data = await readApiJson(res);
     if (!data.ok) {
       detalleMsg.textContent = data.error || "No se pudo actualizar estado";
       return;
@@ -195,15 +224,15 @@ async function doLogin(evt) {
   const password = document.getElementById("password").value;
 
   try {
-    const res = await fetch("/api/auth/login", {
+    const res = await fetch(API_LOGIN_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
     });
 
-    const data = await res.json();
+    const data = await readApiJson(res);
     if (!data.ok) {
-      document.getElementById("loginError").textContent = data.error || "Error de login";
+      document.getElementById("loginError").textContent = `${data.error || "Error de login"} [${API_LOGIN_URL}]`;
       return;
     }
 

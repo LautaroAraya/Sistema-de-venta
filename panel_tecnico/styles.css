@@ -1,14 +1,16 @@
 :root {
-  --bg-1: #f4efe6;
-  --bg-2: #dfe8f6;
-  --card: #fffdfa;
-  --ink: #202229;
-  --muted: #626b77;
-  --line: #d8d2c9;
-  --accent: #0e6ba8;
-  --accent-2: #0a4f7a;
-  --ok: #237a4b;
-  --warn: #b77a12;
+  --bg-1: #141116;
+  --bg-2: #1d151a;
+  --card: #211a20;
+  --card-soft: #2a2128;
+  --ink: #f6f0f3;
+  --muted: #c6b8bf;
+  --line: #46363f;
+  --accent: #a83b55;
+  --accent-2: #7f2e43;
+  --accent-soft: #d48a9b;
+  --ok: #51b88b;
+  --warn: #e0b46c;
 }
 
 * {
@@ -20,7 +22,10 @@ body {
   min-height: 100vh;
   font-family: "Space Grotesk", sans-serif;
   color: var(--ink);
-  background: linear-gradient(130deg, var(--bg-1), var(--bg-2));
+  background:
+    radial-gradient(circle at 10% -10%, rgba(168, 59, 85, 0.22), transparent 40%),
+    radial-gradient(circle at 90% 120%, rgba(212, 138, 155, 0.2), transparent 38%),
+    linear-gradient(135deg, var(--bg-1), var(--bg-2));
   position: relative;
   overflow-x: hidden;
 }
@@ -28,29 +33,29 @@ body {
 .bg-shape {
   position: fixed;
   border-radius: 999px;
-  filter: blur(20px);
-  opacity: 0.35;
+  filter: blur(28px);
+  opacity: 0.22;
   pointer-events: none;
 }
 
 .bg-shape-1 {
-  width: 320px;
-  height: 320px;
-  background: #ffd18e;
+  width: 380px;
+  height: 380px;
+  background: #b24561;
   left: -70px;
   top: -90px;
 }
 
 .bg-shape-2 {
-  width: 260px;
-  height: 260px;
-  background: #8fd2ff;
+  width: 320px;
+  height: 320px;
+  background: #6d2b3e;
   right: -60px;
   bottom: -70px;
 }
 
 .topbar {
-  padding: 20px 24px;
+  padding: 24px 24px 18px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -58,12 +63,20 @@ body {
 
 .topbar h1 {
   margin: 0;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-size: 1.35rem;
 }
 
 .topbar p {
   margin: 4px 0 0;
   color: var(--muted);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 main {
@@ -75,16 +88,25 @@ main {
 }
 
 .card {
-  background: color-mix(in srgb, var(--card) 87%, white 13%);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--card) 88%, black 12%), var(--card-soft));
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 18px;
   padding: 18px;
-  box-shadow: 0 12px 30px rgba(35, 28, 18, 0.08);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
   animation: fadeIn 280ms ease;
 }
 
 .login-card {
   max-width: 420px;
+  width: 100%;
+  margin: 8vh auto 0;
+  border-top: 3px solid var(--accent);
+}
+
+h2 {
+  margin: 0 0 12px;
+  font-size: 1.15rem;
+  letter-spacing: 0.03em;
 }
 
 label {
@@ -104,8 +126,20 @@ select {
   width: 100%;
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid #c9c2b8;
-  background: #fffdf9;
+  border: 1px solid #5b4650;
+  background: #1a1419;
+  color: var(--ink);
+}
+
+input::placeholder {
+  color: #9f8d96;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent-soft);
+  box-shadow: 0 0 0 3px rgba(212, 138, 155, 0.2);
 }
 
 .filters {
@@ -128,7 +162,7 @@ th,
 td {
   padding: 10px 8px;
   text-align: left;
-  border-bottom: 1px solid #e7e0d5;
+  border-bottom: 1px solid #4a3942;
   font-size: 0.94rem;
 }
 
@@ -138,24 +172,27 @@ th {
 }
 
 .badge {
-  background: #e6f2fb;
-  color: var(--accent-2);
-  border: 1px solid #b7d8ef;
+  background: rgba(212, 138, 155, 0.16);
+  color: #f3c5d0;
+  border: 1px solid #7d4656;
   border-radius: 999px;
   padding: 6px 10px;
   font-size: 0.85rem;
 }
 
 .btn {
-  border: 1px solid #b5aca0;
+  border: 1px solid #745865;
   padding: 10px 12px;
   border-radius: 10px;
-  background: #f6f0e7;
+  background: #2a2027;
+  color: var(--ink);
   cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease, background-color 120ms ease;
 }
 
 .btn:hover {
   transform: translateY(-1px);
+  border-color: #9f6578;
 }
 
 .btn.primary {
@@ -176,22 +213,22 @@ th {
 }
 
 .status-en_proceso {
-  background: #fff4d9;
-  color: #996b00;
+  background: rgba(224, 180, 108, 0.2);
+  color: #f2d4a0;
 }
 
 .status-en_espera_retiro {
-  background: #dff3e8;
+  background: rgba(81, 184, 139, 0.18);
   color: var(--ok);
 }
 
 .status-retirado {
-  background: #f0f0f0;
-  color: #404040;
+  background: rgba(166, 166, 166, 0.2);
+  color: #dfdfdf;
 }
 
 .error {
-  color: #b7322c;
+  color: #ff9aa6;
   min-height: 18px;
 }
 
@@ -204,9 +241,9 @@ th {
 
 .detail-item {
   padding: 10px;
-  border: 1px solid #e6dfd2;
+  border: 1px solid #5a4751;
   border-radius: 10px;
-  background: #fff;
+  background: #181318;
 }
 
 .detail-item strong {
