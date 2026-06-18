@@ -1,1 +1,0 @@
-web: gunicorn api_tecnico_remoto:app --bind 0.0.0.0:$PORT

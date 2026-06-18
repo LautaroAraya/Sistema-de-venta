@@ -264,6 +264,7 @@ class ProductoDialog:
         tk.Label(main_frame, text="Proveedor:", bg='white', fg='black').grid(row=7, column=0, sticky=tk.W, pady=5)
         self.proveedor_combo = ttk.Combobox(main_frame, width=28, state='readonly')
         self.proveedor_combo.grid(row=7, column=1, pady=5, padx=5)
+        self.proveedor_combo.bind('<Return>', lambda e: self.guardar())
         
         # Cargar proveedores
         proveedores = self.proveedor_model.listar_proveedores()
@@ -466,6 +467,7 @@ class CategoriaDialog:
                  font=("Arial", 10)).pack(anchor=tk.W, pady=5)
         self.nombre_entry = tk.Entry(main_frame, width=40, font=("Arial", 10))
         self.nombre_entry.pack(anchor=tk.W, pady=5, fill=tk.X)
+        self.nombre_entry.bind('<Return>', lambda e: self.guardar())
         self.nombre_entry.focus()
         
         # Botones

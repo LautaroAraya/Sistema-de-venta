@@ -67,7 +67,6 @@ python main.py
 | `utils/obtener_hwid.py` | Utilidad para obtener HWID |
 | `serviceAccountKey.json.example` | Plantilla de credenciales (renombrar a `serviceAccountKey.json`) |
 | `GUIA_LICENCIAS.md` | Documentación completa |
-| `.env.example` | Variables de entorno (opcional) |
 
 ---
 
@@ -98,10 +97,8 @@ Eliminar el campo `fecha_vencimiento` o dejarlo vacío
 
 ## ⚙️ Configuración Avanzada
 
-### Usar Variables de Entorno (Opcional)
-1. Copiar `.env.example` → `.env`
-2. Modificar variables según necesario
-3. El validador las cargará automáticamente
+### Variables de Entorno
+Este proyecto ya no incluye plantillas de `.env`; configura variables sensibles directamente según necesidad.
 
 ### Ruta Personalizada para Credenciales
 ```python

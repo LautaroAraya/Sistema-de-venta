@@ -70,5 +70,4 @@ SistemaVentas.exe
 # Firebase - Credenciales sensibles
 serviceAccountKey.json
 .env
-.env.tecnico
 .deploy_config.json

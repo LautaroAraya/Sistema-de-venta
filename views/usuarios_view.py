@@ -191,6 +191,7 @@ class UsuarioDialog:
         self.rol_combo['values'] = ['admin', 'empleado']
         self.rol_combo.current(1)
         self.rol_combo.grid(row=4, column=1, pady=5, padx=5)
+        self.rol_combo.bind('<Return>', lambda e: self.guardar())
         
         # Botones
         buttons_frame = tk.Frame(main_frame, bg='white')
@@ -245,8 +246,7 @@ class CambiarPasswordDialog:
         # Confirmar contraseña
         tk.Label(main_frame, text="Confirmar Contraseña:", bg='white', fg='black').grid(row=1, column=0, sticky=tk.W, pady=5)
         self.confirm_entry = tk.Entry(main_frame, width=25, show="*")
-        self.confirm_entry.grid(row=1, column=1, pady=5, padx=5)
-
+        self.confirm_entry.grid(row=1, column=1, pady=5, padx=5)        self.confirm_entry.bind('<Return>', lambda e: self.guardar())
         # Botones
         buttons_frame = tk.Frame(main_frame, bg='white')
         buttons_frame.grid(row=2, column=0, columnspan=2, pady=20)
@@ -344,6 +344,7 @@ class EditUsuarioDialog:
             idx = 1
         self.rol_combo.current(idx)
         self.rol_combo.grid(row=2, column=1, pady=5, padx=5)
+        self.rol_combo.bind('<Return>', lambda e: self.guardar())
         
         # Botones
         buttons_frame = tk.Frame(main_frame, bg='white')

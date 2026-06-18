@@ -86,15 +86,16 @@ class Usuario:
         cursor = conn.cursor()
         
         password_hash = hashlib.sha256(nueva_password.encode()).hexdigest()
-        
-        cursor.execute('''
-            UPDATE usuarios
-            SET password = ?
-            WHERE id = ?
-        ''', (password_hash, user_id))
-        
-        conn.commit()
-        return True
+        try:
+            cursor.execute('''
+                UPDATE usuarios
+                SET password = ?
+                WHERE id = ?
+            ''', (password_hash, user_id))
+            conn.commit()
+            return True, "Contraseña actualizada correctamente"
+        except Exception as e:
+            return False, f"Error al cambiar contraseña: {str(e)}"
 
     def eliminar_usuario(self, user_id):
         """Desactivar usuario (borrado lógico)"""

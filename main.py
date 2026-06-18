@@ -3,7 +3,6 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import sys
 import os
-# import threading  # Sync automático desactivado temporalmente
 
 # ====== VALIDACIÓN DE LICENCIA (DEBE SER LO PRIMERO) ======
 from utils.validador_public import validar_licencia_inicio
@@ -88,43 +87,12 @@ class SistemaVentas:
         # Inicializar base de datos
         self.db_manager = DatabaseManager()
 
-        # Sincronización automática desactivada temporalmente.
-        # Cuando la quieras reactivar, descomentá import y líneas de scheduler.
-        # self.sync_en_curso = False
-        # self.sync_interval_seconds = get_sync_interval_seconds(default_value=300)
-        # self.iniciar_sync_periodico()
+        # Sincronización automática desactivada en esta rama.
 
         # Mostrar login
         self.mostrar_login()
 
-    # def iniciar_sync_periodico(self):
-    #     """Inicia el scheduler de sincronización en segundo plano."""
-    #     if self.sync_interval_seconds <= 0:
-    #         print("Sync automático desactivado (CENTRAL_SYNC_INTERVAL_SECONDS=0)")
-    #         return
-    #
-    #     print(f"Sync automático activo cada {self.sync_interval_seconds} segundos")
-    #     # Primera corrida con una pequeña espera para no competir con el inicio de la UI.
-    #     self.root.after(5000, self.ejecutar_sync_periodico)
-    #
-    # def ejecutar_sync_periodico(self):
-    #     """Ejecuta una pasada de sync sin bloquear el hilo principal de Tkinter."""
-    #     if self.sync_en_curso:
-    #         self.root.after(self.sync_interval_seconds * 1000, self.ejecutar_sync_periodico)
-    #         return
-    #
-    #     self.sync_en_curso = True
-    #
-    #     def _worker():
-    #         try:
-    #             run_sync_once(limit=50)
-    #         except Exception as e:
-    #             print(f"Error en sync automático: {e}")
-    #         finally:
-    #             self.sync_en_curso = False
-    #
-    #     threading.Thread(target=_worker, daemon=True).start()
-    #     self.root.after(self.sync_interval_seconds * 1000, self.ejecutar_sync_periodico)
+    # (Código de sincronización eliminado en esta rama)
         
     def mostrar_login(self):
         """Mostrar ventana de login"""

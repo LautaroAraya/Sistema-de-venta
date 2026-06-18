@@ -176,6 +176,7 @@ class ProveedorDialog:
         tk.Label(main_frame, text="Dirección:", bg='white', fg='black').grid(row=4, column=0, sticky=tk.W, pady=5)
         self.direccion_entry = tk.Entry(main_frame, width=30)
         self.direccion_entry.grid(row=4, column=1, pady=5, padx=5)
+        self.direccion_entry.bind('<Return>', lambda e: self.guardar())
         
         # Botones
         buttons_frame = tk.Frame(main_frame, bg='white')
