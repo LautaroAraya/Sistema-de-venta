@@ -226,6 +226,10 @@ class Caja:
             return 'Impuestos'
         if any(palabra in texto for palabra in ('empleado', 'sueldo', 'salario', 'nomina', 'nomina', 'liquidacion')):
             return 'Empleados'
+        if any(palabra in texto for palabra in ('proveedor', 'compra', 'mercaderia', 'mercadería', 'stock', 'insumo')):
+            return 'Proveedor'
+        if any(palabra in texto for palabra in ('transportista', 'transporte', 'flete', 'envio', 'envío', 'delivery')):
+            return 'Transportista'
         return 'Otros'
 
     def obtener_resumen_financiero_mes(self, fecha_inicio, fecha_fin):
@@ -246,6 +250,8 @@ class Caja:
                 'Publicidad': 0.0,
                 'Impuestos': 0.0,
                 'Empleados': 0.0,
+                'Proveedor': 0.0,
+                'Transportista': 0.0,
                 'Otros': 0.0,
             },
             'ingresos_por_origen': {
@@ -257,16 +263,8 @@ class Caja:
         }
 
         try:
-            cursor.execute('''
-                SELECT COALESCE(SUM(total), 0)
-                FROM ventas
-                WHERE DATE(fecha_venta) >= ? AND DATE(fecha_venta) <= ?
-            ''', (fecha_inicio, fecha_fin))
-            resumen['ingresos_ventas'] = float(cursor.fetchone()[0] or 0)
-        except Exception:
+            # Las ventas se consideran solo cuando se registran manualmente en movimientos de caja.
             resumen['ingresos_ventas'] = 0.0
-
-        try:
             cursor.execute('''
                 SELECT COALESCE(SUM(COALESCE(sena, 0) + COALESCE(monto_pago_final, 0)), 0)
                 FROM reparaciones

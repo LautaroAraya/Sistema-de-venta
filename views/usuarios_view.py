@@ -246,15 +246,16 @@ class CambiarPasswordDialog:
         # Confirmar contraseña
         tk.Label(main_frame, text="Confirmar Contraseña:", bg='white', fg='black').grid(row=1, column=0, sticky=tk.W, pady=5)
         self.confirm_entry = tk.Entry(main_frame, width=25, show="*")
-        self.confirm_entry.grid(row=1, column=1, pady=5, padx=5)        self.confirm_entry.bind('<Return>', lambda e: self.guardar())
+        self.confirm_entry.grid(row=1, column=1, pady=5, padx=5)
+        self.confirm_entry.bind('<Return>', lambda e: self.guardar())
         # Botones
         buttons_frame = tk.Frame(main_frame, bg='white')
         buttons_frame.grid(row=2, column=0, columnspan=2, pady=20)
 
         tk.Button(buttons_frame, text="Guardar", font=('Arial', 10), bg='#10B981', fg='white', relief=tk.RAISED,
-                  command=self.guardar).pack(side=tk.LEFT, padx=5)
+                command=self.guardar).pack(side=tk.LEFT, padx=5)
         tk.Button(buttons_frame, text="Cancelar", font=('Arial', 10), bg='#EF4444', fg='white', relief=tk.RAISED,
-                  command=self.dialog.destroy).pack(side=tk.LEFT, padx=5)
+                command=self.dialog.destroy).pack(side=tk.LEFT, padx=5)
 
     def guardar(self):
         password = self.password_entry.get()

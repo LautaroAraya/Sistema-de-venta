@@ -5,26 +5,14 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[
-        ('firebase_config.py', '.'),
-        ('version.txt', '.'),
-        ('serviceAccountKey.json', '.'),
-        ('serviceAccountKey.json.example', '.'),
-        ('assets/*', 'assets'),
-        ('logs/*', 'logs'),
-        ('requirements.txt', '.'),
-        ('database/*', 'database'),
-        ('views/*', 'views'),
-        ('models/*', 'models'),
-        ('utils/*', 'utils'),
-        # Agrega aquí cualquier otro archivo/carpeta que tu app necesite en runtime
-    ],
-    hiddenimports=['requests', 'urllib3', 'certifi'],
+    datas=[],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['pkg_resources'],
+    excludes=[],
     noarchive=False,
+    optimize=0,
 )
 pyz = PYZ(a.pure)
 
@@ -47,5 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['assets\\logoinstalador.ico'],
+    icon='assets\\logoinstalador.ico',
 )

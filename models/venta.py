@@ -125,7 +125,13 @@ class Venta:
         query = '''
             SELECT v.id, v.numero_factura, v.cliente_nombre, v.total, v.fecha_venta,
                    u.nombre_completo as vendedor,
-                   COALESCE(v.metodo_pago, 'Efectivo') as metodo_pago
+                   COALESCE(v.metodo_pago, 'Efectivo') as metodo_pago,
+                   COALESCE(v.recargo, 0) as recargo,
+                   CASE
+                       WHEN COALESCE(v.metodo_pago, 'Efectivo') = 'Tarjeta'
+                           THEN v.total + (v.total * COALESCE(v.recargo, 0) / 100.0)
+                       ELSE v.total
+                   END as total_final
             FROM ventas v
             JOIN usuarios u ON v.usuario_id = u.id
             WHERE 1=1
@@ -158,8 +164,20 @@ class Venta:
         query = '''
             SELECT 
                 COUNT(*) as total_ventas,
-                COALESCE(SUM(total), 0) as total_ingresos,
-                COALESCE(AVG(total), 0) as promedio_venta
+                COALESCE(SUM(
+                    CASE
+                        WHEN COALESCE(metodo_pago, 'Efectivo') = 'Tarjeta'
+                            THEN total + (total * COALESCE(recargo, 0) / 100.0)
+                        ELSE total
+                    END
+                ), 0) as total_ingresos,
+                COALESCE(AVG(
+                    CASE
+                        WHEN COALESCE(metodo_pago, 'Efectivo') = 'Tarjeta'
+                            THEN total + (total * COALESCE(recargo, 0) / 100.0)
+                        ELSE total
+                    END
+                ), 0) as promedio_venta
             FROM ventas
             WHERE 1=1
         '''

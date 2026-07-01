@@ -7,7 +7,7 @@ echo Instalando dependencias...
 pip install -r requirements.txt
 echo.
 echo Generando ejecutable con PyInstaller...
-pyinstaller --clean --onefile --windowed --name "SistemaVentas" main.py
+pyinstaller --clean --onefile --windowed --icon "assets\logoinstalador.ico" --name "SistemaVentas" main.py
 echo.
 echo ======================================
 echo    PROCESO COMPLETADO

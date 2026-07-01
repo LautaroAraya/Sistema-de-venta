@@ -324,9 +324,10 @@ class ReportesView:
         # Cargar ventas
         ventas = self.venta_model.listar_ventas(fecha_inicio, fecha_fin)
         for venta in ventas:
+            total_final = float(venta[8] or venta[3] or 0)
             self.tree_ventas.insert('', tk.END, values=(
-                venta[0], venta[1], venta[2] or '-', 
-                formatear_moneda(venta[3]), venta[6] or 'Efectivo', venta[4], venta[5]
+                venta[0], venta[1], venta[2] or '-',
+                formatear_moneda(total_final), venta[6] or 'Efectivo', venta[4], venta[5]
             ))
         
         # Actualizar estadísticas
@@ -792,6 +793,7 @@ class ReportesView:
         fin_mes = f"{anio:04d}-{mes_num:02d}-{ultimo_dia:02d}"
 
         resumen = self.caja_model.obtener_resumen_financiero_mes(inicio_mes, fin_mes)
+        resumen['ingresos_ventas'] = 0.0
         resumen['inicio_mes'] = inicio_mes
         resumen['fin_mes'] = fin_mes
         return resumen
@@ -1139,21 +1141,37 @@ class DetalleVentaDialog:
         
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Detalle de Venta")
-        self.dialog.geometry("700x500")
+        self.dialog.geometry("700x560")
         self.dialog.transient(parent)
+        self.dialog.resizable(True, True)
         
         # Centrar diálogo
         self.dialog.update_idletasks()
         x = parent.winfo_x() + (parent.winfo_width() // 2) - 350
-        y = parent.winfo_y() + (parent.winfo_height() // 2) - 250
-        self.dialog.geometry(f"700x500+{x}+{y}")
+        y = parent.winfo_y() + (parent.winfo_height() // 2) - 280
+        self.dialog.geometry(f"700x560+{x}+{y}")
         
         self.create_widgets()
 
     def create_widgets(self):
         """Crear widgets"""
         self.dialog.configure(bg='white')
-        main_frame = tk.Frame(self.dialog, bg='white', padx=20, pady=20)
+        canvas = tk.Canvas(self.dialog, bg='white', highlightthickness=0)
+        scrollbar = ttk.Scrollbar(self.dialog, orient=tk.VERTICAL, command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg='white')
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=20, pady=20)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        main_frame = tk.Frame(scrollable_frame, bg='white')
         main_frame.pack(fill=tk.BOTH, expand=True)
         
         venta = self.venta_data['venta']
@@ -1167,6 +1185,12 @@ class DetalleVentaDialog:
         tk.Label(info_frame, text=f"Fecha: {venta[7]}", bg='white', fg='black').pack(anchor=tk.W)
         tk.Label(info_frame, text=f"Vendedor: {venta[8]}", bg='white', fg='black').pack(anchor=tk.W)
         tk.Label(info_frame, text=f"Cliente: {venta[2] or 'N/A'}", bg='white', fg='black').pack(anchor=tk.W)
+        tk.Label(info_frame, text=f"Método de pago: {venta[9] or 'Efectivo'}", bg='white', fg='black').pack(anchor=tk.W)
+
+        recargo_pct = float(venta[10] or 0)
+        total_base = float(venta[6] or 0)
+        recargo_monto = total_base * (recargo_pct / 100)
+        total_final = total_base + recargo_monto
         
         # Detalles
         tk.Label(main_frame, text="Detalle de Productos:", font=("Arial", 11, "bold"), bg='white', fg='black').pack(anchor=tk.W, pady=(10, 5))
@@ -1174,7 +1198,7 @@ class DetalleVentaDialog:
         columns = ('producto', 'cantidad', 'precio', 'descuento', 'subtotal')
         tree_frame = tk.Frame(main_frame, bg='white')
         tree_frame.pack(fill=tk.BOTH, expand=True)
-        tree = ttk.Treeview(tree_frame, columns=columns, show='headings', height=10)
+        tree = ttk.Treeview(tree_frame, columns=columns, show='headings', height=6)
 
         tree.heading('producto', text='Producto')
         tree.heading('cantidad', text='Cantidad')
@@ -1213,8 +1237,16 @@ class DetalleVentaDialog:
         tk.Label(totals_frame, text="Descuento:", font=("Arial", 11, "bold"), bg='white').grid(row=1, column=0, sticky=tk.E, padx=5)
         tk.Label(totals_frame, text=formatear_moneda(venta[5]), font=("Arial", 11), bg='white').grid(row=1, column=1, sticky=tk.W, padx=5)
 
-        tk.Label(totals_frame, text="TOTAL:", font=("Arial", 13, "bold"), bg='white').grid(row=2, column=0, sticky=tk.E, padx=5, pady=5)
-        tk.Label(totals_frame, text=formatear_moneda(venta[6]), font=("Arial", 13, "bold"), fg="green", bg='white').grid(row=2, column=1, sticky=tk.W, padx=5, pady=5)
+        tk.Label(totals_frame, text="Recargo:", font=("Arial", 11, "bold"), bg='white').grid(row=2, column=0, sticky=tk.E, padx=5)
+        tk.Label(totals_frame, text=formatear_moneda(recargo_monto), font=("Arial", 11), bg='white').grid(row=2, column=1, sticky=tk.W, padx=5)
+
+        tk.Label(totals_frame, text="Recargo %:", font=("Arial", 11, "bold"), bg='white').grid(row=3, column=0, sticky=tk.E, padx=5)
+        tk.Label(totals_frame, text=f"{recargo_pct:.2f}%", font=("Arial", 11), bg='white').grid(row=3, column=1, sticky=tk.W, padx=5)
+
+        tk.Label(totals_frame, text="TOTAL FINAL:", font=("Arial", 13, "bold"), bg='white').grid(row=4, column=0, sticky=tk.E, padx=5, pady=5)
+        tk.Label(totals_frame, text=formatear_moneda(total_final), font=("Arial", 13, "bold"), fg="green", bg='white').grid(row=4, column=1, sticky=tk.W, padx=5, pady=5)
+
+        tk.Frame(main_frame, bg='white', height=10).pack(fill=tk.X)
 
 
 class DetalleReparacionDialog:

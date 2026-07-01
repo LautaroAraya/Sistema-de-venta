@@ -519,7 +519,7 @@ class AgregarMovimientoDialog:
         self.categoria_egreso_combo = ttk.Combobox(
             self.categoria_egreso_frame,
             textvariable=self.categoria_egreso_var,
-            values=["Pago técnico", "Publicidad", "Impuestos", "Empleados", "Otros"],
+            values=["Pago técnico", "Publicidad", "Impuestos", "Empleados", "Proveedor", "Transportista", "Otros"],
             state="readonly",
             width=24
         )
